@@ -24,3 +24,13 @@ If you’re developing locally, the easiest way to authenticate is [using the Go
 ```bash
 gcloud auth application-default login
 ```
+
+
+
+TODO:
+-----
+
+* fact_relationship: add fact_id_1_table and fact_id_2_table column to know the FK tables
+* cost: add cost_event_id_table column to know the FK table
+* episode_event: add event_id_table column to know the FK table
+* generate ERA tables

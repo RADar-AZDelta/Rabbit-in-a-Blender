@@ -1,0 +1,20 @@
+MERGE INTO {{project_id}}.{{dataset_id_omop}}.CONCEPT AS T
+USING (
+    SELECT swap.y as CONCEPT_ID, t.* EXCEPT(CONCEPT_ID)
+    FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept t
+    INNER JOIN {{project_id}}.{{dataset_id_work}}.CONCEPT_ID_swap swap 
+        on swap.x = concat('{{concept_id_column}}__', t.CONCEPT_CODE)
+) AS S
+ON S.CONCEPT_ID = T.CONCEPT_ID
+WHEN MATCHED THEN
+    UPDATE set T.CONCEPT_NAME = S.CONCEPT_NAME
+        ,T.DOMAIN_ID = S.DOMAIN_ID
+        ,T.VOCABULARY_ID = S.VOCABULARY_ID
+        ,T.CONCEPT_CLASS_ID = S.CONCEPT_CLASS_ID
+        ,T.STANDARD_CONCEPT = S.STANDARD_CONCEPT
+        ,T.CONCEPT_CODE = S.CONCEPT_CODE
+        ,T.VALID_START_DATE = S.VALID_START_DATE
+        ,T.VALID_END_DATE = S.VALID_END_DATE
+        ,T.INVALID_REASON = S.INVALID_REASON
+WHEN NOT MATCHED THEN
+    INSERT ROW

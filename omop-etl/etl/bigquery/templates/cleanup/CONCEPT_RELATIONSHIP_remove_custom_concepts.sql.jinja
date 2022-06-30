@@ -1,0 +1,2 @@
+delete from {{project_id}}.{{dataset_id_omop}}.CONCEPT_RELATIONSHIP 
+where concept_id_1 >= {{min_custom_concept_id}} or concept_id_2 >= {{min_custom_concept_id}}

@@ -1,0 +1,16 @@
+delete from {{project_id}}.{{dataset_id_omop}}.CONCEPT_RELATIONSHIP 
+where (concept_id_1 in (
+    select conceptId
+    from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
+    where sourceCode in (
+        select CONCEPT_CODE
+        from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept
+    )
+) or concept_id_2 in (
+    select conceptId
+    from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
+    where sourceCode in (
+        select CONCEPT_CODE
+        from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept
+    )
+)) and (concept_id_1 >= {{min_custom_concept_id}} or concept_id_2 >= {{min_custom_concept_id}})

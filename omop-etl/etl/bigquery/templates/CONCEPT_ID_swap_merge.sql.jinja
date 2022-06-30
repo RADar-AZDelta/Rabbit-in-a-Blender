@@ -1,0 +1,16 @@
+MERGE INTO {{project_id}}.{{dataset_id_work}}.CONCEPT_ID_swap AS T
+USING (
+    WITH cte_max AS (
+        SELECT IFNULL(MAX(y), {{min_custom_concept_id}}) as y
+        FROM {{project_id}}.{{dataset_id_work}}.CONCEPT_ID_swap
+    )
+    SELECT concat('{{concept_id_column}}__', t.CONCEPT_CODE) as x, ROW_NUMBER() OVER() + cte_max.y as y
+    FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept t
+    INNER JOIN cte_max on 1=1
+    LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.CONCEPT_ID_swap swap
+        on swap.x = concat('{{concept_id_column}}__', t.CONCEPT_CODE)
+    where swap.x is null
+) AS S
+ON S.x = T.x
+WHEN NOT MATCHED THEN
+    INSERT ROW

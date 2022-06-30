@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_work}}.{{primary_key_column}}_swap 
+(x STRING,
+{# {%- for column in foreign_key_columns %}
+ {{column}} STRING,
+{%- endfor %} #}
+{%- for column in concept_id_columns %}
+ {{column}} INT64,
+{%- endfor %}
+ y INT64)

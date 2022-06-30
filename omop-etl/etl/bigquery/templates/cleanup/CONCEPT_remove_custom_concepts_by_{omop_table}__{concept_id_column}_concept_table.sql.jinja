@@ -1,0 +1,9 @@
+delete {{project_id}}.{{dataset_id_omop}}.CONCEPT
+where concept_id in (
+    select conceptId
+    from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
+    where sourceCode in (
+        select CONCEPT_CODE
+        from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept
+    )
+) and concept_id >= {{min_custom_concept_id}}

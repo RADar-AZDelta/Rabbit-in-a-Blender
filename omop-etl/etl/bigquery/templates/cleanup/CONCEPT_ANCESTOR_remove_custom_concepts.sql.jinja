@@ -1,0 +1,2 @@
+delete from {{project_id}}.{{dataset_id_omop}}.CONCEPT_ANCESTOR 
+where ancestor_concept_id >= {{min_custom_concept_id}} or descendant_concept_id >= {{min_custom_concept_id}}
