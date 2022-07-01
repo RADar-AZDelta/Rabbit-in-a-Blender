@@ -1,10 +1,10 @@
-MERGE INTO {{project_id}}.{{dataset_id_omop}}.SOURCE_TO_CONCEPT_MAP AS T
+MERGE INTO {{project_id}}.{{dataset_id_omop}}.source_to_concept_map AS T
 USING (
     SELECT
-        t.sourceCode as SOURCE_CODE
-        ,t.conceptId as TARGET_CONCEPT_ID
+        t.sourceCode as source_code
+        ,t.conceptId as target_concept_id
     FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi t
 ) AS S
-ON S.SOURCE_CODE = T.SOURCE_CODE and S.TARGET_CONCEPT_ID = T.TARGET_CONCEPT_ID
+ON s.source_code = t.source_code and s.target_concept_id = t.target_concept_id
 WHEN MATCHED THEN
   DELETE

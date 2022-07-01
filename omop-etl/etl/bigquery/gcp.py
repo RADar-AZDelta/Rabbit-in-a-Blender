@@ -7,8 +7,8 @@ import os
 import tempfile
 import time
 from copy import deepcopy
-from typing import Any, Iterable, List, Tuple, Union
-from urllib.parse import urlparse
+from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union
+from urllib.parse import urljoin, urlparse
 
 import backoff
 import connectorx as cx
@@ -18,8 +18,10 @@ import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 from google.auth.credentials import Credentials
+from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import RowIterator, _EmptyRowIterator
 from google.cloud.exceptions import Conflict, NotFound
+from pyparsing import str_type
 
 
 class Gcp:
@@ -239,9 +241,10 @@ ORDER BY ordinal_position"""
         logging.info(
             "Dropping BigQuery table '%s.%s.%s'", project_id, dataset_id, table_name
         )
-        table = self._bq_client.get_table(
-            bq.DatasetReference(project_id, dataset_id).table(table_name)
-        )
+        # table = self._bq_client.get_table(
+        #     bq.DatasetReference(project_id, dataset_id).table(table_name)
+        # )
+        table = self._bq_client.dataset(dataset_id, project_id).table(table_name)
         self._bq_client.delete_table(table, not_found_ok=True)
 
     def delete_from_bucket(self, bucket_uri: str):
@@ -255,7 +258,7 @@ ORDER BY ordinal_position"""
             scheme, netloc, path, params, query, fragment = urlparse(bucket_uri)
             logging.info("Delete path '%s' from bucket '%s", netloc, path)
             bucket = self._cs_client.bucket(netloc)
-            blobs = bucket.list_blobs(prefix=path)
+            blobs = bucket.list_blobs(prefix=path.lstrip("/"))
             for blob in blobs:
                 blob.delete()
         except NotFound:
@@ -277,11 +280,18 @@ ORDER BY ordinal_position"""
         scheme, netloc, path, params, query, fragment = urlparse(bucket_uri)
         bucket = self._cs_client.bucket(netloc)
         filename_w_ext = os.path.basename(source_file_path)
-        blob = bucket.blob(f"{path}/{filename_w_ext}")
+        blob = bucket.blob(f"{path.lstrip('/')}/{filename_w_ext}")
         blob.upload_from_filename(source_file_path)
+        return f"{bucket_uri}/{filename_w_ext}"  # urljoin doesn't work with protocol gs
 
     def batch_load_from_bucket_into_bigquery_table(
-        self, uri: str, project_id: str, dataset_id: str, table_name: str
+        self,
+        uri: str,
+        project_id: str,
+        dataset_id: str,
+        table_name: str,
+        write_disposition: str = bq.WriteDisposition.WRITE_APPEND,
+        schema: Optional[Sequence[SchemaField]] = None,
     ):
         """Batch load parquet files from a Cloud Storage bucket to a Big Query table
         see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet#python
@@ -299,19 +309,25 @@ ORDER BY ordinal_position"""
             dataset_id,
             table_name,
         )
-        table = self._bq_client.get_table(
-            bq.DatasetReference(project_id, dataset_id).table(table_name)
-        )
+        table = self._bq_client.dataset(dataset_id, project_id).table(table_name)
         job_config = bq.LoadJobConfig(
-            write_disposition=bq.WriteDisposition.WRITE_APPEND,
-            schema_update_options="ALLOW_FIELD_ADDITION",
+            write_disposition=write_disposition,
+            schema_update_options=bq.SchemaUpdateOption.ALLOW_FIELD_ADDITION
+            if write_disposition == bq.WriteDisposition.WRITE_APPEND
+            or write_disposition == bq.WriteDisposition.WRITE_TRUNCATE
+            else None,
             source_format=bq.SourceFormat.PARQUET,
+            schema=schema,
+            autodetect=False if schema else True,
         )
         load_job = self._bq_client.load_table_from_uri(
             uri, table, job_config=job_config
         )  # Make an API request.
         load_job.result()  # Waits for the job to complete.
 
+        table = self._bq_client.get_table(
+            bq.DatasetReference(project_id, dataset_id).table(table_name)
+        )
         logging.info(
             "Loaded %i rows into '%s.%s.%s'",
             table.num_rows,

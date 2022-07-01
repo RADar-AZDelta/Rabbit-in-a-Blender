@@ -1,14 +1,14 @@
 MERGE INTO {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi AS T
 USING (
     SELECT t.* except(mappingStatus, conceptId, conceptName, domainId)
-        ,IF(c.CONCEPT_ID >= {{min_custom_concept_id}}, 'APPROVED', t.mappingStatus) as mappingStatus
-        ,c.CONCEPT_ID as conceptId
-        ,c.CONCEPT_NAME as conceptName
-        ,c.DOMAIN_ID as domainId
+        ,IF(c.concept_id >= {{min_custom_concept_id}}, 'APPROVED', t.mappingStatus) as mappingStatus
+        ,c.concept_id as conceptId
+        ,c.concept_name as conceptName
+        ,c.domain_id as domainId
     FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi t
-    INNER JOIN {{project_id}}.{{dataset_id_work}}.CONCEPT_ID_swap swap
+    INNER JOIN {{project_id}}.{{dataset_id_work}}.concept_id_swap swap
         on swap.x = concat('{{concept_id_column}}__', t.sourceCode)
-    INNER JOIN {{project_id}}.{{dataset_id_omop}}.CONCEPT c on c.CONCEPT_ID = swap.y
+    INNER JOIN {{project_id}}.{{dataset_id_omop}}.concept c on c.concept_id = swap.y
 ) AS S
 ON S.sourceCode = T.sourceCode
 WHEN MATCHED THEN

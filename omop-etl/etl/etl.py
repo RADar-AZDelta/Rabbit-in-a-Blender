@@ -66,7 +66,7 @@ class Etl:
 
         ex:\n
             omop/                               \n
-            └ PROVIDER/-------------------------OMOP table folder\n
+            └ provider/-------------------------OMOP table folder\n
               ├ gender_concept_id/--------------concept folder\n
               │ ├ custom/-----------------------custom concept folder\n
               │ │ └ sex_concept.csv-------------csv with the custom concepts\n
@@ -450,60 +450,60 @@ class Etl:
             concept_csv_file,
             convert_options=csv.ConvertOptions(
                 include_columns=[
-                    "CONCEPT_ID",
-                    "CONCEPT_NAME",
-                    "DOMAIN_ID",
-                    "VOCABULARY_ID",
-                    "CONCEPT_CLASS_ID",
-                    "STANDARD_CONCEPT",
-                    "CONCEPT_CODE",
-                    "VALID_START_DATE",
-                    "VALID_END_DATE",
-                    "INVALID_REASON",
+                    "concept_id",
+                    "concept_name",
+                    "domain_id",
+                    "vocabulary_id",
+                    "concept_class_id",
+                    "standard_concept",
+                    "concept_code",
+                    "valid_start_date",
+                    "valid_end_date",
+                    "invalid_reason",
                 ],
                 column_types={
-                    "CONCEPT_ID": pa.string(),
-                    "CONCEPT_NAME": pa.string(),
-                    "DOMAIN_ID": pa.string(),
-                    "VOCABULARY_ID": pa.string(),
-                    "CONCEPT_CLASS_ID": pa.string(),
-                    "STANDARD_CONCEPT": pa.string(),
-                    "CONCEPT_CODE": pa.string(),
-                    "VALID_START_DATE": pa.date32(),  # can only custom parse with timestamp, not date
-                    "VALID_END_DATE": pa.date32(),  # can only custom parse with timestamp, not date
-                    "INVALID_REASON": pa.string(),
+                    "concept_id": pa.string(),
+                    "concept_name": pa.string(),
+                    "domain_id": pa.string(),
+                    "vocabulary_id": pa.string(),
+                    "concept_class_id": pa.string(),
+                    "standard_concept": pa.string(),
+                    "concept_code": pa.string(),
+                    "valid_start_date": pa.date32(),  # can only custom parse with timestamp, not date
+                    "valid_end_date": pa.date32(),  # can only custom parse with timestamp, not date
+                    "invalid_reason": pa.string(),
                 },
                 # timestamp_parsers=[csv.ISO8601, '%Y-%m-%d', '%d/%m/%Y']
             ),
         )
         return table
 
-    def cleanup(self, cleanup_table: str = "ALL"):
+    def cleanup(self, cleanup_table: str = "all"):
         """
         Cleanup the ETL process:\n
         All work tables in the work dataset are deleted.\n
         All 'clinical' and 'health system' tables in the omop dataset are truncated. (the ones configured in the omop_tables variable)\n
-        The SOURCE_TO_CONCEPT_MAP table in the omop dataset is truncated.\n
-        All custom concepts are removed from the CONCEPT, CONCEPT_RELATIONSHIP and CONCEPT_ANCESTOR tables in the omop dataset.\n
+        The 'source_to_concept_map' table in the omop dataset is truncated.\n
+        All custom concepts are removed from the 'concept', 'concept_relationship' and 'concept_ancestor' tables in the omop dataset.\n
         """  # noqa: E501 # pylint: disable=line-too-long
         work_tables = self._get_work_tables()
         # custom cleanup
         if cleanup_table == "ALL":
-            logging.info("Truncate omop table 'SOURCE_TO_CONCEPT_MAP'")
-            self._truncate_omop_table("SOURCE_TO_CONCEPT_MAP")
+            logging.info("Truncate omop table 'source_to_concept_map'")
+            self._truncate_omop_table("source_to_concept_map")
 
             logging.info(
-                "Removing custom concepts from 'CONCEPT' table",
+                "Removing custom concepts from 'concept' table",
             )
             self._remove_custom_concepts_from_concept_table()
 
             logging.info(
-                "Removing custom concepts from 'CONCEPT_RELATIONSHIP' table",
+                "Removing custom concepts from 'concept_relationship' table",
             )
             self._remove_custom_concepts_from_concept_relationship_table()
 
             logging.info(
-                "Removing custom concepts from 'CONCEPT_ANCESTOR' table",
+                "Removing custom concepts from 'concept_ancestor' table",
             )
             self._remove_custom_concepts_from_concept_ancestor_table()
         else:
@@ -517,7 +517,7 @@ class Etl:
                     )
                     logging.info(
                         "Removing custom concepts from '%s' based on values from '%s' CSV",
-                        "CONCEPT",
+                        "concept",
                         f"{omop_table}__{concept_id_column}_concept",
                     )
                     self._remove_custom_concepts_from_concept_table_using_usagi_table(
@@ -526,7 +526,7 @@ class Etl:
 
                     logging.info(
                         "Removing custom concepts from '%s' based on values from '%s' CSV",
-                        "CONCEPT_RELATIONSHIP",
+                        "concept_relationship",
                         f"{omop_table}__{concept_id_column}_usagi",
                     )
                     self._remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
@@ -535,7 +535,7 @@ class Etl:
 
                     logging.info(
                         "Removing custom concepts from '%s' based on values from '%s' CSV",
-                        "CONCEPT_ANCESTOR",
+                        "concept_ancestor",
                         f"{omop_table}__{concept_id_column}_usagi",
                     )
                     self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
@@ -548,7 +548,7 @@ class Etl:
                     concept_id_column = table_name.split("__")[1].removesuffix("_usagi")
                     logging.info(
                         "Removing source to comcept maps from '%s' based on values from '%s' CSV",
-                        "SOURCE_TO_CONCEPT_MAP",
+                        "source_to_concept_map",
                         f"{omop_table}__{concept_id_column}_usagi",
                     )
                     self._remove_source_to_concept_map_using_usagi_table(
@@ -557,12 +557,12 @@ class Etl:
 
         # delete work tables
         for table_name in work_tables:
-            if cleanup_table == "ALL" or table_name.startswith(cleanup_table):
+            if cleanup_table == "all" or table_name.startswith(cleanup_table):
                 self._delete_work_table(table_name)
         # truncate omop tables
         omop_tables = vars(self._omop_tables).keys()
-        for table_name in (x for x in omop_tables if x not in ["VOCABULARY"]):
-            if cleanup_table == "ALL" or table_name == cleanup_table:
+        for table_name in (x for x in omop_tables if x not in ["vocabulary"]):
+            if cleanup_table == "all" or table_name == cleanup_table:
                 logging.info(
                     "Truncate table '%s'",
                     table_name,
@@ -594,17 +594,41 @@ class Etl:
                 ]:
                     logging.info("Converting '%s.csv' to parquet", vocabulary_table)
                     csv_file = os.path.join(temp_dir_path, f"{vocabulary_table}.csv")
-                    df = pl.read_csv(csv_file)
+                    df = self._read_vocabulary_csv(vocabulary_table, csv_file)
                     parquet_file = os.path.join(
                         temp_dir_path, f"{vocabulary_table}.parquet"
                     )
-                    df.write_parquet(parquet_file)
-                    logging.info(
-                        "Loading '%s.parquet' into OMOP CDM table", vocabulary_table
+                    df.write_parquet(
+                        parquet_file  # , compression="snappy", statistics=True
                     )
-                    self._load_vocabulary_parquet_in_omop_table(
+                    logging.info(
+                        "Loading '%s.parquet' into work table", vocabulary_table
+                    )
+                    self._clear_vocabulary_upload_table(vocabulary_table.lower())
+                    self._load_vocabulary_parquet_in_upload_table(
                         parquet_file, vocabulary_table.lower()
                     )
+                    self._merge_uploaded_vocabulary_table(vocabulary_table.lower())
+
+    def _read_vocabulary_csv(
+        self, vocabulary_table: str, csv_file: str
+    ) -> pl.DataFrame:
+        df = pl.read_csv(csv_file, has_header=True, sep="\t")
+        match vocabulary_table:
+            case "CONCEPT" | "CONCEPT_RELATIONSHIP":
+                df["valid_start_date"] = (
+                    df["valid_start_date"]
+                    .cast(pl.Utf8)
+                    .str.strptime(pl.Date, "%Y%m%d", strict=False)
+                    .cast(pl.Date)
+                )
+                df["valid_end_date"] = (
+                    df["valid_end_date"]
+                    .cast(pl.Utf8)
+                    .str.strptime(pl.Date, "%Y%m%d", strict=False)
+                    .cast(pl.Date)
+                )
+        return df
 
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
         raise NotImplementedError("Please Implement this method in the derived class")
@@ -726,7 +750,13 @@ class Etl:
     def _delete_work_table(self, work_table: str) -> None:
         raise NotImplementedError("Please Implement this method in the derived class")
 
-    def _load_vocabulary_parquet_in_omop_table(
-        self, parquet_file: str, omop_table: str
+    def _load_vocabulary_parquet_in_upload_table(
+        self, parquet_file: str, vocabulary_table: str
     ) -> None:
+        raise NotImplementedError("Please Implement this method in the derived class")
+
+    def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
+        raise NotImplementedError("Please Implement this method in the derived class")
+
+    def _merge_uploaded_vocabulary_table(self, vocabulary_table: str) -> None:
         raise NotImplementedError("Please Implement this method in the derived class")

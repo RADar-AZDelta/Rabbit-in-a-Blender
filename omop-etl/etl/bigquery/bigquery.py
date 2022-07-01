@@ -12,6 +12,7 @@ from typing import Any, List, Optional, cast
 import google.auth
 import google.cloud.bigquery as bq
 import jinja2 as jj
+from google.cloud.bigquery.schema import SchemaField
 from jinja2.utils import select_autoescape
 
 from ..etl import Etl
@@ -160,10 +161,10 @@ class BigQuery(Etl):
         self, parquet_file: str, omop_table: str, concept_id_column: str
     ) -> None:
         # upload the Parquet file to the Cloud Storage Bucket
-        self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
+        uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific custom concept table in the work dataset
         self._gcp.batch_load_from_bucket_into_bigquery_table(
-            f"{self._bucket_uri}/{omop_table}__{concept_id_column}_concept.parquet",
+            uri,
             self._project_id,
             self._dataset_id_work,
             f"{omop_table}__{concept_id_column}_concept",
@@ -218,10 +219,10 @@ class BigQuery(Etl):
         self, parquet_file: str, omop_table: str, concept_id_column: str
     ) -> None:
         # upload the Parquet file to the Cloud Storage Bucket
-        self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
+        uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific usagi table in the work dataset
         self._gcp.batch_load_from_bucket_into_bigquery_table(
-            f"{self._bucket_uri}/{omop_table}__{concept_id_column}_usagi.parquet",
+            uri,
             self._project_id,
             self._dataset_id_work,
             f"{omop_table}__{concept_id_column}_usagi",
@@ -466,15 +467,48 @@ class BigQuery(Etl):
         logging.info("Deleting table '%s'", table_id)
         self._gcp.delete_table(self._project_id, self._dataset_id_work, work_table)
 
-    def _load_vocabulary_parquet_in_omop_table(
-        self, parquet_file: str, omop_table: str
+    def _load_vocabulary_parquet_in_upload_table(
+        self, parquet_file: str, vocabulary_table: str
     ) -> None:
+        # match vocabulary_table:
+        #     case "concept":
+        #         schema = [
+        #             SchemaField("concept_id", "INTEGER", mode="REQUIRED"),
+        #             SchemaField("concept_name", "STRING", mode="REQUIRED"),
+        #             SchemaField("domain_id", "STRING", mode="REQUIRED"),
+        #             SchemaField("vocabulary_id", "STRING", mode="REQUIRED"),
+        #             SchemaField("concept_class_id", "STRING", mode="REQUIRED"),
+        #             SchemaField("standard_concept", "STRING", mode="NULLABLE"),
+        #             SchemaField("concept_code", "STRING", mode="REQUIRED"),
+        #             SchemaField("valid_start_date", "DATE", mode="REQUIRED"),
+        #             SchemaField("valid_end_date", "DATE", mode="REQUIRED"),
+        #             SchemaField("invalid_reason", "STRING", mode="NULLABLE"),
+        #         ]
+
         # upload the Parquet file to the Cloud Storage Bucket
-        self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
+        uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific custom concept table in the work dataset
         self._gcp.batch_load_from_bucket_into_bigquery_table(
-            f"{self._bucket_uri}/{omop_table}.parquet",
+            uri,
             self._project_id,
-            self._dataset_id_omop,
-            omop_table,
+            self._dataset_id_work,
+            vocabulary_table,
+            write_disposition=bq.WriteDisposition.WRITE_EMPTY,  # , schema
         )
+
+    def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
+        self._gcp.delete_table(
+            self._project_id, self._dataset_id_work, vocabulary_table
+        )
+
+    def _merge_uploaded_vocabulary_table(self, vocabulary_table: str) -> None:
+        template = self._template_env.get_template("vocabulary_table_merge.sql.jinja")
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+            dataset_id_work=self._dataset_id_work,
+            vocabulary_table=vocabulary_table,
+        )
+        self._gcp.run_query_job(sql)
+        # job = client.copy_table(source_table_id, destination_table_id)
+        # job.result()

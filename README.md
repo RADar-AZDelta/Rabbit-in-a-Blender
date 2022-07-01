@@ -22,7 +22,10 @@ For example for windows run the folowing powershell script:
 
 If you’re developing locally, the easiest way to authenticate is [using the Google Cloud SDK](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview):
 ```bash
+# login
 gcloud auth application-default login
+# set our project
+gcloud config set project ${PROJECT_ID}
 ```
 
 
@@ -33,4 +36,4 @@ TODO:
 * fact_relationship: add fact_id_1_table and fact_id_2_table column to know the FK tables
 * cost: add cost_event_id_table column to know the FK table
 * episode_event: add event_id_table column to know the FK table
-* generate ERA tables
+* generate ERA tables (drug_era, dose_era and condition_era)

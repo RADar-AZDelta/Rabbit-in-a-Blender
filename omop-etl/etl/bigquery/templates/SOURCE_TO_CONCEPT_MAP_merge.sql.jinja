@@ -1,28 +1,28 @@
-MERGE INTO {{project_id}}.{{dataset_id_omop}}.SOURCE_TO_CONCEPT_MAP AS T
+MERGE INTO {{project_id}}.{{dataset_id_omop}}.source_to_concept_map AS T
 USING (
     SELECT
-        t.sourceCode as SOURCE_CODE
-        ,0 as SOURCE_CONCEPT_ID
-        ,'' as SOURCE_VOCABULARY_ID
-        ,t.sourceName as SOURCE_CODE_DESCRIPTION
-        ,t.conceptId as TARGET_CONCEPT_ID
-        ,c.VOCABULARY_ID as TARGET_VOCABULARY_ID
-        ,CURRENT_DATE() as VALID_START_DATE
-        ,DATE(2099, 12, 31) as VALID_END_DATE
-        ,cast(NULL as string) as INVALID_REASON
+        t.sourceCode as source_code
+        ,0 as source_code_id
+        ,'' as source_vocabulary_id
+        ,t.sourceName as source_code_description
+        ,t.conceptId as target_concept_id
+        ,c.vocabulary_id as target_vocabulary_id
+        ,CURRENT_DATE() as valid_start_date
+        ,DATE(2099, 12, 31) as valid_end_date
+        ,cast(NULL as string) as invalid_reason
     FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi t
-    INNER JOIN {{project_id}}.{{dataset_id_omop}}.CONCEPT c on c.CONCEPT_ID = t.conceptId
+    INNER JOIN {{project_id}}.{{dataset_id_omop}}.concept c on c.concept_id = t.conceptId
     where t.mappingStatus = 'APPROVED'
 ) AS S
-ON S.SOURCE_CODE = T.SOURCE_CODE and S.TARGET_CONCEPT_ID = T.TARGET_CONCEPT_ID
+ON S.source_code = T.source_code and S.target_concept_id = T.target_concept_id
 WHEN MATCHED THEN
-    UPDATE set T.SOURCE_CONCEPT_ID = S.SOURCE_CONCEPT_ID
-        ,T.SOURCE_VOCABULARY_ID = S.SOURCE_VOCABULARY_ID
-        ,T.SOURCE_CODE_DESCRIPTION = S.SOURCE_CODE_DESCRIPTION
-        ,T.TARGET_CONCEPT_ID = S.TARGET_CONCEPT_ID
-        ,T.TARGET_VOCABULARY_ID = S.TARGET_VOCABULARY_ID
-        ,T.VALID_START_DATE = S.VALID_START_DATE
-        ,T.VALID_END_DATE = S.VALID_END_DATE
-        ,T.INVALID_REASON = S.INVALID_REASON
+    UPDATE SET t.source_concept_id = s.source_concept_id
+        ,t.source_vocabulary_id = s.source_vocabulary_id
+        ,t.source_code_description = s.source_code_description
+        ,t.target_concept_id = s.target_concept_id
+        ,t.target_vocabulary_id = s.target_vocabulary_id
+        ,t.valid_start_date = s.valid_start_date
+        ,t.valid_end_date = s.valid_end_date
+        ,t.invalid_reason = s.invalid_reason
 WHEN NOT MATCHED THEN
     INSERT ROW
