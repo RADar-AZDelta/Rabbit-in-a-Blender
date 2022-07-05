@@ -21,7 +21,6 @@ from google.auth.credentials import Credentials
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import RowIterator, _EmptyRowIterator
 from google.cloud.exceptions import Conflict, NotFound
-from pyparsing import str_type
 
 
 class Gcp:

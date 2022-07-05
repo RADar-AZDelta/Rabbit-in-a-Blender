@@ -9,6 +9,7 @@ import pathlib
 import sys
 import tempfile
 import zipfile
+from abc import ABC, abstractmethod
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,14 +21,14 @@ import pyarrow.csv as csv
 import pyarrow.parquet as pq
 
 
-class Etl:
+class Etl(ABC):
     """
     ETL class that automates the extract-transfer-load process from source data to the OMOP common data model.
     """
 
     _CUSTOM_CONCEPT_IDS_START = f"{2 * math.pow(1000, 3):.0f}"
 
-    def __init__(self, only_omop_table: Optional[str] = None):
+    def __init__(self, cdm_folder_path: str, only_omop_table: Optional[str] = None):
         """Constructor
         The ETL will read the json with all the OMOP tables. Each OMOP table has a 'pk' (primary key), 'fks' (foreign keys) and 'concepts' property.
 
@@ -37,6 +38,7 @@ class Etl:
 
         ```
         """  # noqa: E501 # pylint: disable=line-too-lon
+        self._cdm_folder_path = os.path.abspath(cdm_folder_path)
         self._only_omop_table = only_omop_table
 
         with open(
@@ -46,10 +48,13 @@ class Etl:
             ),
             encoding="UTF8",
         ) as file:
-            self._omop_tables = json.load(file)
+            self._omop_tables = json.load(
+                file, object_hook=lambda x: SimpleNamespace(**x)
+            )
 
+    @abstractmethod
     def create_omop_db(self) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
     def run(self):
         """
@@ -78,12 +83,13 @@ class Etl:
         """  # noqa: E501 # pylint: disable=line-too-long
         etl_start = date.today()
 
-        for omop_table, table_props in (
-            vars(self._omop_tables).items()
-            if not self._only_omop_table
-            else [self._omop_tables[self._only_omop_table]]
-        ):
-            self._process_omop_folder(omop_table, table_props)
+        if self._only_omop_table:
+            self._process_omop_folder(
+                self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
+            )
+        else:
+            for omop_table, table_props in vars(self._omop_tables).items():
+                self._process_omop_folder(omop_table, table_props)
 
         self._source_to_concept_map_update_invalid_reason(etl_start)
 
@@ -117,8 +123,8 @@ class Etl:
                 sorted(
                     glob.glob(
                         os.path.join(
-                            os.path.abspath(os.path.dirname(sys.argv[0])),
-                            f"../omop/{omop_table_name}/{e}",
+                            self._cdm_folder_path,
+                            f"{omop_table_name}/{e}",
                         )
                     )
                 )
@@ -192,8 +198,8 @@ class Etl:
         for concept_csv_file in sorted(
             glob.glob(
                 os.path.join(
-                    os.path.abspath(os.path.dirname(sys.argv[0])),
-                    f"../omop/{omop_table}/{concept_id_column}/custom/*_concept.csv",
+                    self._cdm_folder_path,
+                    f"{omop_table}/{concept_id_column}/custom/*_concept.csv",
                 )
             )
         ):  # loop the custon concept CSV's
@@ -267,8 +273,8 @@ class Etl:
         for usagi_csv_file in sorted(
             glob.glob(
                 os.path.join(
-                    os.path.abspath(os.path.dirname(sys.argv[0])),
-                    f"../omop/{omop_table}/{concept_id_column}/*_usagi.csv",
+                    self._cdm_folder_path,
+                    f"{omop_table}/{concept_id_column}/*_usagi.csv",
                 )
             )
         ):  # loop all the Usagi CSV's
@@ -400,7 +406,7 @@ class Etl:
             foreign_key_columns (Any): List of foreign key columns.
             concept_id_columns (List[str]): List of concept columns.
         """  # noqa: E501 # pylint: disable=line-too-long
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
     def _convert_usagi_csv_to_arrow_table(self, usagi_csv_file: str) -> pa.Table:
         """Converts a Usagi CSV file to an Arrow table, maintaining the relevant columns.
@@ -630,76 +636,93 @@ class Etl:
                 )
         return df
 
+    @abstractmethod
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _get_column_names(self, omop_table_name: str) -> List[str]:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _is_pk_auto_numbering(
         self, omop_table_name: str, omop_table_props: Any
     ) -> bool:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _clear_custom_concept_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _create_custom_concept_id_swap_table(self) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _load_custom_concepts_parquet_in_upload_table(
         self, parquet_file: str, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _give_custom_concepts_an_unique_id_above_2bilj(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _merge_custom_concepts_with_the_omop_concepts(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _clear_usagi_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _create_usagi_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _load_usagi_parquet_in_upload_table(
         self, parquet_file: str, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _swap_usagi_source_value_for_concept_id(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _store_usagi_source_value_to_concept_id_mapping(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _get_query_from_sql_file(self, sql_file: str, omop_table: str) -> str:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _query_into_work_table(self, work_table: str, select_query: str) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _create_pk_auto_numbering_swap_table(
         self, primary_key_column: str, concept_id_columns: List[str]
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _execute_pk_auto_numbering_swap_query(
         self,
         omop_table: str,
@@ -710,53 +733,66 @@ class Etl:
         foreign_key_columns: Any,
         concept_id_columns: List[str],
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _get_work_tables(self) -> List[str]:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _truncate_omop_table(self, table_name: str) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _remove_custom_concepts_from_concept_table(self) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _remove_source_to_concept_map_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _delete_work_table(self, work_table: str) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _load_vocabulary_parquet_in_upload_table(
         self, parquet_file: str, vocabulary_table: str
     ) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass
 
+    @abstractmethod
     def _merge_uploaded_vocabulary_table(self, vocabulary_table: str) -> None:
-        raise NotImplementedError("Please Implement this method in the derived class")
+        pass

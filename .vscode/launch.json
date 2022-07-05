@@ -11,6 +11,7 @@
         "program": "omop-etl/cli.py",
         "args": [
           "--verbose",
+          "--db-engine", "BigQuery",
           //"--google-credentials-file", "/run/secret/sa.json",
           //"--google-project-id", "?????",
           "--google-location", "EU",
@@ -21,6 +22,9 @@
           //"--cleanup"//, "PERSON",
           //"--create-db"
           //"--import-vocabularies", "~/vocabulary_download_v5_{348558dc-3730-46bd-bdfe-ba21b403abbc}_1656487634005.zip",
+          "~/git/AZDelta-OMOP-CDM",
+          "--table", "location"
+
         ],
         "console": "integratedTerminal",
         "justMyCode": false,

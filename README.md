@@ -28,12 +28,11 @@ gcloud auth application-default login
 gcloud config set project ${PROJECT_ID}
 ```
 
-
-
 TODO:
 -----
 
 * fact_relationship: add fact_id_1_table and fact_id_2_table column to know the FK tables
 * cost: add cost_event_id_table column to know the FK table
 * episode_event: add event_id_table column to know the FK table
+* observation.observation_event_id: 
 * generate ERA tables (drug_era, dose_era and condition_era)

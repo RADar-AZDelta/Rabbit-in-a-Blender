@@ -5,6 +5,6 @@ USING (
         ,t.conceptId as target_concept_id
     FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi t
 ) AS S
-ON s.source_code = t.source_code and s.target_concept_id = t.target_concept_id
+ON S.source_code = T.source_code and S.target_concept_id = T.target_concept_id
 WHEN MATCHED THEN
   DELETE

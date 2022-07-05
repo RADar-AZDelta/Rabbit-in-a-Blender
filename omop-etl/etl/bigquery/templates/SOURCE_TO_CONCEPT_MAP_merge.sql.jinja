@@ -2,7 +2,7 @@ MERGE INTO {{project_id}}.{{dataset_id_omop}}.source_to_concept_map AS T
 USING (
     SELECT
         t.sourceCode as source_code
-        ,0 as source_code_id
+        ,0 as source_concept_id
         ,'' as source_vocabulary_id
         ,t.sourceName as source_code_description
         ,t.conceptId as target_concept_id
@@ -16,13 +16,13 @@ USING (
 ) AS S
 ON S.source_code = T.source_code and S.target_concept_id = T.target_concept_id
 WHEN MATCHED THEN
-    UPDATE SET t.source_concept_id = s.source_concept_id
-        ,t.source_vocabulary_id = s.source_vocabulary_id
-        ,t.source_code_description = s.source_code_description
-        ,t.target_concept_id = s.target_concept_id
-        ,t.target_vocabulary_id = s.target_vocabulary_id
-        ,t.valid_start_date = s.valid_start_date
-        ,t.valid_end_date = s.valid_end_date
-        ,t.invalid_reason = s.invalid_reason
+    UPDATE SET T.source_concept_id = S.source_concept_id
+        ,T.source_vocabulary_id = S.source_vocabulary_id
+        ,T.source_code_description = S.source_code_description
+        ,T.target_concept_id = S.target_concept_id
+        ,T.target_vocabulary_id = S.target_vocabulary_id
+        ,T.valid_start_date = S.valid_start_date
+        ,T.valid_end_date = S.valid_end_date
+        ,T.invalid_reason = S.invalid_reason
 WHEN NOT MATCHED THEN
     INSERT ROW

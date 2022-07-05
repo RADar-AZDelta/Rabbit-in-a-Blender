@@ -27,6 +27,8 @@ def main() -> None:
             match args.db_engine:
                 case "BigQuery":
                     etl = BigQuery(
+                        cdm_folder_path=args.cdm_folder_path,
+                        only_omop_table=args.table,
                         credentials_file=args.google_credentials_file,
                         project_id=args.google_project_id,
                         location=args.google_location,
@@ -38,12 +40,12 @@ def main() -> None:
                 case _:
                     raise ValueError("Not a supported database engine")
 
-            if args.cleanup:
-                etl.cleanup(args.cleanup)
-            elif args.create_db:
+            if args.create_db:
                 etl.create_omop_db()
             elif args.import_vocabularies:
                 etl.import_vocabularies(args.import_vocabularies)
+            elif args.cleanup:
+                etl.cleanup(args.cleanup)
             else:
                 etl.run()
 
@@ -54,10 +56,11 @@ def main() -> None:
 
 def contstruct_argument_parser() -> ArgumentParser:
     parser = ArgumentParser(
-        prog="rabbitinablender",
+        prog="rabbit-in-a-blender",
         description="Rabbit in a Blender: an OMOP CDM ETL tool",
     )
-    parser.add_argument(
+    requiredNamed = parser.add_argument_group("required named arguments")
+    requiredNamed.add_argument(
         "-d",
         "--db-engine",
         nargs="?",
@@ -68,6 +71,13 @@ def contstruct_argument_parser() -> ArgumentParser:
         Each database engine has its own legacy SQL dialect, so the generated ETL queries can be different for each database engine.
         For the moment only BigQuery is supported, yet 'Rabbit in a Blender' has an open design, so in the future other database engines can be added easily.""",
         metavar="DB-ENGINE",
+        required=True,
+    )
+    requiredNamed.add_argument(
+        "cdm_folder_path",
+        metavar="PATH",
+        type=str,
+        help="Input file name",
     )
     ns, unknown_args = parser.parse_known_args()
     parser.add_argument("-v", "--verbose", help="Verbose logging", action="store_true")

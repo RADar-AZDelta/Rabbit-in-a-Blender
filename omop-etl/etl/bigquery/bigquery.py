@@ -196,14 +196,18 @@ class BigQuery(Etl):
         )
         self._gcp.run_query_job(sql)
 
-    def _clear_usagi_load_table(self, omop_table: str, concept_id_column: str) -> None:
+    def _clear_usagi_upload_table(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
         self._gcp.delete_table(
             self._project_id,
             self._dataset_id_work,
             f"{omop_table}__{concept_id_column}_usagi",
         )
 
-    def _create_usagi_load_table(self, omop_table: str, concept_id_column: str) -> None:
+    def _create_usagi_upload_table(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
         template = self._template_env.get_template(
             "{omop_table}__{concept_id_column}_usagi_create.sql.jinja"
         )

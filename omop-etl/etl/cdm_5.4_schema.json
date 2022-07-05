@@ -294,10 +294,6 @@
             "visit_detail_id": {
                 "table": "visit_detail",
                 "column": "visit_detail_id"
-            },
-            "observation_event_id": {
-                "table": "observation",
-                "column": "observation_id"
             }
         },
         "concepts": [
