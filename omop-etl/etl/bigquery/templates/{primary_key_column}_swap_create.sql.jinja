@@ -7,3 +7,4 @@ CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_work}}.{{primary_key_colu
  {{column}} INT64,
 {%- endfor %}
  y INT64)
+CLUSTER BY x
