@@ -20,6 +20,7 @@ Remarks
 You will need to run the cleanup command, when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
 
 The fact_relationship table has no primary key, which makes it difficult for the ETL process to trace the source of the data and very hard to figure out if it is new or updated data. So running the cleanup command frequently for this table is advised.
+The filenames of queries must also have the folowing convention: **_{fact_id_1_foreign_key_table}_{fact_id_1_foreign_key_table}.sql** (ex: patient_relationship_person_person.sql), so that the ETL process knows to what tables the fact_id_1 and fact_id_2 are referring to.
 
 For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 

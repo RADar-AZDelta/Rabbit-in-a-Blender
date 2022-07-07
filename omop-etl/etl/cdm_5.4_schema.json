@@ -105,7 +105,7 @@
             "visit_concept_id",
             "visit_type_concept_id",
             "admitted_from_concept_id",
-            "discharge_to_concept_id"
+            "discharged_to_concept_id"
         ]
     },
     "visit_detail": {
