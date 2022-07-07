@@ -29,6 +29,7 @@ def main() -> None:
                     etl = BigQuery(
                         cdm_folder_path=args.cdm_folder_path,
                         only_omop_table=args.table,
+                        skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
                         credentials_file=args.google_credentials_file,
                         project_id=args.google_project_id,
                         location=args.google_location,
@@ -91,6 +92,13 @@ def contstruct_argument_parser() -> ArgumentParser:
         "--create-db", help="Create the OMOP CDM tables", action="store_true"
     )
     parser.add_argument(
+        "-s",
+        "--skip-usagi-and-custom-concept-upload",
+        help="Skips the parsing and uploading of the Usagi and custom concept CSV's",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-i",
         "--import-vocabularies",
         nargs="?",
         type=str,
@@ -98,6 +106,7 @@ def contstruct_argument_parser() -> ArgumentParser:
         metavar="VOCABULARIES_ZIP_FILE",
     )
     parser.add_argument(
+        "-c",
         "--cleanup",
         nargs="?",
         const="all",

@@ -29,7 +29,12 @@ class Etl(ABC):
 
     _CUSTOM_CONCEPT_IDS_START = f"{2 * math.pow(1000, 3):.0f}"
 
-    def __init__(self, cdm_folder_path: str, only_omop_table: Optional[str] = None):
+    def __init__(
+        self,
+        cdm_folder_path: str,
+        only_omop_table: Optional[str] = None,
+        skip_usagi_and_custom_concept_upload: Optional[bool] = None,
+    ):
         """Constructor
         The ETL will read the json with all the OMOP tables. Each OMOP table has a 'pk' (primary key), 'fks' (foreign keys) and 'concepts' property.
 
@@ -43,6 +48,9 @@ class Etl(ABC):
             os.path.abspath(cdm_folder_path) if cdm_folder_path else None
         )
         self._only_omop_table = only_omop_table
+        self._skip_usagi_and_custom_concept_upload = (
+            skip_usagi_and_custom_concept_upload
+        )
 
         with open(
             os.path.join(
@@ -112,13 +120,14 @@ class Etl(ABC):
             omop_table_name, omop_table_props
         )
 
-        for concept_id_column in getattr(
-            omop_table_props, "concepts", []
-        ):  # loop all concept_id columns
-            # upload an apply the custom concept CSV's
-            self._upload_custom_concepts(omop_table_name, concept_id_column.lower())
-            # upload and apply the Usagi CSV's
-            self._apply_usagi_mapping(omop_table_name, concept_id_column.lower())
+        if not self._skip_usagi_and_custom_concept_upload:
+            for concept_id_column in getattr(
+                omop_table_props, "concepts", []
+            ):  # loop all concept_id columns
+                # upload an apply the custom concept CSV's
+                self._upload_custom_concepts(omop_table_name, concept_id_column.lower())
+                # upload and apply the Usagi CSV's
+                self._apply_usagi_mapping(omop_table_name, concept_id_column.lower())
 
         for sql_file in (
             item
