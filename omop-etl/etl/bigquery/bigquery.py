@@ -7,12 +7,11 @@ import pathlib
 import re
 from datetime import date
 from pathlib import Path
-from typing import Any, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import google.auth
 import google.cloud.bigquery as bq
 import jinja2 as jj
-from google.cloud.bigquery.schema import SchemaField
 from jinja2.utils import select_autoescape
 
 from ..etl import Etl
@@ -74,6 +73,8 @@ class BigQuery(Etl):
             autoescape=select_autoescape(["sql"]), loader=template_loader
         )
 
+        self.__clustering_fields = None
+
     def create_omop_db(self) -> None:
         with open(
             os.path.join(
@@ -93,19 +94,23 @@ class BigQuery(Etl):
         ddl = re.sub(r"\"", r"", ddl)
         self._gcp.run_query_job(ddl)
 
-        with open(
-            os.path.join(
-                pathlib.Path(__file__).parent.absolute(),
-                "templates/OMOPCDM_bigquery_5.4_clustering_fields.json",
-            ),
-            encoding="UTF8",
-        ) as file:
-            clustering_fields = json.load(file)
-
-        for table, fields in clustering_fields.items():
+        for table, fields in self._clustering_fields.items():
             self._gcp.set_clustering_fields_on_table(
                 self._project_id, self._dataset_id_omop, table, fields
             )
+
+    @property
+    def _clustering_fields(self) -> Dict[str, List[str]]:
+        if not self.__clustering_fields:
+            with open(
+                os.path.join(
+                    pathlib.Path(__file__).parent.absolute(),
+                    "templates/OMOPCDM_bigquery_5.4_clustering_fields.json",
+                ),
+                encoding="UTF8",
+            ) as file:
+                self.__clustering_fields = json.load(file)
+        return self.__clustering_fields
 
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
         template = self._template_env.get_template(
@@ -129,6 +134,8 @@ class BigQuery(Etl):
     def _is_pk_auto_numbering(
         self, omop_table_name: str, omop_table_props: Any
     ) -> bool:
+        if not hasattr(omop_table_props, "pk"):
+            return False
         # get the primary key meta data from the the destination OMOP table
         pk_column_metadata = self._gcp.get_column_metadata(
             self._project_id,
@@ -335,7 +342,7 @@ class BigQuery(Etl):
         sql_file: str,
         omop_table: str,
         columns: List[str],
-        primary_key_column: str,
+        primary_key_column: Optional[str],
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
         concept_id_columns: List[str],
@@ -350,7 +357,9 @@ class BigQuery(Etl):
             sql_file=Path(Path(sql_file).stem).stem,
             columns=columns,
             primary_key_column=primary_key_column,
-            foreign_key_columns=foreign_key_columns.__dict__,
+            foreign_key_columns=vars(foreign_key_columns)
+            if hasattr(foreign_key_columns, "__dict__")
+            else foreign_key_columns,
             concept_id_columns=concept_id_columns,
             pk_auto_numbering=pk_auto_numbering,
         )
@@ -506,6 +515,8 @@ class BigQuery(Etl):
         )
 
     def _merge_uploaded_vocabulary_table(self, vocabulary_table: str) -> None:
+        # job = client.copy_table(source_table_id, destination_table_id)
+        # job.result()
         template = self._template_env.get_template("vocabulary_table_merge.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
@@ -514,5 +525,10 @@ class BigQuery(Etl):
             vocabulary_table=vocabulary_table,
         )
         self._gcp.run_query_job(sql)
-        # job = client.copy_table(source_table_id, destination_table_id)
-        # job.result()
+
+        self._gcp.set_clustering_fields_on_table(
+            self._project_id,
+            self._dataset_id_omop,
+            vocabulary_table,
+            self._clustering_fields[vocabulary_table],
+        )

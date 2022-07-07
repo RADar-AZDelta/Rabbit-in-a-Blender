@@ -19,11 +19,11 @@
           "--bigquery-dataset-id-work", "omop_work",
           "--bigquery-dataset-id-omop", "omop",
           "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work",
-          //"--cleanup"//, "PERSON",
+          //"--cleanup" //, "person",
           //"--create-db"
           //"--import-vocabularies", "~/vocabulary_download_v5_{348558dc-3730-46bd-bdfe-ba21b403abbc}_1656487634005.zip",
           "~/git/AZDelta-OMOP-CDM",
-          "--table", "location"
+          "--table", "fact_relationship"
 
         ],
         "console": "integratedTerminal",

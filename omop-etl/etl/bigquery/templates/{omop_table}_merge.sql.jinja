@@ -42,10 +42,14 @@ USING (
         {%- set ns.fk_counter = ns.fk_counter + 1 -%}
     {%- endfor %}
 ) AS S
+{%- if omop_table == 'fact_relationship' %}
+ON S.fact_id_1 = T.fact_id_1 and S.fact_id_2 = T.fact_id_2
+{%- else -%}
 ON S.{{primary_key_column}} = T.{{primary_key_column}}
+{%- endif -%}
     {%- for column in concept_id_columns %}
         and S.{{column}} = T.{{column}}
-    {%- endfor %} 
+    {%- endfor %}
 WHEN MATCHED THEN
     UPDATE SET 
         {%- for column in columns if column != primary_key_column -%}

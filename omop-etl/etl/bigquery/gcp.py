@@ -240,9 +240,6 @@ ORDER BY ordinal_position"""
         logging.info(
             "Dropping BigQuery table '%s.%s.%s'", project_id, dataset_id, table_name
         )
-        # table = self._bq_client.get_table(
-        #     bq.DatasetReference(project_id, dataset_id).table(table_name)
-        # )
         table = self._bq_client.dataset(dataset_id, project_id).table(table_name)
         self._bq_client.delete_table(table, not_found_ok=True)
 

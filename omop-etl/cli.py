@@ -76,11 +76,17 @@ def contstruct_argument_parser() -> ArgumentParser:
     requiredNamed.add_argument(
         "cdm_folder_path",
         metavar="PATH",
+        nargs="?",
         type=str,
-        help="Input file name",
+        help="Path to the folder structure that holds the queries, Usagi CSV's and the custom concept CSV's",
     )
     ns, unknown_args = parser.parse_known_args()
-    parser.add_argument("-v", "--verbose", help="Verbose logging", action="store_true")
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Verbose logging (logs are also writen to a log file in the systems tmp folder)",
+        action="store_true",
+    )
     parser.add_argument(
         "--create-db", help="Create the OMOP CDM tables", action="store_true"
     )
@@ -99,7 +105,7 @@ def contstruct_argument_parser() -> ArgumentParser:
             "all",
             "metadata",
             "cdm_source",
-            "vocabulary",
+            # "vocabulary",
             "location",
             "care_site",
             "provider",
@@ -137,7 +143,7 @@ def contstruct_argument_parser() -> ArgumentParser:
         choices=[
             "metadata",
             "cdm_source",
-            "vocabulary",
+            # "vocabulary",
             "location",
             "care_site",
             "provider",
@@ -169,14 +175,14 @@ def contstruct_argument_parser() -> ArgumentParser:
         "--google-credentials-file",
         nargs="?",
         type=str,
-        help="""Loads Google credentials from a file.""",
+        help="""Loads Google credentials from a file""",
         metavar="GOOGLE_CREDENTIALS_FILE",
     )
     parser.add_argument(
         "--google-project-id",
         nargs="?",
         type=str,
-        help="""Loads Google credentials from a file.""",
+        help="""The Google GCP project id""",
         metavar="GOOGLE_PROJECT_ID",
     )
     parser.add_argument(
@@ -184,14 +190,14 @@ def contstruct_argument_parser() -> ArgumentParser:
         nargs="?",
         default="EU",
         type=str,
-        help="""The google locations to store the data (see https://cloud.google.com/about/locations).""",
+        help="""The google locations to store the data (see https://cloud.google.com/about/locations)""",
         metavar="GOOGLE_LOCATION",
     )
     parser.add_argument(
         "--bigquery-dataset-id-raw",
         nargs="?",
         type=str,
-        help="""BigQuery dataset that holds the raw EMR data.""",
+        help="""BigQuery dataset that holds the raw EMR data""",
         required=ns.db_engine == "BigQuery",
         metavar="BIGQUERY_DATASET_ID_RAW",
     )
@@ -207,7 +213,7 @@ def contstruct_argument_parser() -> ArgumentParser:
         "--bigquery-dataset-id-omop",
         nargs="?",
         type=str,
-        help="""BigQuery dataset that will hold the final OMOP tables.""",
+        help="""BigQuery dataset that will hold the final OMOP tables""",
         required=ns.db_engine == "BigQuery",
         metavar="BIGQUERY_DATASET_ID_OMOP",
     )
@@ -215,7 +221,7 @@ def contstruct_argument_parser() -> ArgumentParser:
         "--google-cloud-storage-bucket-uri",
         nargs="?",
         type=str,
-        help="""Google Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}'). """,
+        help="""Google Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')""",
         required=ns.db_engine == "BigQuery",
         metavar="GOOGLE_CLOUD_STORAGE_BUCKET_URI",
     )

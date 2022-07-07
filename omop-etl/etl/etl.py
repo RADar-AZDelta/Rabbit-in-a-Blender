@@ -6,14 +6,15 @@ import logging
 import math
 import os
 import pathlib
-import sys
+import re
 import tempfile
 import zipfile
 from abc import ABC, abstractmethod
 from datetime import date
 from pathlib import Path
+from re import Match
 from types import SimpleNamespace
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import polars as pl
 import pyarrow as pa
@@ -38,7 +39,9 @@ class Etl(ABC):
 
         ```
         """  # noqa: E501 # pylint: disable=line-too-lon
-        self._cdm_folder_path = os.path.abspath(cdm_folder_path)
+        self._cdm_folder_path = (
+            os.path.abspath(cdm_folder_path) if cdm_folder_path else None
+        )
         self._only_omop_table = only_omop_table
 
         with open(
@@ -123,7 +126,7 @@ class Etl(ABC):
                 sorted(
                     glob.glob(
                         os.path.join(
-                            self._cdm_folder_path,
+                            cast(str, self._cdm_folder_path),
                             f"{omop_table_name}/{e}",
                         )
                     )
@@ -155,20 +158,38 @@ class Etl(ABC):
                     getattr(omop_table_props, "concepts", []),
                 )
 
-            # merge everything in the destination OMOP table
-            self._merge_into_omop_table(
-                sql_file,
-                omop_table_name,
-                columns,
-                omop_table_props.pk,
-                pk_auto_numbering,
-                getattr(
+            if omop_table_name == "fact_relationship":
+                match = re.search(
+                    r"^.+_(?P<first>.+)_(?P<second>.+)(?:[.]sql)(?:[.]jinja)?$",
+                    os.path.basename(sql_file),
+                )
+                foreign_key_columns = {
+                    "fact_id_1": {
+                        "table": cast(Match, match).groups()[0],
+                        "column": f"{cast(Match, match).groups()[0]}_id",
+                    },
+                    "fact_id_2": {
+                        "table": cast(Match, match).groups()[1],
+                        "column": f"{cast(Match, match).groups()[1]}_id",
+                    },
+                }
+            else:
+                foreign_key_columns = getattr(
                     omop_table_props,
                     "fks",
                     json.loads(
                         "{}", object_hook=lambda d: SimpleNamespace(**d)
                     ),  # create an empty SimpleNamespace object as default value
-                ),
+                )
+
+            # merge everything in the destination OMOP table
+            self._merge_into_omop_table(
+                sql_file,
+                omop_table_name,
+                columns,
+                getattr(omop_table_props, "pk", None),
+                pk_auto_numbering,
+                foreign_key_columns,
                 getattr(omop_table_props, "concepts", []),
             )
 
@@ -198,7 +219,7 @@ class Etl(ABC):
         for concept_csv_file in sorted(
             glob.glob(
                 os.path.join(
-                    self._cdm_folder_path,
+                    cast(str, self._cdm_folder_path),
                     f"{omop_table}/{concept_id_column}/custom/*_concept.csv",
                 )
             )
@@ -273,7 +294,7 @@ class Etl(ABC):
         for usagi_csv_file in sorted(
             glob.glob(
                 os.path.join(
-                    self._cdm_folder_path,
+                    cast(str, self._cdm_folder_path),
                     f"{omop_table}/{concept_id_column}/*_usagi.csv",
                 )
             )
@@ -385,12 +406,13 @@ class Etl(ABC):
             concept_id_columns,
         )
 
+    @abstractmethod
     def _merge_into_omop_table(
         self,
         sql_file: str,
         omop_table: str,
         columns: List[str],
-        primary_key_column: str,
+        primary_key_column: Optional[str],
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
         concept_id_columns: List[str],
@@ -494,7 +516,7 @@ class Etl(ABC):
         """  # noqa: E501 # pylint: disable=line-too-long
         work_tables = self._get_work_tables()
         # custom cleanup
-        if cleanup_table == "ALL":
+        if cleanup_table == "all":
             logging.info("Truncate omop table 'source_to_concept_map'")
             self._truncate_omop_table("source_to_concept_map")
 
