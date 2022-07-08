@@ -149,6 +149,13 @@ class Etl(ABC):
                 sql_file, omop_table_name
             )
 
+            foreign_key_columns = getattr(
+                omop_table_props,
+                "fks",
+                json.loads(
+                    "{}", object_hook=lambda d: SimpleNamespace(**d)
+                ),  # create an empty SimpleNamespace object as default value
+            )
             if pk_auto_numbering:
                 # swap the primary key with an auto number
                 self._swap_primary_key_auto_numbering_column(
@@ -157,13 +164,7 @@ class Etl(ABC):
                     columns,
                     omop_table_props.pk,
                     pk_auto_numbering,
-                    getattr(
-                        omop_table_props,
-                        "fks",
-                        json.loads(
-                            "{}", object_hook=lambda d: SimpleNamespace(**d)
-                        ),  # create an empty SimpleNamespace object as default value
-                    ),
+                    foreign_key_columns,
                     getattr(omop_table_props, "concepts", []),
                 )
 
@@ -183,13 +184,59 @@ class Etl(ABC):
                     },
                 }
             else:
-                foreign_key_columns = getattr(
-                    omop_table_props,
-                    "fks",
-                    json.loads(
-                        "{}", object_hook=lambda d: SimpleNamespace(**d)
-                    ),  # create an empty SimpleNamespace object as default value
-                )
+                if omop_table_name in [
+                    "measurement",
+                    "observation",
+                    "cost",
+                    "episode_event",
+                ]:
+                    match = re.search(
+                        r"^.+_(?P<first>.+)(?:[.]sql)(?:[.]jinja)?$",
+                        os.path.basename(sql_file),
+                    )
+                    if match and cast(Match, match).groups():
+                        match omop_table_name:
+                            case "measurement":
+                                fk_column = "measurement_event_id"
+                            case "observation":
+                                fk_column = "obs_event_field_concept_id"
+                            case "cost":
+                                fk_column = "cost_event_id"
+                            case "episode_event":
+                                fk_column = "event_id"
+                            case _:
+                                raise ValueError("Not a supported omop table")
+                        if match.groups()[0] in [
+                            "location",
+                            "care_site",
+                            "provider",
+                            "episode_event",
+                            "person",
+                            "observation_period",
+                            "visit_occurrence",
+                            "visit_detail",
+                            "condition_occurence",
+                            "drug_exposure",
+                            "procedure_occurrence",
+                            "device_exposure",
+                            "measurement",
+                            "observation",
+                            # "death",
+                            "note",
+                            "note_nlp",
+                            "specimen",
+                        ]:
+                            foreign_key_columns = vars(foreign_key_columns)
+                            foreign_key_columns[fk_column] = {
+                                "table": cast(Match, match).groups()[0],
+                                "column": f"{cast(Match, match).groups()[0]}_id",
+                            }
+                        elif match.groups()[0] == "death":
+                            foreign_key_columns = vars(foreign_key_columns)
+                            foreign_key_columns[fk_column] = {
+                                "table": cast(Match, match).groups()[0],
+                                "column": "person_id",
+                            }
 
             # merge everything in the destination OMOP table
             self._merge_into_omop_table(
