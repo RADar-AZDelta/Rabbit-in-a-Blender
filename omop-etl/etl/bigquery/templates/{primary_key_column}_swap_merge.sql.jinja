@@ -1,8 +1,8 @@
-MERGE INTO {{project_id}}.{{dataset_id_work}}.{{primary_key_column}}_swap AS T
+MERGE INTO {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap AS T
 USING (
     WITH cte_max AS (
         SELECT IFNULL(MAX(y), 0) as y
-        FROM {{project_id}}.{{dataset_id_work}}.{{primary_key_column}}_swap
+        FROM {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap
     )
     SELECT t.{{primary_key_column}} as x,
         {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
@@ -14,7 +14,7 @@ USING (
     FROM {{project_id}}.{{dataset_id_work}}.{{work_table}} t
     {%- set ns = namespace(fk_counter=0, ci_counter=0) %}    
     INNER JOIN cte_max on 1=1
-    LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{primary_key_column}}_swap swap on swap.x = t.{{primary_key_column}}
+    LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap swap on swap.x = t.{{primary_key_column}}
         {%- set ns = namespace(ci_counter=0) %}  
         {%- for column in concept_id_columns %}
     LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{column.lower()}}_usagi swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'

@@ -156,12 +156,18 @@ class Etl(ABC):
                     "{}", object_hook=lambda d: SimpleNamespace(**d)
                 ),  # create an empty SimpleNamespace object as default value
             )
+            pk_swap_table_name = (
+                getattr(omop_table_props, "pk", None)
+                if omop_table_name != "death"
+                else "death_id"
+            )
             if pk_auto_numbering:
                 # swap the primary key with an auto number
                 self._swap_primary_key_auto_numbering_column(
                     sql_file,
                     omop_table_name,
                     columns,
+                    cast(str, pk_swap_table_name),
                     omop_table_props.pk,
                     pk_auto_numbering,
                     foreign_key_columns,
@@ -243,6 +249,7 @@ class Etl(ABC):
                 sql_file,
                 omop_table_name,
                 columns,
+                pk_swap_table_name,
                 getattr(omop_table_props, "pk", None),
                 pk_auto_numbering,
                 foreign_key_columns,
@@ -428,6 +435,7 @@ class Etl(ABC):
         sql_file: str,
         omop_table: str,
         columns: List[str],
+        pk_swap_table_name: str,
         primary_key_column: str,
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
@@ -447,7 +455,7 @@ class Etl(ABC):
         )
         # create the swap table for the primary key
         self._create_pk_auto_numbering_swap_table(
-            primary_key_column, concept_id_columns
+            pk_swap_table_name, concept_id_columns
         )
 
         # execute the swap query
@@ -456,6 +464,7 @@ class Etl(ABC):
             omop_table,
             work_table,
             columns,
+            pk_swap_table_name,
             primary_key_column,
             pk_auto_numbering,
             foreign_key_columns,
@@ -468,6 +477,7 @@ class Etl(ABC):
         sql_file: str,
         omop_table: str,
         columns: List[str],
+        pk_swap_table_name: Optional[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
@@ -796,7 +806,7 @@ class Etl(ABC):
 
     @abstractmethod
     def _create_pk_auto_numbering_swap_table(
-        self, primary_key_column: str, concept_id_columns: List[str]
+        self, pk_swap_table_name: str, concept_id_columns: List[str]
     ) -> None:
         pass
 
@@ -806,6 +816,7 @@ class Etl(ABC):
         omop_table: str,
         work_table: str,
         columns: List[str],
+        pk_swap_table_name: str,
         primary_key_column: str,
         pk_auto_numbering: bool,
         foreign_key_columns: Any,

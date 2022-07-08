@@ -24,7 +24,7 @@
           //"--import-vocabularies", "~/vocabulary_download_v5_{348558dc-3730-46bd-bdfe-ba21b403abbc}_1656487634005.zip",
           "~/git/AZDelta-OMOP-CDM",
           "--skip-usagi-and-custom-concept-upload",
-          "--table", "measurement"
+          "--table", "death"
         ],
         "console": "integratedTerminal",
         "justMyCode": false,

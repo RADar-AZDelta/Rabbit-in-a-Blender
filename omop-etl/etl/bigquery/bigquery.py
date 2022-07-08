@@ -297,7 +297,7 @@ class BigQuery(Etl):
         self._gcp.run_query_job(ddl)
 
     def _create_pk_auto_numbering_swap_table(
-        self, primary_key_column: str, concept_id_columns: List[str]
+        self, pk_swap_table_name: str, concept_id_columns: List[str]
     ) -> None:
         template = self._template_env.get_template(
             "{primary_key_column}_swap_create.sql.jinja"
@@ -305,7 +305,7 @@ class BigQuery(Etl):
         ddl = template.render(
             project_id=self._project_id,
             dataset_id_work=self._dataset_id_work,
-            primary_key_column=primary_key_column,
+            pk_swap_table_name=pk_swap_table_name,
             # foreign_key_columns=foreign_key_columns.__dict__,
             concept_id_columns=concept_id_columns,
         )
@@ -316,6 +316,7 @@ class BigQuery(Etl):
         omop_table: str,
         work_table: str,
         columns: List[str],
+        pk_swap_table_name: str,
         primary_key_column: str,
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
@@ -328,6 +329,7 @@ class BigQuery(Etl):
             project_id=self._project_id,
             dataset_id_work=self._dataset_id_work,
             columns=columns,
+            pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             foreign_key_columns=foreign_key_columns.__dict__,
             concept_id_columns=concept_id_columns,
@@ -342,6 +344,7 @@ class BigQuery(Etl):
         sql_file: str,
         omop_table: str,
         columns: List[str],
+        pk_swap_table_name: Optional[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
@@ -356,6 +359,7 @@ class BigQuery(Etl):
             dataset_id_work=self._dataset_id_work,
             sql_file=Path(Path(sql_file).stem).stem,
             columns=columns,
+            pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             foreign_key_columns=vars(foreign_key_columns)
             if hasattr(foreign_key_columns, "__dict__")
