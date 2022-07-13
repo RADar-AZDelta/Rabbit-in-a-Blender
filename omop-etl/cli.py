@@ -1,7 +1,7 @@
 # pylint: disable=unsubscriptable-object
-import argparse
 import logging
 import logging.config
+import sys
 import traceback
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
@@ -15,8 +15,9 @@ def main() -> None:
     """Main entry point of application"""
     with init_logging():
         try:
-            parser = contstruct_argument_parser()
+            parser = _contstruct_argument_parser()
             args = parser.parse_args()
+
             if __debug__:
                 print(args)
 
@@ -52,16 +53,14 @@ def main() -> None:
 
         except Exception:
             logging.error(traceback.format_exc())
-            breakpoint()
+            if __debug__:
+                breakpoint()
 
 
-def contstruct_argument_parser() -> ArgumentParser:
-    parser = ArgumentParser(
-        prog="rabbit-in-a-blender",
-        description="Rabbit in a Blender: an OMOP CDM ETL tool",
-    )
-    requiredNamed = parser.add_argument_group("required named arguments")
-    requiredNamed.add_argument(
+def _contstruct_argument_parser() -> ArgumentParser:
+    init_parser = MyParser(add_help=False)
+    required_named = init_parser.add_argument_group("required named arguments")
+    required_named.add_argument(
         "-d",
         "--db-engine",
         nargs="?",
@@ -69,19 +68,25 @@ def contstruct_argument_parser() -> ArgumentParser:
         choices=["BigQuery"],
         type=str,
         help="""The database engine technology the ETL is running on.
-        Each database engine has its own legacy SQL dialect, so the generated ETL queries can be different for each database engine.
-        For the moment only BigQuery is supported, yet 'Rabbit in a Blender' has an open design, so in the future other database engines can be added easily.""",
+        Each database engine has its own legacy SQL dialect, so the generated ETL queries can be different for
+        each database engine. For the moment only BigQuery is supported, yet 'Rabbit in a Blender' has an open design,
+        so in the future other database engines can be added easily.""",
         metavar="DB-ENGINE",
-        required=True,
+        required=not bool(set(sys.argv) & {"-h", "--help"}),
     )
-    requiredNamed.add_argument(
+    required_named.add_argument(
         "cdm_folder_path",
         metavar="PATH",
         nargs="?",
         type=str,
         help="Path to the folder structure that holds the queries, Usagi CSV's and the custom concept CSV's",
     )
-    ns, unknown_args = parser.parse_known_args()
+    args, _ = init_parser.parse_known_args()
+    parser = MyParser(
+        prog="rabbit-in-a-blender",
+        description="Rabbit in a Blender: an OMOP CDM ETL tool",
+        parents=[init_parser],
+    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -102,7 +107,8 @@ def contstruct_argument_parser() -> ArgumentParser:
         "--import-vocabularies",
         nargs="?",
         type=str,
-        help="""Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.""",
+        help="""Extracts the vocabulary zip file (downloaded from the Athena website) and imports it
+        into the OMOP CDM database.""",
         metavar="VOCABULARIES_ZIP_FILE",
     )
     parser.add_argument(
@@ -141,7 +147,7 @@ def contstruct_argument_parser() -> ArgumentParser:
         type=str,
         help="""Cleanup all the OMOP tables, or just one.
         Be aware that the cleanup of a single table can screw up foreign keys!
-        For instance cleaning up only the 'Person' table, 
+        For instance cleaning up only the 'Person' table,
         will result in clicical results being mapped to the wrong persons!!!!""",
         metavar="TABLE",
     )
@@ -207,7 +213,7 @@ def contstruct_argument_parser() -> ArgumentParser:
         nargs="?",
         type=str,
         help="""BigQuery dataset that holds the raw EMR data""",
-        required=ns.db_engine == "BigQuery",
+        required=args.db_engine == "BigQuery",
         metavar="BIGQUERY_DATASET_ID_RAW",
     )
     parser.add_argument(
@@ -215,7 +221,7 @@ def contstruct_argument_parser() -> ArgumentParser:
         nargs="?",
         type=str,
         help="""BigQuery dataset that will hold ETL housekeeping tables (ex: swap tablet, etc...)""",
-        required=ns.db_engine == "BigQuery",
+        required=args.db_engine == "BigQuery",
         metavar="BIGQUERY_DATASET_ID_WORK",
     )
     parser.add_argument(
@@ -223,20 +229,19 @@ def contstruct_argument_parser() -> ArgumentParser:
         nargs="?",
         type=str,
         help="""BigQuery dataset that will hold the final OMOP tables""",
-        required=ns.db_engine == "BigQuery",
+        required=args.db_engine == "BigQuery",
         metavar="BIGQUERY_DATASET_ID_OMOP",
     )
     parser.add_argument(
         "--google-cloud-storage-bucket-uri",
         nargs="?",
         type=str,
-        help="""Google Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')""",
-        required=ns.db_engine == "BigQuery",
+        help="""Google Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files.
+        (the uri has format 'gs://{bucket_name}/{bucket_path}')""",
+        required=args.db_engine == "BigQuery",
         metavar="GOOGLE_CLOUD_STORAGE_BUCKET_URI",
     )
 
-    if __debug__:
-        parser.print_help()
     return parser
 
 
@@ -269,6 +274,13 @@ def init_logging() -> _TemporaryFileWrapper:
     main_logger.addHandler(file_handler)
 
     return tmp_file_handle
+
+
+class MyParser(ArgumentParser):
+    def error(self, message):
+        self.print_help()
+        sys.stderr.write("error: %s\n" % message)
+        sys.exit(2)
 
 
 if __name__ == "__main__":
