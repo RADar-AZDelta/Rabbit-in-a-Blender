@@ -3,6 +3,7 @@
 
 **Rabbit in a Blender** is an ETL pipeline to transform your EMP data to OMOP.
 
+
 Introduction
 ============
 
@@ -11,12 +12,15 @@ Extract-Transform-Load (ETL) processes are very complex and are mainly crafted b
 
 Concept
 =======
+
 The main strength of the CDM is its simplified scheme. This scheme is a relational data model, where each table has a primary key and can have foreign keys to other tables. Because of the relational data model, we can extract the dependencies of the tables from the scheme. For example, the provider table is dependent on the care_site table, which is in its turn dependent on the location table. If we flatten that dependency graph, we have a sequence of ETL steps that we need to follow to have consistent data in our OMOP CDM. These ETL steps can be automated, so a hospital can focus its resources on the queries and the mapping of the concepts. The automated ETL consists of multiple tasks. It needs to execute queries, add custom concepts, apply the Usagi source to concept mapping, and do a lot of housekeeping. An example of that housekeeping is the autonumbering of the OMOP CDM primary keys, for which the ETL process needs to maintain a swap table that holds the key of the source table and the generated sequential number of the CDM table’s primary key. Another example of the housekeeping is the upload and processing of the Usagi CSV’s and also the upload and parsing of the custom concept CSV’s. In an ETL process data is divided in zones. The raw zone holds the source data (for example the data from the EMR), the work zone holds all the house keeping tables of the ETL process and the gold zone holds our final OMOP CDM.
 After designing the architecture, the implementation needs to be developed. We have two options to choose from: configuration and convention as design paradigm. We choose convention over configuration, because it decreases the number of decisions the user has to make and eliminates the complexity. As convention a specific folder structure is adopted (see [our mappings as example](https://github.com/RADar-AZDelta/AZDelta-OMOP-CDM)). A folder is created for each OMOP CDM table, where the SQL queries are stored to fill up the specific CDM table. In the table folders we also have for each concept column a sub folder. Those concept column sub folders hold our Usagi CSV’s (files ending with _usagi.csv). We also have a custom folder in the concept column sub folder, that holds the custom concept CSV’s (files ending with _concept.csv). With this convention in place, our ETL CLI tool has everything it needs to do its magic.
 One final requirement we want to build in the ETL CLI tool, is that each ETL step is an atomic operation, it either fails or succeeds, so that there is no possibility to corrupt the final OMOP CDM data.
 
+
 Remarks
 =======
+
 You will need to run the cleanup command, when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
 
 The fact_relationship table has no primary key, which makes it difficult for the ETL process to trace the source of the data and very hard to figure out if it is new or updated data. So running the cleanup command frequently for this table is advised.
@@ -26,9 +30,9 @@ The measurement table has the measurement_event_id field, the observation table 
 
 For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 
+
 CLI Usage
 ========
-
 
 * **Options**:
     |  command | help  
@@ -62,7 +66,7 @@ CLI Usage
 BigQuery
 ========
 
-There are 2 ways to [authenticate]((https://cloud.google.com/docs/authentication/getting-started with GCP:
+There are 2 ways to [authenticate]((https://cloud.google.com/docs/authentication/getting-started) with GCP:
 * Use a [Service Account key file](https://cloud.google.com/docs/authentication/production) with **--google-credentials-file** cli option
 * When developing or testing you can use [Application Default Credentials (ADC)](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login)
 
@@ -84,6 +88,7 @@ There are 2 ways to [authenticate]((https://cloud.google.com/docs/authentication
     ```
 
     More info can also be found in the [Python API for GCP authentication](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview)
+
 
 TODO:
 ========
