@@ -24,7 +24,7 @@ Remarks
 You will need to run the cleanup command, when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
 
 The fact_relationship table has no primary key, which makes it difficult for the ETL process to trace the source of the data and very hard to figure out if it is new or updated data. So running the cleanup command frequently for this table is advised.
-The filenames of queries must also have the folowing convention: **_{fact_id_1_foreign_key_table}_{fact_id_1_foreign_key_table}.sql** (ex: patient_relationship_person_person.sql), so that the ETL process knows to what tables the fact_id_1 and fact_id_2 are referring to.
+The filenames of queries must also have the folowing convention: **\_{fact_id_1_foreign_key_table}\_{fact_id_1_foreign_key_table}.sql** (ex: patient_relationship_person_person.sql), so that the ETL process knows to what tables the fact_id_1 and fact_id_2 are referring to.
 
 The measurement table has the measurement_event_id field, the observation table has the observation_event_id field, the cost table has the cost_event_id field and the episode_event table has the event_id field. All those fields are foreign keys to almost all OMOP CMD tables. For the ETL process to know to which table the foreign key points to, we put that foreign key table in the file name of our query. With the following convention: **_{foreign_key_table}.sql** (ex: measurement_bmi_condition_occurrence.sql, where the measurement_event_id field points to the primary key in the condition_occurrence table: condition_occurence_id).
 
