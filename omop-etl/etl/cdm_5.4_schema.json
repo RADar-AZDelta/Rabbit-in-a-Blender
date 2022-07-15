@@ -1,26 +1,15 @@
 {
     "metadata": {
-        "pk": "metadata_id",
-        "concepts": [
-            "metadata_concept_id",
-            "metadata_type_concept_id",
-            "value_as_concept_id"
-        ]
+        "pk": "metadata_id"
     },
     "cdm_source": {
-        "pk": "cdm_source_name",
-        "concepts": [
-            "cdm_version_concept_id"
-        ]
+        "pk": "cdm_source_name"
     },
     "vocabulary": {
         "pk": "vocabulary_id"
     },
     "location": {
-        "pk": "location_id",
-        "concepts": [
-            "country_concept_id"
-        ]
+        "pk": "location_id"
     },
     "care_site": {
         "pk": "care_site_id",
@@ -29,10 +18,7 @@
                 "table": "location",
                 "column": "location_id"
             }
-        },
-        "concepts": [
-            "place_of_service_concept_id"
-        ]
+        }
     },
     "provider": {
         "pk": "provider_id",
@@ -41,11 +27,7 @@
                 "table": "care_site",
                 "column": "care_site_id"
             }
-        },
-        "concepts": [
-            "specialty_concept_id",
-            "gender_concept_id"
-        ]
+        }
     },
     "person": {
         "pk": "person_id",
@@ -62,12 +44,7 @@
                 "table": "care_site",
                 "column": "care_site_id"
             }
-        },
-        "concepts": [
-            "gender_concept_id",
-            "race_concept_id",
-            "ethnicity_concept_id"
-        ]
+        }
     },
     "observation_period": {
         "pk": "observation_period_id",
@@ -76,10 +53,7 @@
                 "table": "person",
                 "column": "person_id"
             }
-        },
-        "concepts": [
-            "period_type_concept_id"
-        ]
+        }
     },
     "visit_occurrence": {
         "pk": "visit_occurrence_id",
@@ -100,13 +74,7 @@
                 "table": "visit_occurrence",
                 "column": "visit_occurrence_id"
             }
-        },
-        "concepts": [
-            "visit_concept_id",
-            "visit_type_concept_id",
-            "admitted_from_concept_id",
-            "discharged_to_concept_id"
-        ]
+        }
     },
     "visit_detail": {
         "pk": "visit_detail_id",
@@ -135,13 +103,7 @@
                 "table": "visit_occurrence",
                 "column": "visit_occurrence_id"
             }
-        },
-        "concepts": [
-            "visit_detail_concept_id",
-            "visit_detail_type_concept_id",
-            "admitted_from_concept_id",
-            "discharged_to_concept_id"
-        ]
+        }
     },
     "condition_occurrence": {
         "pk": "condition_occurrence_id",
@@ -162,12 +124,7 @@
                 "table": "visit_detail",
                 "column": "visit_detail_id"
             }
-        },
-        "concepts": [
-            "condition_concept_id",
-            "condition_type_concept_id",
-            "condition_status_concept_id"
-        ]
+        }
     },
     "drug_exposure": {
         "pk": "drug_exposure_id",
@@ -188,12 +145,7 @@
                 "table": "visit_detail",
                 "column": "visit_detail_id"
             }
-        },
-        "concepts": [
-            "drug_concept_id",
-            "drug_type_concept_id",
-            "route_concept_id"
-        ]
+        }
     },
     "procedure_occurrence": {
         "pk": "procedure_occurrence_id",
@@ -214,12 +166,7 @@
                 "table": "visit_detail",
                 "column": "visit_detail_id"
             }
-        },
-        "concepts": [
-            "procedure_concept_id",
-            "procedure_type_concept_id",
-            "modifier_concept_id"
-        ]
+        }
     },
     "device_exposure": {
         "pk": "device_exposure_id",
@@ -240,12 +187,7 @@
                 "table": "visit_detail",
                 "column": "visit_detail_id"
             }
-        },
-        "concepts": [
-            "device_concept_id",
-            "device_type_concept_id",
-            "unit_concept_id"
-        ]
+        }
     },
     "measurement": {
         "pk": "measurement_id",
@@ -267,14 +209,11 @@
                 "column": "visit_detail_id"
             }
         },
-        "concepts": [
-            "measurement_concept_id",
-            "measurement_type_concept_id",
-            "operator_concept_id",
-            "value_as_concept_id",
-            "unit_concept_id",
-            "meas_event_field_concept_id"
-        ]
+        "events": {
+            "measurement_event_id": {
+                "field": "meas_event_field_concept_id"
+            }
+        }
     },
     "observation": {
         "pk": "observation_id",
@@ -296,21 +235,14 @@
                 "column": "visit_detail_id"
             }
         },
-        "concepts": [
-            "observation_concept_id",
-            "observation_type_concept_id",
-            "value_as_concept_id",
-            "qualifier_concept_id",
-            "unit_concept_id",
-            "obs_event_field_concept_id"
-        ]
+        "events": {
+            "observation_event_id": {
+                "field": "obs_event_field_concept_id"
+            }
+        }
     },
     "death": {
-        "pk": "person_id",
-        "concepts": [
-            "death_type_concept_id",
-            "cause_concept_id"
-        ]
+        "pk": "person_id"
     },
     "note": {
         "pk": "note_id",
@@ -330,19 +262,13 @@
             "visit_detail_id": {
                 "table": "visit_detail",
                 "column": "visit_detail_id"
-            },
-            "note_event_id": {
-                "table": "note",
-                "column": "note_id"
             }
         },
-        "concepts": [
-            "note_type_concept_id",
-            "note_class_concept_id",
-            "encoding_concept_id",
-            "language_concept_id",
-            "note_event_field_concept_id"
-        ]
+        "events": {
+            "note_event_id": {
+                "field": "note_event_field_concept_id"
+            }
+        }
     },
     "note_nlp": {
         "pk": "note_nlp_id",
@@ -351,11 +277,7 @@
                 "table": "note",
                 "column": "note_id"
             }
-        },
-        "concepts": [
-            "section_concept_id",
-            "note_nlp_concept_id"
-        ]
+        }
     },
     "specimen": {
         "pk": "specimen_id",
@@ -364,22 +286,17 @@
                 "table": "person",
                 "column": "person_id"
             }
-        },
-        "concepts": [
-            "specimen_concept_id",
-            "specimen_type_concept_id",
-            "unit_concept_id",
-            "anatomic_site_concept_id",
-            "disease_status_concept_id"
-        ]
+        }
     },
     "fact_relationship": {
-        "fks": {},
-        "concepts": [
-            "domain_concept_id_1",
-            "domain_concept_id_2",
-            "relationship_concept_id"
-        ]
+        "events": {
+            "fact_id_1": {
+                "field": "field_concept_id_1"
+            },
+            "fact_id_2": {
+                "field": "field_concept_id_1"
+            }
+        }
     },
     "payer_plan_period": {
         "pk": "payer_plan_period_id",
@@ -388,13 +305,7 @@
                 "table": "person",
                 "column": "person_id"
             }
-        },
-        "concepts": [
-            "payer_concept_id",
-            "plan_concept_id",
-            "sponsor_concept_id",
-            "stop_reason_concept_id"
-        ]
+        }
     },
     "cost": {
         "pk": "cost_id",
@@ -404,12 +315,11 @@
                 "column": "domain_id"
             }
         },
-        "concepts": [
-            "cost_type_concept_id",
-            "currency_concept_id",
-            "revenue_code_concept_id",
-            "drg_concept_id"
-        ]
+        "events": {
+            "cost_event_id": {
+                "field": "cost_event_field_concept_id"
+            }
+        }
     },
     "episode": {
         "pk": "episode_id",
@@ -417,19 +327,24 @@
             "person_id": {
                 "table": "person",
                 "column": "person_id"
+            },
+            "episode_parent_id": {
+                "table": "episode",
+                "column": "episode_id"
             }
-        },
-        "concepts": [
-            "episode_concept_id",
-            "episode_object_concept_id",
-            "episode_type_concept_id"
-        ]
+        }
     },
     "episode_event": {
-        "pk": "episode_id",
-        "fks": {},
-        "concepts": [
-            "episode_event_field_concept_id"
-        ]
+        "fks": {
+            "episode_id": {
+                "table": "episode",
+                "column": "episode_id"
+            }
+        },
+        "events": {
+            "event_id": {
+                "field": "episode_event_field_concept_id "
+            }
+        }
     }
 }
