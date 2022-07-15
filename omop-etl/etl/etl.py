@@ -3,9 +3,7 @@
 import glob
 import json
 import logging
-import math
 import os
-import pathlib
 import re
 import tempfile
 import zipfile
@@ -16,7 +14,6 @@ from re import Match
 from types import SimpleNamespace
 from typing import Any, List, Optional, cast
 
-import polars as pl
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.parquet as pq
@@ -27,7 +24,7 @@ class Etl(ABC):
     ETL class that automates the extract-transfer-load process from source data to the OMOP common data model.
     """
 
-    _CUSTOM_CONCEPT_IDS_START = f"{2 * math.pow(1000, 3):.0f}"
+    _CUSTOM_CONCEPT_IDS_START = 2_000_000_000
 
     def __init__(
         self,
@@ -40,12 +37,9 @@ class Etl(ABC):
 
         Args:
             only_omop_table (str): Only do ETL on this OMOP CDM table.
-
-
-        ```
-        """  # noqa: E501 # pylint: disable=line-too-lon
+        """  # noqa: E501 # pylint: disable=line-too-long
         self._cdm_folder_path = (
-            os.path.abspath(cdm_folder_path) if cdm_folder_path else None
+            Path(cdm_folder_path).resolve() if cdm_folder_path else None
         )
         self._only_omop_table = only_omop_table
         self._skip_usagi_and_custom_concept_upload = (
@@ -53,10 +47,8 @@ class Etl(ABC):
         )
 
         with open(
-            os.path.join(
-                pathlib.Path(__file__).parent.absolute(),
-                "cdm_5.4_schema.json",
-            ),
+            str(Path(__file__).parent.resolve() / "cdm_5.4_schema.json"),
+            "r",
             encoding="UTF8",
         ) as file:
             self._omop_tables = json.load(
@@ -65,7 +57,7 @@ class Etl(ABC):
 
     @abstractmethod
     def create_omop_db(self) -> None:
-        pass
+        """Create OMOP tables in the database and define indexes/partitions/clusterings"""
 
     def run(self):
         """
@@ -114,16 +106,18 @@ class Etl(ABC):
         logging.info("OMOP table: %s", omop_table_name)
         # get all the columns from the destination OMOP table
         columns = self._get_column_names(omop_table_name)
-
+        concept_columns = [
+            column
+            for column in columns
+            if "concept_id" in column and "source_concept_id" not in column
+        ]
         # is the primary key an auto numbering column?
         pk_auto_numbering = self._is_pk_auto_numbering(
             omop_table_name, omop_table_props
         )
 
         if not self._skip_usagi_and_custom_concept_upload:
-            for concept_id_column in getattr(
-                omop_table_props, "concepts", []
-            ):  # loop all concept_id columns
+            for concept_id_column in concept_columns:  # loop all concept_id columns
                 # upload an apply the custom concept CSV's
                 self._upload_custom_concepts(omop_table_name, concept_id_column.lower())
                 # upload and apply the Usagi CSV's
@@ -205,7 +199,7 @@ class Etl(ABC):
                             case "measurement":
                                 fk_column = "measurement_event_id"
                             case "observation":
-                                fk_column = "obs_event_field_concept_id"
+                                fk_column = "observation_event_id"
                             case "cost":
                                 fk_column = "cost_event_id"
                             case "episode_event":
@@ -494,7 +488,6 @@ class Etl(ABC):
             foreign_key_columns (Any): List of foreign key columns.
             concept_id_columns (List[str]): List of concept columns.
         """  # noqa: E501 # pylint: disable=line-too-long
-        pass
 
     def _convert_usagi_csv_to_arrow_table(self, usagi_csv_file: str) -> pa.Table:
         """Converts a Usagi CSV file to an Arrow table, maintaining the relevant columns.
@@ -664,6 +657,7 @@ class Etl(ABC):
                 self._truncate_omop_table(table_name)
 
     def import_vocabularies(self, path_to_zip_file: str):
+        """import vocabularies, as zip-file downloaded from athena.ohdsi.org, into"""
         with zipfile.ZipFile(path_to_zip_file, "r") as zip_ref:
             with tempfile.TemporaryDirectory(
                 prefix="omop_vocabularies_"
@@ -676,53 +670,22 @@ class Etl(ABC):
                 zip_ref.extractall(temp_dir_path)
 
                 for vocabulary_table in [
-                    "CONCEPT",
-                    "CONCEPT_ANCESTOR",
-                    "CONCEPT_CLASS",
-                    "CONCEPT_RELATIONSHIP",
-                    "CONCEPT_SYNONYM",
-                    "DOMAIN",
-                    "DRUG_STRENGTH",
-                    "RELATIONSHIP",
-                    "VOCABULARY",
+                    "concept",
+                    "concept_ancestor",
+                    "concept_class",
+                    "concept_relationship",
+                    "concept_synonym",
+                    "domain",
+                    "drug_strength",
+                    "relationship",
+                    "vocabulary",
                 ]:
-                    logging.info("Converting '%s.csv' to parquet", vocabulary_table)
-                    csv_file = os.path.join(temp_dir_path, f"{vocabulary_table}.csv")
-                    df = self._read_vocabulary_csv(vocabulary_table, csv_file)
-                    parquet_file = os.path.join(
-                        temp_dir_path, f"{vocabulary_table}.parquet"
-                    )
-                    df.write_parquet(
-                        parquet_file  # , compression="snappy", statistics=True
-                    )
-                    logging.info(
-                        "Loading '%s.parquet' into work table", vocabulary_table
-                    )
-                    self._clear_vocabulary_upload_table(vocabulary_table.lower())
-                    self._load_vocabulary_parquet_in_upload_table(
-                        parquet_file, vocabulary_table.lower()
-                    )
-                    self._merge_uploaded_vocabulary_table(vocabulary_table.lower())
-
-    def _read_vocabulary_csv(
-        self, vocabulary_table: str, csv_file: str
-    ) -> pl.DataFrame:
-        df = pl.read_csv(csv_file, has_header=True, sep="\t")
-        match vocabulary_table:
-            case "CONCEPT" | "CONCEPT_RELATIONSHIP":
-                df["valid_start_date"] = (
-                    df["valid_start_date"]
-                    .cast(pl.Utf8)
-                    .str.strptime(pl.Date, "%Y%m%d", strict=False)
-                    .cast(pl.Date)
-                )
-                df["valid_end_date"] = (
-                    df["valid_end_date"]
-                    .cast(pl.Utf8)
-                    .str.strptime(pl.Date, "%Y%m%d", strict=False)
-                    .cast(pl.Date)
-                )
-        return df
+                    csv_file = (
+                        Path(temp_dir_path) / f"{vocabulary_table.upper()}.csv"
+                    )  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
+                    self._clear_vocabulary_upload_table(vocabulary_table)
+                    self._load_vocabulary_in_upload_table(csv_file, vocabulary_table)
+                    self._recreate_vocabulary_table(vocabulary_table)
 
     @abstractmethod
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
@@ -873,15 +836,15 @@ class Etl(ABC):
         pass
 
     @abstractmethod
-    def _load_vocabulary_parquet_in_upload_table(
-        self, parquet_file: str, vocabulary_table: str
-    ) -> None:
-        pass
-
-    @abstractmethod
     def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
         pass
 
     @abstractmethod
-    def _merge_uploaded_vocabulary_table(self, vocabulary_table: str) -> None:
+    def _load_vocabulary_in_upload_table(
+        self, csv_file: Path, vocabulary_table: str
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def _recreate_vocabulary_table(self, vocabulary_table: str) -> None:
         pass
