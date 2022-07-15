@@ -14,231 +14,107 @@
     "care_site": {
         "pk": "care_site_id",
         "fks": {
-            "location_id": {
-                "table": "location",
-                "column": "location_id"
-            }
+            "location_id": "location"
         }
     },
     "provider": {
         "pk": "provider_id",
         "fks": {
-            "care_site_id": {
-                "table": "care_site",
-                "column": "care_site_id"
-            }
+            "care_site_id": "care_site"
         }
     },
     "person": {
         "pk": "person_id",
         "fks": {
-            "location_id": {
-                "table": "location",
-                "column": "location_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "care_site_id": {
-                "table": "care_site",
-                "column": "care_site_id"
-            }
+            "location_id": "location",
+            "provider_id": "provider",
+            "care_site_id": "care_site"
         }
     },
     "observation_period": {
         "pk": "observation_period_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            }
+            "person_id": "person"
         }
     },
     "visit_occurrence": {
         "pk": "visit_occurrence_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "care_site_id": {
-                "table": "care_site",
-                "column": "care_site_id"
-            },
-            "preceding_visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "care_site_id": "care_site",
+            "preceding_visit_occurrence_id": "visit_occurrence"
         }
     },
     "visit_detail": {
         "pk": "visit_detail_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "care_site_id": {
-                "table": "care_site",
-                "column": "care_site_id"
-            },
-            "preceding_visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            },
-            "parent_visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "care_site_id": "care_site",
+            "preceding_visit_detail_id": "visit_detail",
+            "parent_visit_detail_id": "visit_detail",
+            "visit_occurrence_id": "visit_occurrence"
         }
     },
     "condition_occurrence": {
         "pk": "condition_occurrence_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            },
-            "visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "visit_occurrence_id": "visit_occurrence",
+            "visit_detail_id": "visit_detail"
         }
     },
     "drug_exposure": {
         "pk": "drug_exposure_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            },
-            "visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "visit_occurrence_id": "visit_occurrence",
+            "visit_detail_id": "visit_detail"
         }
     },
     "procedure_occurrence": {
         "pk": "procedure_occurrence_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            },
-            "visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "visit_occurrence_id": "visit_occurrence",
+            "visit_detail_id": "visit_detail"
         }
     },
     "device_exposure": {
         "pk": "device_exposure_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            },
-            "visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "visit_occurrence_id": "visit_occurrence",
+            "visit_detail_id": "visit_detail"
         }
     },
     "measurement": {
         "pk": "measurement_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            },
-            "visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "visit_occurrence_id": "visit_occurrence",
+            "visit_detail_id": "visit_detail"
         },
         "events": {
-            "measurement_event_id": {
-                "field": "meas_event_field_concept_id"
-            }
+            "measurement_event_id": "meas_event_field_concept_id"
         }
     },
     "observation": {
         "pk": "observation_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            },
-            "visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "visit_occurrence_id": "visit_occurrence",
+            "visit_detail_id": "visit_detail"
         },
         "events": {
-            "observation_event_id": {
-                "field": "obs_event_field_concept_id"
-            }
+            "observation_event_id": "obs_event_field_concept_id"
         }
     },
     "death": {
@@ -247,104 +123,61 @@
     "note": {
         "pk": "note_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "provider_id": {
-                "table": "provider",
-                "column": "provider_id"
-            },
-            "visit_occurrence_id": {
-                "table": "visit_occurrence",
-                "column": "visit_occurrence_id"
-            },
-            "visit_detail_id": {
-                "table": "visit_detail",
-                "column": "visit_detail_id"
-            }
+            "person_id": "person",
+            "provider_id": "provider",
+            "visit_occurrence_id": "visit_occurrence",
+            "visit_detail_id": "visit_detail"
         },
         "events": {
-            "note_event_id": {
-                "field": "note_event_field_concept_id"
-            }
+            "note_event_id": "note_event_field_concept_id"
         }
     },
     "note_nlp": {
         "pk": "note_nlp_id",
         "fks": {
-            "note_id": {
-                "table": "note",
-                "column": "note_id"
-            }
+            "note_id": "note"
         }
     },
     "specimen": {
         "pk": "specimen_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            }
+            "person_id": "person"
         }
     },
     "fact_relationship": {
         "events": {
-            "fact_id_1": {
-                "field": "field_concept_id_1"
-            },
-            "fact_id_2": {
-                "field": "field_concept_id_1"
-            }
+            "fact_id_1": "field_concept_id_1",
+            "fact_id_2": "field_concept_id_2"
         }
     },
     "payer_plan_period": {
         "pk": "payer_plan_period_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            }
+            "person_id": "person"
         }
     },
     "cost": {
         "pk": "cost_id",
         "fks": {
-            "cost_domain_id": {
-                "table": "domain",
-                "column": "domain_id"
-            }
+            "cost_domain_id": "domain"
         },
         "events": {
-            "cost_event_id": {
-                "field": "cost_event_field_concept_id"
-            }
+            "cost_event_id": "cost_event_field_concept_id"
         }
     },
     "episode": {
         "pk": "episode_id",
         "fks": {
-            "person_id": {
-                "table": "person",
-                "column": "person_id"
-            },
-            "episode_parent_id": {
-                "table": "episode",
-                "column": "episode_id"
-            }
+            "person_id": "person",
+            "episode_parent_id": "episode"
         }
     },
     "episode_event": {
         "fks": {
-            "episode_id": {
-                "table": "episode",
-                "column": "episode_id"
-            }
+            "episode_id": "episode"
         },
         "events": {
-            "event_id": {
-                "field": "episode_event_field_concept_id "
-            }
+            "event_id": "episode_event_field_concept_id "
         }
     }
 }
