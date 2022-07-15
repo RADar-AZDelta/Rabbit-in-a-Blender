@@ -20,8 +20,9 @@ One final requirement we want to build in the ETL CLI tool, is that each ETL ste
 
 Deviations from v5.4
 ====================
+
 |Table|Change|Reason|
----------------------
+|---|---|---|
 |fact_relatioship|renamed domain_concept_id_1 and _2 to field_concept_id_1 and _2|To stay consistent with similar fields like episode_event_field_concept_id. This follows Proposal 1 in the open issue [#230](https://github.com/OHDSI/CommonDataModel/issues/230)| 
 |cost|changed cost_domain_id with type STRING to cost_field_event_id of type INT64|To stay consistent with similar fields like episode_event_field_concept_id. This follows the changes made in [v6.0](https://ohdsi.github.io/CommonDataModel/cdm60.html#COST)
 
