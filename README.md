@@ -18,15 +18,24 @@ After designing the architecture, the implementation needs to be developed. We h
 One final requirement we want to build in the ETL CLI tool, is that each ETL step is an atomic operation, it either fails or succeeds, so that there is no possibility to corrupt the final OMOP CDM data.
 
 
+Deviations from v5.4
+====================
+
+|Table|Change|Reason|
+|---|---|---|
+|fact_relationship|Renamed domain_concept_id_1 and _2 to field_concept_id_1 and _2|To stay consistent with similar fields like episode_event_field_concept_id. This follows Proposal 1 in the open issue [#230](https://github.com/OHDSI/CommonDataModel/issues/230).| 
+|cost|Changed cost_domain_id with type STRING to cost_field_event_id of type INT64|To stay consistent with similar fields like episode_event_field_concept_id. This follows the changes made in [v6.0](https://ohdsi.github.io/CommonDataModel/cdm60.html#COST)|
+
+
 Remarks
 =======
 
 You will need to run the cleanup command, when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
 
-The fact_relationship table has no primary key, which makes it difficult for the ETL process to trace the source of the data and very hard to figure out if it is new or updated data. So running the cleanup command frequently for this table is advised.
-The filenames of queries must also have the folowing convention: **\_{fact_id_1_foreign_key_table}\_{fact_id_1_foreign_key_table}.sql** (ex: patient_relationship_person_person.sql), so that the ETL process knows to what tables the fact_id_1 and fact_id_2 are referring to. The domain_concept_id column contains the concept_id for the appropriate table instead of the domain, as discussed in the [OHDSI forum](https://forums.ohdsi.org/t/fact-relationship-domain-concept-id/13959/4).
+The measurement table has the **measurement_event_id** field, the observation table has the **observation_event_id** field, the cost table has the **cost_event_id** field and the episode_event table has the **event_id** field. All those fields are foreign keys to almost all OMOP CMD tables. For the ETL process to know to which table the foreign key points to, we put that foreign key table in the file name of our query. With the following convention: **_{foreign_key_table}.sql** (ex: measurement_bmi_condition_occurrence.sql, where the measurement_event_id field points to the condition_occurrence table). The [table_name]_field_concept_id is set to the concept_id for the primary key field of the foreign_key_table. An sql-file is required per target table (e.g. to have some measurements point to conditions and others to drug exposures requires two sql-files, ending with _condition_occurrence and _drug_exposure respectively.
 
-The measurement table has the measurement_event_id field, the observation table has the observation_event_id field, the cost table has the cost_event_id field and the episode_event table has the event_id field. All those fields are foreign keys to almost all OMOP CMD tables. For the ETL process to know to which table the foreign key points to, we put that foreign key table in the file name of our query. With the following convention: **_{foreign_key_table}.sql** (ex: measurement_bmi_condition_occurrence.sql, where the measurement_event_id field points to the condition_occurrence table). The field_concept_id contains the concept_id for the appropriate table instead of the field, as explained in the official documentation, e.g. for the [meas_event_field_concept_id](https://ohdsi.github.io/CommonDataModel/cdm54.html#MEASUREMENT) 
+The **fact_relationship** table has no primary key, which makes it difficult for the ETL process to trace the source of the data and very hard to figure out if it is new or updated data. So running the cleanup command frequently for this table is advised.  
+The filenames of queries must also have the folowing convention: **\_{fact_id_1_foreign_key_table}\_{fact_id_1_foreign_key_table}.sql** (ex: patient_relationship_person_person.sql), so that the ETL process knows to what tables the fact_id_1 and fact_id_2 are referring to. The field_concept_id_1 and field_concept_id_2 fields are set to the concept_id for the primary key field of the fact_id_1_foreign_key_table and fact_id_2_foreign_key_table respectively. An sql-file is required per combination of foreign key tables (e.g. _person_person for relationships between people, _person_care_site for relationships between people and care sites).
 
 For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 
