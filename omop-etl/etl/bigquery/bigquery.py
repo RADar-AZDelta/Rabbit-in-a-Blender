@@ -3,15 +3,18 @@
 import json
 import logging
 import os
-import pathlib
 import re
 from datetime import date
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import google.auth
 import google.cloud.bigquery as bq
 import jinja2 as jj
+import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.csv as pcsv
+import pyarrow.parquet as pq
 from jinja2.utils import select_autoescape
 
 from ..etl import Etl
@@ -76,23 +79,8 @@ class BigQuery(Etl):
         self.__clustering_fields = None
 
     def create_omop_db(self) -> None:
-        with open(
-            os.path.join(
-                pathlib.Path(__file__).parent.absolute(),
-                "templates/OMOPCDM_bigquery_5.4_ddl.sql",
-            ),
-            encoding="UTF8",
-        ) as file:
-            ddl = file.read()
-
-        ddl = re.sub(
-            r"(?:create table @cdmDatabaseSchema)(\S*)",
-            rf"create table if not exists `{self._project_id}.{self._dataset_id_omop}\1`",
-            ddl,
-        )
-        ddl = re.sub(r".(?<!not )null", r"", ddl)
-        ddl = re.sub(r"\"", r"", ddl)
-        self._gcp.run_query_job(ddl)
+        """Create OMOP tables in the omop-dataset in BigQuery and apply clustering"""
+        self._gcp.run_query_job(self._ddl)
 
         for table, fields in self._clustering_fields.items():
             self._gcp.set_clustering_fields_on_table(
@@ -103,10 +91,11 @@ class BigQuery(Etl):
     def _clustering_fields(self) -> Dict[str, List[str]]:
         if not self.__clustering_fields:
             with open(
-                os.path.join(
-                    pathlib.Path(__file__).parent.absolute(),
-                    "templates/OMOPCDM_bigquery_5.4_clustering_fields.json",
+                str(
+                    Path(__file__).parent.absolute()
+                    / "templates/OMOPCDM_bigquery_5.4_clustering_fields.json"
                 ),
+                "r",
                 encoding="UTF8",
             ) as file:
                 self.__clustering_fields = json.load(file)
@@ -130,6 +119,29 @@ class BigQuery(Etl):
             self._project_id, self._dataset_id_omop, omop_table_name
         )
         return columns
+
+    @property
+    def _ddl(self):
+        with open(
+            str(
+                Path(__file__).parent.absolute()
+                / "templates/OMOPCDM_bigquery_5.4_ddl.sql"
+            ),
+            "r",
+            encoding="UTF8",
+        ) as file:
+            ddl = file.read()
+
+        ddl = re.sub(
+            r"(?:create table @cdmDatabaseSchema)(\S*)",
+            rf"create table if not exists `{self._project_id}.{self._dataset_id_omop}\1`",
+            ddl,
+        )
+        ddl = re.sub(r".(?<!not )null", r"", ddl)
+        ddl = re.sub(r"\"", r"", ddl)
+        ddl = re.sub(r"domain_concept_id_", r"field_concept_id_", ddl)
+        ddl = re.sub(r"cost_domain_id STRING", r"cost_field_concept_id INT64", ddl)
+        return ddl
 
     def _is_pk_auto_numbering(
         self, omop_table_name: str, omop_table_props: Any
@@ -484,24 +496,15 @@ class BigQuery(Etl):
         logging.info("Deleting table '%s'", table_id)
         self._gcp.delete_table(self._project_id, self._dataset_id_work, work_table)
 
-    def _load_vocabulary_parquet_in_upload_table(
-        self, parquet_file: str, vocabulary_table: str
+    def _load_vocabulary_in_upload_table(
+        self, csv_file: Path, vocabulary_table: str
     ) -> None:
-        # match vocabulary_table:
-        #     case "concept":
-        #         schema = [
-        #             SchemaField("concept_id", "INTEGER", mode="REQUIRED"),
-        #             SchemaField("concept_name", "STRING", mode="REQUIRED"),
-        #             SchemaField("domain_id", "STRING", mode="REQUIRED"),
-        #             SchemaField("vocabulary_id", "STRING", mode="REQUIRED"),
-        #             SchemaField("concept_class_id", "STRING", mode="REQUIRED"),
-        #             SchemaField("standard_concept", "STRING", mode="NULLABLE"),
-        #             SchemaField("concept_code", "STRING", mode="REQUIRED"),
-        #             SchemaField("valid_start_date", "DATE", mode="REQUIRED"),
-        #             SchemaField("valid_end_date", "DATE", mode="REQUIRED"),
-        #             SchemaField("invalid_reason", "STRING", mode="NULLABLE"),
-        #         ]
+        logging.info("Converting '%s.csv' to parquet", vocabulary_table)
+        tab = self._read_vocabulary_csv(vocabulary_table, csv_file)
+        parquet_file = csv_file.parent / f"{vocabulary_table}.parquet"
+        pq.write_table(tab, where=parquet_file)
 
+        logging.info("Loading '%s.parquet' into work table", vocabulary_table)
         # upload the Parquet file to the Cloud Storage Bucket
         uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific custom concept table in the work dataset
@@ -518,10 +521,62 @@ class BigQuery(Etl):
             self._project_id, self._dataset_id_work, vocabulary_table
         )
 
-    def _merge_uploaded_vocabulary_table(self, vocabulary_table: str) -> None:
-        # job = client.copy_table(source_table_id, destination_table_id)
-        # job.result()
-        template = self._template_env.get_template("vocabulary_table_merge.sql.jinja")
+    def _read_vocabulary_csv(self, vocabulary_table: str, csv_file: Path) -> pa.Table:
+        schema, date_columns = self._get_vocabulary_schema(vocabulary_table)
+        if vocabulary_table == "relationship":
+            print("here")
+        tab = pcsv.read_csv(
+            csv_file,
+            parse_options=pcsv.ParseOptions(delimiter="\t"),
+            convert_options=pcsv.ConvertOptions(column_types=schema),
+        )
+
+        for date_column in date_columns:
+            temp = pc.strptime(
+                tab.column(date_column[1]), format="%Y%m%d", unit="s"
+            ).cast(pa.date64())
+            tab = tab.set_column(date_column[0], date_column[1], temp)
+
+        return tab
+
+    def _get_vocabulary_schema(
+        self, vocabulary_table: str
+    ) -> Tuple[pa.Schema, List[Tuple[int, str]]]:
+        def _to_pa(type_: str) -> pa.DataType:
+            match type_.lower():
+                case "int64":
+                    return pa.int64()
+                case "float64":
+                    return pa.float64()
+                case "string":
+                    return pa.string()
+                case "date":
+                    return pa.string()
+            raise Exception(f"Unknown datatype {type_}")
+
+        schema = []
+        date_columns = []
+
+        table_ddl = re.search(
+            rf"create table if not exists `\S*?\.{vocabulary_table}` \(\n(.*?)\n\n",
+            self._ddl,
+            re.DOTALL,
+        ).group(1)
+        fields = re.findall(r"\t\t(\w* \w*)", table_ddl)
+        for idx, field in enumerate(fields):
+            splits = field.split(" ")
+            schema.append((splits[0], _to_pa(splits[1])))
+            if splits[1].lower() == "date":
+                date_columns.append((idx, splits[0]))
+
+        schema = pa.schema(schema)
+
+        return (schema, date_columns)
+
+    def _recreate_vocabulary_table(self, vocabulary_table: str) -> None:
+        template = self._template_env.get_template(
+            "vocabulary_table_recreate.sql.jinja"
+        )
         sql = template.render(
             project_id=self._project_id,
             dataset_id_omop=self._dataset_id_omop,
