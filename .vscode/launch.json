@@ -21,10 +21,10 @@
           "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work",
           //"--cleanup", "measurement",
           //"--create-db"
-          //"--import-vocabularies", "~/vocabulary_download_v5_{348558dc-3730-46bd-bdfe-ba21b403abbc}_1656487634005.zip",
-          "~/git/AZDelta-OMOP-CDM",
-          "--skip-usagi-and-custom-concept-upload",
-          "--table", "death"
+          "--import-vocabularies", "/home/sdupulth00/vocabulary_download_v5_{348558dc-3730-46bd-bdfe-ba21b403abbc}_1656487634005.zip",
+          "/home/sdupulth00/Innovatie/AZDelta-OMOP-CDM/",
+          // "--skip-usagi-and-custom-concept-upload",
+          // "--table", "death"
         ],
         "console": "integratedTerminal",
         "justMyCode": false,

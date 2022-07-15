@@ -7,8 +7,9 @@ import os
 import tempfile
 import time
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import backoff
 import connectorx as cx
@@ -29,8 +30,8 @@ class Gcp:
     Local Query --> Parquet --> Cloud Storage --> Bigquery
     """
 
-    _MEGA = math.pow(1024, 2)
-    _GIGA = math.pow(1024, 3)
+    _MEGA = 1024**2
+    _GIGA = 1024**3
 
     def __init__(self, credentials: Credentials, location: str = "EU"):
         """Constructor
@@ -215,6 +216,7 @@ ORDER BY ordinal_position"""
             project_id (str): project ID
             dataset_id (str): dataset ID
             table_name (str): table name
+            clustering_fields (List[str]): list of fields (ordered!) to cluster in table table_name
         """  # noqa: E501 # pylint: disable=line-too-long
         logging.info(
             "Setting cluster fields on BigQuery table '%s.%s.%s'",
@@ -260,24 +262,26 @@ ORDER BY ordinal_position"""
         except NotFound:
             pass
 
-    def upload_file_to_bucket(self, source_file_path: str, bucket_uri: str):
+    def upload_file_to_bucket(
+        self, source_file_path: Union[str, Path], bucket_uri: str
+    ):
         """Upload a local file to a Cloud Storage bucket
         see https://cloud.google.com/storage/docs/uploading-objects
 
         Args:
-            source_file_path (str): Path to the local file
+            source_file_path (Path): Path to the local file
             bucket_uri (str): Name of the Cloud Storage bucket and the path in the bucket (directory) to store the file (with format: 'gs://{bucket_name}/{bucket_path}')
         """  # noqa: E501 # pylint: disable=line-too-long
         logging.info(
             "Upload file '%s' to bucket '%s'",
-            source_file_path,
+            str(source_file_path),
             bucket_uri,
         )
         scheme, netloc, path, params, query, fragment = urlparse(bucket_uri)
         bucket = self._cs_client.bucket(netloc)
-        filename_w_ext = os.path.basename(source_file_path)
+        filename_w_ext = Path(source_file_path).name
         blob = bucket.blob(f"{path.lstrip('/')}/{filename_w_ext}")
-        blob.upload_from_filename(source_file_path)
+        blob.upload_from_filename(str(source_file_path))
         return f"{bucket_uri}/{filename_w_ext}"  # urljoin doesn't work with protocol gs
 
     def batch_load_from_bucket_into_bigquery_table(
