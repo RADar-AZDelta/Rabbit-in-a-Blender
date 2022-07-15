@@ -82,8 +82,8 @@
     ],
     "fact_relationship": [
         "relationship_concept_id",
-        "domain_concept_id_2",
-        "domain_concept_id_1"
+        "field_concept_id_2",
+        "field_concept_id_1"
     ],
     "location": [
         "country_concept_id",
