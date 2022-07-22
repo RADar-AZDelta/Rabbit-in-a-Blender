@@ -523,8 +523,6 @@ class BigQuery(Etl):
 
     def _read_vocabulary_csv(self, vocabulary_table: str, csv_file: Path) -> pa.Table:
         schema, date_columns = self._get_vocabulary_schema(vocabulary_table)
-        if vocabulary_table == "relationship":
-            print("here")
         tab = pcsv.read_csv(
             csv_file,
             parse_options=pcsv.ParseOptions(delimiter="\t"),
