@@ -168,6 +168,20 @@ class BigQuery(Etl):
             f"{omop_table}__{concept_id_column}_concept",
         )
 
+    def _create_custom_concept_upload_table(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
+        template = self._template_env.get_template(
+            "{omop_table}__{concept_id_column}_concept_create.sql.jinja"
+        )
+        ddl = template.render(
+            project_id=self._project_id,
+            dataset_id_work=self._dataset_id_work,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        self._gcp.run_query_job(ddl)
+
     def _create_custom_concept_id_swap_table(self) -> None:
         template = self._template_env.get_template("CONCEPT_ID_swap_create.sql.jinja")
         ddl = template.render(
@@ -177,10 +191,10 @@ class BigQuery(Etl):
         self._gcp.run_query_job(ddl)
 
     def _load_custom_concepts_parquet_in_upload_table(
-        self, parquet_file: str, omop_table: str, concept_id_column: str
+        self, parquet_file: Path, omop_table: str, concept_id_column: str
     ) -> None:
         # upload the Parquet file to the Cloud Storage Bucket
-        uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
+        uri = self._gcp.upload_file_to_bucket(str(parquet_file), self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific custom concept table in the work dataset
         self._gcp.batch_load_from_bucket_into_bigquery_table(
             uri,
@@ -251,11 +265,11 @@ class BigQuery(Etl):
             f"{omop_table}__{concept_id_column}_usagi",
         )
 
-    def _swap_usagi_source_value_for_concept_id(
+    def _add_custom_concepts_to_usagi(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         template = self._template_env.get_template(
-            "{omop_table}__{concept_id_column}_usagi_merge.sql.jinja"
+            "{omop_table}__{concept_id_column}_usagi_add_custom_concepts.sql.jinja"
         )
         sql = template.render(
             project_id=self._project_id,
@@ -282,7 +296,7 @@ class BigQuery(Etl):
         )
         self._gcp.run_query_job(sql)
 
-    def _get_query_from_sql_file(self, sql_file: str, omop_table: str) -> str:
+    def _get_query_from_sql_file(self, sql_file: Path, omop_table: str) -> str:
         with open(sql_file, encoding="UTF8") as file:
             select_query = file.read()
             if Path(sql_file).suffix == ".jinja":
@@ -353,7 +367,7 @@ class BigQuery(Etl):
 
     def _merge_into_omop_table(
         self,
-        sql_file: str,
+        sql_file: Path,
         omop_table: str,
         columns: List[str],
         pk_swap_table_name: Optional[str],
@@ -362,7 +376,9 @@ class BigQuery(Etl):
         foreign_key_columns: Any,
         concept_id_columns: List[str],
     ):
-        logging.info("Merging query '%s' into omop table '%s'", sql_file, omop_table)
+        logging.info(
+            "Merging query '%s' into omop table '%s'", str(sql_file), omop_table
+        )
         template = self._template_env.get_template("{omop_table}_merge.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
@@ -427,11 +443,22 @@ class BigQuery(Etl):
         )
         self._gcp.run_query_job(sql)
 
+    def _remove_custom_concepts_from_vocabulary_table(self) -> None:
+        template = self._template_env.get_template(
+            "cleanup/VOCABULARY_remove_custom_concepts.sql.jinja"
+        )
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+            min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
+        )
+        self._gcp.run_query_job(sql)
+
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         template = self._template_env.get_template(
-            "cleanup/CONCEPT_remove_custom_concepts_by_{omop_table}__{concept_id_column}_concept_table.sql.jinja"
+            "cleanup/CONCEPT_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
         sql = template.render(
             project_id=self._project_id,
@@ -464,6 +491,22 @@ class BigQuery(Etl):
     ) -> None:
         template = self._template_env.get_template(
             "cleanup/CONCEPT_ANCESTOR_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
+        )
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+            dataset_id_work=self._dataset_id_work,
+            min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        self._gcp.run_query_job(sql)
+
+    def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
+        template = self._template_env.get_template(
+            "cleanup/VOCABULARY_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
         sql = template.render(
             project_id=self._project_id,

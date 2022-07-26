@@ -1,6 +1,5 @@
 # pylint: disable=unsubscriptable-object
 """Holds the ETL class"""
-import glob
 import json
 import logging
 import os
@@ -123,21 +122,13 @@ class Etl(ABC):
                 # upload and apply the Usagi CSV's
                 self._apply_usagi_mapping(omop_table_name, concept_id_column.lower())
 
-        for sql_file in (
-            item
-            for sublist in [
-                sorted(
-                    glob.glob(
-                        os.path.join(
-                            cast(str, self._cdm_folder_path),
-                            f"{omop_table_name}/{e}",
-                        )
-                    )
-                )
-                for e in ("*.sql", "*.sql.jinja")
-            ]
-            for item in sublist
-        ):  # loop the sql files
+        for sql_file in [
+            sql_file
+            for suffix in ["*.sql", "*.sql.jinja"]
+            for sql_file in (
+                cast(Path, self._cdm_folder_path) / f"{omop_table_name}/"
+            ).glob(suffix)
+        ]:  # loop the sql files
             # execute the sql file and store the results in a temporary work table
             self._execute_query_from_sql_file_and_store_results_in_work_table(
                 sql_file, omop_table_name
@@ -158,20 +149,20 @@ class Etl(ABC):
             if pk_auto_numbering:
                 # swap the primary key with an auto number
                 self._swap_primary_key_auto_numbering_column(
-                    sql_file,
-                    omop_table_name,
-                    columns,
-                    cast(str, pk_swap_table_name),
-                    omop_table_props.pk,
-                    pk_auto_numbering,
-                    foreign_key_columns,
-                    getattr(omop_table_props, "concepts", []),
+                    sql_file=sql_file,
+                    omop_table=omop_table_name,
+                    columns=columns,
+                    pk_swap_table_name=cast(str, pk_swap_table_name),
+                    primary_key_column=omop_table_props.pk,
+                    pk_auto_numbering=pk_auto_numbering,
+                    foreign_key_columns=foreign_key_columns,
+                    concept_id_columns=concept_columns,
                 )
 
             if omop_table_name == "fact_relationship":
                 match = re.search(
                     r"^.+_(?P<first>.+)_(?P<second>.+)(?:[.]sql)(?:[.]jinja)?$",
-                    os.path.basename(sql_file),
+                    sql_file.name,
                 )
                 foreign_key_columns = {
                     "fact_id_1": {
@@ -240,14 +231,14 @@ class Etl(ABC):
 
             # merge everything in the destination OMOP table
             self._merge_into_omop_table(
-                sql_file,
-                omop_table_name,
-                columns,
-                pk_swap_table_name,
-                getattr(omop_table_props, "pk", None),
-                pk_auto_numbering,
-                foreign_key_columns,
-                getattr(omop_table_props, "concepts", []),
+                sql_file=sql_file,
+                omop_table=omop_table_name,
+                columns=columns,
+                pk_swap_table_name=pk_swap_table_name,
+                primary_key_column=getattr(omop_table_props, "pk", None),
+                pk_auto_numbering=pk_auto_numbering,
+                foreign_key_columns=foreign_key_columns,
+                concept_id_columns=concept_columns,
             )
 
     def _upload_custom_concepts(self, omop_table: str, concept_id_column: str):
@@ -269,20 +260,22 @@ class Etl(ABC):
         # clean up the custom concept upload table
         self._clear_custom_concept_upload_table(omop_table, concept_id_column)
 
+        # create the Usagi table
+        self._create_custom_concept_upload_table(omop_table, concept_id_column)
+
         # create the swap table
         self._create_custom_concept_id_swap_table()
 
         ar_table = None
-        for concept_csv_file in sorted(
-            glob.glob(
-                os.path.join(
-                    cast(str, self._cdm_folder_path),
-                    f"{omop_table}/{concept_id_column}/custom/*_concept.csv",
-                )
-            )
+        for concept_csv_file in (
+            cast(Path, self._cdm_folder_path)
+            / f"{omop_table}/{concept_id_column}/custom/"
+        ).glob(
+            "*_concept.csv"
         ):  # loop the custon concept CSV's
             logging.info(
-                "Creating concept_id swap from Usagi file '%s'", concept_csv_file
+                "Creating concept_id swap from custom concept file '%s'",
+                str(concept_csv_file),
             )
             # convert the CSV to an Arrow table
             ar_temp_table = self._convert_concept_csv_to_arrow_table(concept_csv_file)
@@ -295,11 +288,11 @@ class Etl(ABC):
         if not ar_table:
             return
         with tempfile.TemporaryDirectory() as temp_dir:
-            parquet_file = os.path.join(
-                temp_dir, f"{omop_table}__{concept_id_column}_concept.parquet"
+            parquet_file = (
+                Path(temp_dir) / f"{omop_table}__{concept_id_column}_concept.parquet"
             )
             # save the one large Arrow table in a Parquet file in a temporary directory
-            pq.write_table(ar_table, parquet_file)
+            pq.write_table(ar_table, str(parquet_file))
             # load the Parquet file into the specific custom concept upload table
             self._load_custom_concepts_parquet_in_upload_table(
                 parquet_file, omop_table, concept_id_column
@@ -348,16 +341,13 @@ class Etl(ABC):
         self._create_usagi_upload_table(omop_table, concept_id_column)
 
         ar_table = None
-        for usagi_csv_file in sorted(
-            glob.glob(
-                os.path.join(
-                    cast(str, self._cdm_folder_path),
-                    f"{omop_table}/{concept_id_column}/*_usagi.csv",
-                )
-            )
+        for usagi_csv_file in (
+            cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/"
+        ).glob(
+            "*_usagi.csv"
         ):  # loop all the Usagi CSV's
             logging.info(
-                "Creating concept_id swap from Usagi file '%s'", usagi_csv_file
+                "Creating concept_id swap from Usagi file '%s'", str(usagi_csv_file)
             )
             # convert the CSV to an Arrow table
             ar_temp_table = self._convert_usagi_csv_to_arrow_table(usagi_csv_file)
@@ -367,27 +357,27 @@ class Etl(ABC):
                 if not ar_table
                 else pa.concat_tables([ar_table, ar_temp_table])
             )
-        if not ar_table:
-            return
-        with tempfile.TemporaryDirectory() as temp_dir:
-            parquet_file = os.path.join(
-                temp_dir, f"{omop_table}__{concept_id_column}_usagi.parquet"
-            )
-            # save the one large Arrow table in a Parquet file in a temporary directory
-            pq.write_table(ar_table, parquet_file)
-            # load the Parquet file into the specific usagi upload table
-            self._load_usagi_parquet_in_upload_table(
-                parquet_file, omop_table, concept_id_column
-            )
+
+        if ar_table:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                parquet_file = os.path.join(
+                    temp_dir, f"{omop_table}__{concept_id_column}_usagi.parquet"
+                )
+                # save the one large Arrow table in a Parquet file in a temporary directory
+                pq.write_table(ar_table, parquet_file)
+                # load the Parquet file into the specific usagi upload table
+                self._load_usagi_parquet_in_upload_table(
+                    parquet_file, omop_table, concept_id_column
+                )
 
         logging.info(
-            "Swapping the source values with the concept ids in usagi table for column '%s' of table '%s'",
+            "Adding the custom concepts to the usagi table for column '%s' of table '%s'",
             concept_id_column,
             omop_table,
         )
-        # replace the source values with the concept id's and names using the previously filled up swap table
+        # add the custom concepts with the concept id's and names using the previously filled up swap table
         # custom concepts will recieve the mapping status 'APPROVED'
-        self._swap_usagi_source_value_for_concept_id(omop_table, concept_id_column)
+        self._add_custom_concepts_to_usagi(omop_table, concept_id_column)
 
         logging.info(
             "Merging mapped concepts into SOURCE_TO_CONCEPT_MAP table for column '%s' of table '%s'",
@@ -400,7 +390,7 @@ class Etl(ABC):
         )
 
     def _execute_query_from_sql_file_and_store_results_in_work_table(
-        self, sql_file: str, omop_table: str
+        self, sql_file: Path, omop_table: str
     ):
         """Executes the query from the .sql file.
         The results are loaded in a temporary work table (which name will have the format {omop_table}_{sql_file_name}).
@@ -415,7 +405,7 @@ class Etl(ABC):
         """  # noqa: E501 # pylint: disable=line-too-long
         logging.info(
             "Running query '%s' from raw tables into table '%s'",
-            sql_file,
+            str(sql_file),
             f"{omop_table}_{Path(Path(sql_file).stem).stem}",
         )
         select_query = self._get_query_from_sql_file(sql_file, omop_table)
@@ -426,7 +416,7 @@ class Etl(ABC):
 
     def _swap_primary_key_auto_numbering_column(
         self,
-        sql_file: str,
+        sql_file: Path,
         omop_table: str,
         columns: List[str],
         pk_swap_table_name: str,
@@ -445,7 +435,7 @@ class Etl(ABC):
         logging.info(
             "Swapping primary key column '%s' for query '%s'",
             primary_key_column,
-            sql_file,
+            str(sql_file),
         )
         # create the swap table for the primary key
         self._create_pk_auto_numbering_swap_table(
@@ -455,20 +445,20 @@ class Etl(ABC):
         # execute the swap query
         work_table = f"{omop_table}_{Path(Path(sql_file).stem).stem}"
         self._execute_pk_auto_numbering_swap_query(
-            omop_table,
-            work_table,
-            columns,
-            pk_swap_table_name,
-            primary_key_column,
-            pk_auto_numbering,
-            foreign_key_columns,
-            concept_id_columns,
+            omop_table=omop_table,
+            work_table=work_table,
+            columns=columns,
+            pk_swap_table_name=pk_swap_table_name,
+            primary_key_column=primary_key_column,
+            pk_auto_numbering=pk_auto_numbering,
+            foreign_key_columns=foreign_key_columns,
+            concept_id_columns=concept_id_columns,
         )
 
     @abstractmethod
     def _merge_into_omop_table(
         self,
-        sql_file: str,
+        sql_file: Path,
         omop_table: str,
         columns: List[str],
         pk_swap_table_name: Optional[str],
@@ -489,7 +479,7 @@ class Etl(ABC):
             concept_id_columns (List[str]): List of concept columns.
         """  # noqa: E501 # pylint: disable=line-too-long
 
-    def _convert_usagi_csv_to_arrow_table(self, usagi_csv_file: str) -> pa.Table:
+    def _convert_usagi_csv_to_arrow_table(self, usagi_csv_file: Path) -> pa.Table:
         """Converts a Usagi CSV file to an Arrow table, maintaining the relevant columns.
 
         Args:
@@ -498,7 +488,7 @@ class Etl(ABC):
         Returns:
             pa.Table: Arrow table.
         """
-        logging.info("Converting Usagi csv '%s' to arrow table", usagi_csv_file)
+        logging.info("Converting Usagi csv '%s' to arrow table", str(usagi_csv_file))
         table = csv.read_csv(
             usagi_csv_file,
             parse_options=csv.ParseOptions(quote_char='"'),
@@ -523,7 +513,7 @@ class Etl(ABC):
         )
         return table
 
-    def _convert_concept_csv_to_arrow_table(self, concept_csv_file: str) -> pa.Table:
+    def _convert_concept_csv_to_arrow_table(self, concept_csv_file: Path) -> pa.Table:
         """Converts a custom concept CSV file to an Arrow table, maintaining the relevant columns.
 
         Args:
@@ -532,7 +522,9 @@ class Etl(ABC):
         Returns:
             pa.Table: Arrow table
         """
-        logging.info("Converting Concept csv '%s' to arrow table", concept_csv_file)
+        logging.info(
+            "Converting Concept csv '%s' to arrow table", str(concept_csv_file)
+        )
         table = csv.read_csv(
             concept_csv_file,
             convert_options=csv.ConvertOptions(
@@ -572,6 +564,7 @@ class Etl(ABC):
         All 'clinical' and 'health system' tables in the omop dataset are truncated. (the ones configured in the omop_tables variable)\n
         The 'source_to_concept_map' table in the omop dataset is truncated.\n
         All custom concepts are removed from the 'concept', 'concept_relationship' and 'concept_ancestor' tables in the omop dataset.\n
+        All local vocabularies are removed from the 'vocabulary' table in the omop dataset.\n
         """  # noqa: E501 # pylint: disable=line-too-long
         work_tables = self._get_work_tables()
         # custom cleanup
@@ -593,6 +586,11 @@ class Etl(ABC):
                 "Removing custom concepts from 'concept_ancestor' table",
             )
             self._remove_custom_concepts_from_concept_ancestor_table()
+
+            logging.info(
+                "Removing custom concepts (local vocabularies) from 'vocabulary' table",
+            )
+            self._remove_custom_concepts_from_vocabulary_table()
         else:
             for table_name in work_tables:
                 if table_name.startswith(cleanup_table) and table_name.endswith(
@@ -628,6 +626,16 @@ class Etl(ABC):
                     self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
                         omop_table, concept_id_column
                     )
+
+                    if cleanup_table == "vocabulary":
+                        logging.info(
+                            "Removing custom concepts from '%s' based on values from '%s' CSV",
+                            "vocabulary",
+                            f"{omop_table}__{concept_id_column}_usagi",
+                        )
+                        self._remove_custom_concepts_from_vocabulary_table_using_usagi_table(
+                            omop_table, concept_id_column
+                        )
                 elif table_name.startswith(cleanup_table) and table_name.endswith(
                     "_usagi"
                 ):
@@ -708,12 +716,18 @@ class Etl(ABC):
         pass
 
     @abstractmethod
+    def _create_custom_concept_upload_table(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
+        pass
+
+    @abstractmethod
     def _create_custom_concept_id_swap_table(self) -> None:
         pass
 
     @abstractmethod
     def _load_custom_concepts_parquet_in_upload_table(
-        self, parquet_file: str, omop_table: str, concept_id_column: str
+        self, parquet_file: Path, omop_table: str, concept_id_column: str
     ) -> None:
         pass
 
@@ -748,7 +762,7 @@ class Etl(ABC):
         pass
 
     @abstractmethod
-    def _swap_usagi_source_value_for_concept_id(
+    def _add_custom_concepts_to_usagi(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         pass
@@ -760,7 +774,7 @@ class Etl(ABC):
         pass
 
     @abstractmethod
-    def _get_query_from_sql_file(self, sql_file: str, omop_table: str) -> str:
+    def _get_query_from_sql_file(self, sql_file: Path, omop_table: str) -> str:
         pass
 
     @abstractmethod
@@ -808,6 +822,10 @@ class Etl(ABC):
         pass
 
     @abstractmethod
+    def _remove_custom_concepts_from_vocabulary_table(self) -> None:
+        pass
+
+    @abstractmethod
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
@@ -821,6 +839,12 @@ class Etl(ABC):
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         pass
