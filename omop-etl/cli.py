@@ -120,7 +120,7 @@ def _contstruct_argument_parser() -> ArgumentParser:
             "all",
             "metadata",
             "cdm_source",
-            # "vocabulary",
+            "vocabulary",
             "location",
             "care_site",
             "provider",
@@ -158,7 +158,7 @@ def _contstruct_argument_parser() -> ArgumentParser:
         choices=[
             "metadata",
             "cdm_source",
-            # "vocabulary",
+            "vocabulary",
             "location",
             "care_site",
             "provider",
