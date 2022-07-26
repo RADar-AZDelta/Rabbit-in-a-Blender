@@ -1,6 +1,6 @@
 MERGE INTO {{project_id}}.{{dataset_id_omop}}.{{omop_table}} AS T
 USING (
-    SELECT 
+    SELECT DISTINCT
         {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
         {%- for column in columns -%}
             {%- if not loop.first -%}

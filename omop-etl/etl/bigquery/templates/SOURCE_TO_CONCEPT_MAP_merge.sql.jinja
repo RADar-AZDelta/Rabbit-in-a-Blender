@@ -1,6 +1,6 @@
 MERGE INTO {{project_id}}.{{dataset_id_omop}}.source_to_concept_map AS T
 USING (
-    SELECT
+    SELECT DISTINCT
         t.sourceCode as source_code
         ,0 as source_concept_id
         ,'' as source_vocabulary_id
