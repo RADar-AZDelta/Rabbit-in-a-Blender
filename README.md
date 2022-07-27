@@ -27,8 +27,8 @@ Deviations from v5.4
 |cost|Changed cost_domain_id with type STRING to cost_field_event_id of type INT64|To stay consistent with similar fields like episode_event_field_concept_id. This follows the changes made in [v6.0](https://ohdsi.github.io/CommonDataModel/cdm60.html#COST)|
 
 
-Remarks
-=======
+Notes on Use
+============
 
 You will need to run the cleanup command, when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
 
@@ -36,6 +36,21 @@ The measurement table has the **measurement_event_id** field, the observation ta
 
 The **fact_relationship** table has no primary key, which makes it difficult for the ETL process to trace the source of the data and very hard to figure out if it is new or updated data. So running the cleanup command frequently for this table is advised.  
 The filenames of queries must also have the folowing convention: **\_{fact_id_1_foreign_key_table}\_{fact_id_1_foreign_key_table}.sql** (ex: patient_relationship_person_person.sql), so that the ETL process knows to what tables the fact_id_1 and fact_id_2 are referring to. The field_concept_id_1 and field_concept_id_2 fields are set to the concept_id for the primary key field of the fact_id_1_foreign_key_table and fact_id_2_foreign_key_table respectively. An sql-file is required per combination of foreign key tables (e.g. _person_person for relationships between people, _person_care_site for relationships between people and care sites).
+
+The **custom concepts** get added to the **source_to_concept_map** table. The concept_code is used as the source_code, the newly assigned (>2.000.000.000) concept_id is used as the target_concept_id. The custom concepts are also added to the **usagi table**, using the concept_code as sourceCode and the newly assigned concept_id as the conceptId. The custom concepts can be used **as mapping targets** in two ways:
+- No explicit mapping in usagi table: the source code (as assigned in your ETL sql file) is mapped to the custom concept where it equals the concept_code
+- Explicit mapping in usagi: map a sourceCode in the usagi table to a custom concept by setting its targetConceptId equal to the concept_code of the custom concept.
+Examples:
+- mapping "Cemiplimab", with source_code *M1*:
+    - Add custom concept for cemiplimab with concept_code = *M1*, it gets a assigned a concept_id automatically, no usagi-entry required
+    - Optionally add an usagi-entry for clarity, mapping sourceCode = *M1* to targetConceptId = *M1*, the concept_id gets filled in automatically
+* mapping "Atezolizumab + Cemiplimab", with source_code *C12*:
+    - Add custom concept for cemiplimab with concept_code = *M1*, it gets a assigned a concept_id automatically
+    - Add two usagi-entries: mapping sourceCode *C12* to targetConceptId = *1792776* (standard code for atezolizumab) and to targetConceptId = *M1*  
+    
+  ALTERNATIVELY:
+    - Add custom concept for cemiplimab with concept_code = *C12*, it gets a assigned a concept_id automatically, no usagi-entry required
+    - Add only one usagi-entry, mapping sourceCode *C12* to targetConceptId = *1792776* (standard code for atezolizumab), the second mapping of *C12* to custom concept with concept_code = *C12* is done automatically.
 
 For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 

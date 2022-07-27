@@ -277,7 +277,32 @@ class BigQuery(Etl):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
             dataset_id_omop=self._dataset_id_omop,
-            min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
+        )
+        self._gcp.run_query_job(sql)
+
+    def _update_custom_concepts_in_usagi(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
+        template = self._template_env.get_template(
+            "{omop_table}__{concept_id_column}_usagi_update_custom_concepts.sql.jinja"
+        )
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_work=self._dataset_id_work,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        self._gcp.run_query_job(sql)
+
+    def _cast_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
+        template = self._template_env.get_template(
+            "{omop_table}__{concept_id_column}_usagi_cast_concepts.sql.jinja"
+        )
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_work=self._dataset_id_work,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
         )
         self._gcp.run_query_job(sql)
 

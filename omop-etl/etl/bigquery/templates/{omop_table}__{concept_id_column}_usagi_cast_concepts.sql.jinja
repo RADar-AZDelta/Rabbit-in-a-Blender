@@ -1,0 +1,11 @@
+CREATE OR REPLACE TABLE {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
+CLUSTER BY sourceCode
+AS
+SELECT 
+    sourceCode,
+    sourceName,
+    mappingStatus,
+    CAST(conceptID AS INT64) conceptID,
+    conceptName,
+    domainId
+FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi

@@ -371,6 +371,20 @@ class Etl(ABC):
                 )
 
         logging.info(
+            "Updating the custom concepts from code to assigned id in the usagi table for column '%s' of table '%s'",
+            concept_id_column,
+            omop_table,
+        )
+        self._update_custom_concepts_in_usagi(omop_table, concept_id_column)
+
+        logging.info(
+            "Change type to INT64 in usagi table for column '%s' of table '%s'",
+            concept_id_column,
+            omop_table,
+        )
+        self._cast_concepts_in_usagi(omop_table, concept_id_column)
+
+        logging.info(
             "Adding the custom concepts to the usagi table for column '%s' of table '%s'",
             concept_id_column,
             omop_table,
@@ -384,7 +398,7 @@ class Etl(ABC):
             concept_id_column,
             omop_table,
         )
-        # fill up the SOURCE_TO_CONCEPT_MAP table with all approvrd mappings from the Usagi CSV's
+        # fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the Usagi CSV's
         self._store_usagi_source_value_to_concept_id_mapping(
             omop_table, concept_id_column
         )
@@ -505,7 +519,7 @@ class Etl(ABC):
                     "sourceCode": pa.string(),
                     "sourceName": pa.string(),
                     "mappingStatus": pa.string(),
-                    "conceptId": pa.int64(),
+                    "conceptId": pa.string(),
                     "conceptName": pa.string(),
                     "domainId": pa.string(),
                 },
@@ -652,7 +666,9 @@ class Etl(ABC):
 
         # delete work tables
         for table_name in work_tables:
-            if cleanup_table == "all" or table_name.startswith(cleanup_table):
+            if cleanup_table == "all" or (
+                table_name.startswith(cleanup_table) and table_name != "vocabulary"
+            ):
                 self._delete_work_table(table_name)
         # truncate omop tables
         omop_tables = vars(self._omop_tables).keys()
@@ -763,6 +779,18 @@ class Etl(ABC):
 
     @abstractmethod
     def _add_custom_concepts_to_usagi(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def _update_custom_concepts_in_usagi(
+        self, omop_table: str, concept_id_column: str
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def _cast_concepts_in_usagi(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         pass
