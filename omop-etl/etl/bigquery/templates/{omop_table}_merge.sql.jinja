@@ -38,7 +38,7 @@ USING (
     {%- endif -%}
     {%- set ns = namespace(fk_counter=0) -%}
     {%- for column in foreign_key_columns %}
-    LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{foreign_key_columns[column].column}}_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+    LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{foreign_key_columns[column]}}_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
         {%- set ns.fk_counter = ns.fk_counter + 1 -%}
     {%- endfor %}
 ) AS S 

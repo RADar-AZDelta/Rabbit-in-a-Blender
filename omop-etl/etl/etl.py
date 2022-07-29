@@ -141,6 +141,13 @@ class Etl(ABC):
                     "{}", object_hook=lambda d: SimpleNamespace(**d)
                 ),  # create an empty SimpleNamespace object as default value
             )
+            # replace foreign table with primary key of foreign table
+            for foreign_key, foreign_table in vars(foreign_key_columns).items():
+                setattr(
+                    foreign_key_columns,
+                    foreign_key,
+                    getattr(getattr(self._omop_tables, foreign_table), "pk"),
+                )
             pk_swap_table_name = (
                 getattr(omop_table_props, "pk", None)
                 if omop_table_name != "death"
@@ -151,11 +158,8 @@ class Etl(ABC):
                 self._swap_primary_key_auto_numbering_column(
                     sql_file=sql_file,
                     omop_table=omop_table_name,
-                    columns=columns,
                     pk_swap_table_name=cast(str, pk_swap_table_name),
                     primary_key_column=omop_table_props.pk,
-                    pk_auto_numbering=pk_auto_numbering,
-                    foreign_key_columns=foreign_key_columns,
                     concept_id_columns=concept_columns,
                 )
 
@@ -432,11 +436,8 @@ class Etl(ABC):
         self,
         sql_file: Path,
         omop_table: str,
-        columns: List[str],
         pk_swap_table_name: str,
         primary_key_column: str,
-        pk_auto_numbering: bool,
-        foreign_key_columns: Any,
         concept_id_columns: List[str],
     ):
         """Swap the primary key source value of the omop table with a generated incremental number.
@@ -461,11 +462,8 @@ class Etl(ABC):
         self._execute_pk_auto_numbering_swap_query(
             omop_table=omop_table,
             work_table=work_table,
-            columns=columns,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
-            pk_auto_numbering=pk_auto_numbering,
-            foreign_key_columns=foreign_key_columns,
             concept_id_columns=concept_id_columns,
         )
 
@@ -790,9 +788,7 @@ class Etl(ABC):
         pass
 
     @abstractmethod
-    def _cast_concepts_in_usagi(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _cast_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
         pass
 
     @abstractmethod
@@ -820,11 +816,8 @@ class Etl(ABC):
         self,
         omop_table: str,
         work_table: str,
-        columns: List[str],
         pk_swap_table_name: str,
         primary_key_column: str,
-        pk_auto_numbering: bool,
-        foreign_key_columns: Any,
         concept_id_columns: List[str],
     ) -> None:
         pass

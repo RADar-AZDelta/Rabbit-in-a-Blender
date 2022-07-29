@@ -2,7 +2,6 @@
 """Holds the BigQuery ETL class"""
 import json
 import logging
-import os
 import re
 from datetime import date
 from pathlib import Path
@@ -68,9 +67,7 @@ class BigQuery(Etl):
         self._dataset_id_omop = dataset_id_omop
         self._bucket_uri = bucket_uri
 
-        template_dir = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "templates"
-        )
+        template_dir = Path(__file__).resolve().parent / "templates"
         template_loader = jj.FileSystemLoader(searchpath=template_dir)
         self._template_env = jj.Environment(
             autoescape=select_autoescape(["sql"]), loader=template_loader
@@ -357,7 +354,7 @@ class BigQuery(Etl):
             project_id=self._project_id,
             dataset_id_work=self._dataset_id_work,
             pk_swap_table_name=pk_swap_table_name,
-            # foreign_key_columns=foreign_key_columns.__dict__,
+            # foreign_key_columns=vars(foreign_key_columns),
             concept_id_columns=concept_id_columns,
         )
         self._gcp.run_query_job(ddl)
@@ -366,11 +363,8 @@ class BigQuery(Etl):
         self,
         omop_table: str,
         work_table: str,
-        columns: List[str],
         pk_swap_table_name: str,
         primary_key_column: str,
-        pk_auto_numbering: bool,
-        foreign_key_columns: Any,
         concept_id_columns: List[str],
     ) -> None:
         template = self._template_env.get_template(
@@ -379,12 +373,9 @@ class BigQuery(Etl):
         sql = template.render(
             project_id=self._project_id,
             dataset_id_work=self._dataset_id_work,
-            columns=columns,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
-            foreign_key_columns=foreign_key_columns.__dict__,
             concept_id_columns=concept_id_columns,
-            pk_auto_numbering=pk_auto_numbering,
             omop_table=omop_table,
             work_table=work_table,
         )
