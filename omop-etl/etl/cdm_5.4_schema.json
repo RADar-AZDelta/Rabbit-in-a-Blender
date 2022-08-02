@@ -118,7 +118,9 @@
         }
     },
     "death": {
-        "pk": "person_id"
+        "fks": {
+            "person_id": "person"
+        }
     },
     "note": {
         "pk": "note_id",
@@ -158,9 +160,6 @@
     },
     "cost": {
         "pk": "cost_id",
-        "fks": {
-            "cost_domain_id": "domain"
-        },
         "events": {
             "cost_event_id": "cost_event_field_concept_id"
         }
