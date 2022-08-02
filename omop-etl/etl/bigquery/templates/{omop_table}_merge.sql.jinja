@@ -44,8 +44,10 @@ USING (
 ) AS S 
 {% if omop_table == 'fact_relationship' %}
     ON S.fact_id_1 = T.fact_id_1 and S.fact_id_2 = T.fact_id_2
-{%- else -%}
+{%- elif primary_key_column -%}
     ON S.{{primary_key_column}} = T.{{primary_key_column}}
+{%- else -%}
+    ON TRUE = TRUE
 {%- endif %}
     {%- for column in concept_id_columns %}
         and S.{{column}} = T.{{column}}
