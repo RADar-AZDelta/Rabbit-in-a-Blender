@@ -108,7 +108,7 @@ class Etl(ABC):
         concept_columns = [
             column
             for column in columns
-            if "concept_id" in column and "source_concept_id" not in column
+            if "concept_id" in column  # and "source_concept_id" not in column
         ]
         # is the primary key an auto numbering column?
         pk_auto_numbering = self._is_pk_auto_numbering(
@@ -122,6 +122,22 @@ class Etl(ABC):
                 # upload and apply the Usagi CSV's
                 self._apply_usagi_mapping(omop_table_name, concept_id_column.lower())
 
+        foreign_key_columns = getattr(
+            omop_table_props,
+            "fks",
+            json.loads(
+                "{}", object_hook=lambda d: SimpleNamespace(**d)
+            ),  # create an empty SimpleNamespace object as default value
+        )
+        # replace foreign table with primary key of foreign table
+        for foreign_key, foreign_table in vars(foreign_key_columns).items():
+            setattr(
+                foreign_key_columns,
+                foreign_key,
+                getattr(getattr(self._omop_tables, foreign_table), "pk"),
+            )
+        pk_swap_table_name = getattr(omop_table_props, "pk", None)
+
         for sql_file in [
             sql_file
             for suffix in ["*.sql", "*.sql.jinja"]
@@ -134,25 +150,6 @@ class Etl(ABC):
                 sql_file, omop_table_name
             )
 
-            foreign_key_columns = getattr(
-                omop_table_props,
-                "fks",
-                json.loads(
-                    "{}", object_hook=lambda d: SimpleNamespace(**d)
-                ),  # create an empty SimpleNamespace object as default value
-            )
-            # replace foreign table with primary key of foreign table
-            for foreign_key, foreign_table in vars(foreign_key_columns).items():
-                setattr(
-                    foreign_key_columns,
-                    foreign_key,
-                    getattr(getattr(self._omop_tables, foreign_table), "pk"),
-                )
-            pk_swap_table_name = (
-                getattr(omop_table_props, "pk", None)
-                if omop_table_name != "death"
-                else "death_id"
-            )
             if pk_auto_numbering:
                 # swap the primary key with an auto number
                 self._swap_primary_key_auto_numbering_column(
@@ -181,7 +178,7 @@ class Etl(ABC):
             else:
                 if omop_table_name in [
                     "measurement",
-                    "observation",
+                    "observation_no",
                     "cost",
                     "episode_event",
                 ]:
