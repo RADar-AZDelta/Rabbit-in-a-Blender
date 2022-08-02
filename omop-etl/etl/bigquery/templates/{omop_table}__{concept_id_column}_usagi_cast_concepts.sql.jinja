@@ -5,7 +5,7 @@ SELECT
     sourceCode,
     sourceName,
     mappingStatus,
-    CAST(conceptID AS INT64) conceptID,
+    CAST(IF(conceptId = '','0',conceptId) AS INT64) conceptId,
     conceptName,
     domainId
 FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
