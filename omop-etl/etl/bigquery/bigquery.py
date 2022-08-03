@@ -615,7 +615,7 @@ class BigQuery(Etl):
         date_columns = []
 
         table_ddl = re.search(
-            rf"create\s+table\s+if\s+not\s+exists\s+`?\S*?\.{vocabulary_table}`?\s*\(\s*(.*?)\s*\)(?:;|$)",
+            rf"create\s+table\s+if\s+not\s+exists\s+`?\S*?\.{vocabulary_table}`?\s*\(\s*(.*?)\s*\)\s*(?:;|$)",
             self._ddl,
             flags=re.DOTALL,
         )
@@ -626,7 +626,7 @@ class BigQuery(Etl):
                 "No definition found for {vocabulary_table} in ddl-file (with current regex)."
             )
         fields = re.findall(
-            r"(?:,|^)\s*(\w+\s+?\w+).*?(?=,|$|;)", table_ddl, flags=re.MULTILINE
+            r"(?:,|^)\s*(\w+\s+?\w+).*?(?=,|$|;)", table_ddl, flags=re.DOTALL
         )
         for idx, field in enumerate(fields):
             splits = field.split(" ")
