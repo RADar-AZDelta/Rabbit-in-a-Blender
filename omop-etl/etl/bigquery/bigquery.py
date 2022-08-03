@@ -620,13 +620,13 @@ class BigQuery(Etl):
             flags=re.DOTALL,
         )
         if table_ddl:
-            table_ddl = table_ddl.group(1).replace(",", ",,")
+            table_ddl = table_ddl.group(1)
         else:
             raise Exception(
                 "No definition found for {vocabulary_table} in ddl-file (with current regex)."
             )
         fields = re.findall(
-            r"(?:,|^)\s*(\w+\s+?\w+).*?(?:,|$|;)", table_ddl, flags=re.MULTILINE
+            r"(?:,|^)\s*(\w+\s+?\w+).*?(?=,|$|;)", table_ddl, flags=re.MULTILINE
         )
         for idx, field in enumerate(fields):
             splits = field.split(" ")
