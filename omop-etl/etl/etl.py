@@ -160,75 +160,26 @@ class Etl(ABC):
                     concept_id_columns=concept_columns,
                 )
 
-            if omop_table_name == "fact_relationship":
-                match = re.search(
-                    r"^.+_(?P<first>.+)_(?P<second>.+)(?:[.]sql)(?:[.]jinja)?$",
-                    sql_file.name,
-                )
-                foreign_key_columns = {
-                    "fact_id_1": {
-                        "table": cast(Match, match).groups()[0],
-                        "column": f"{cast(Match, match).groups()[0]}_id",
-                    },
-                    "fact_id_2": {
-                        "table": cast(Match, match).groups()[1],
-                        "column": f"{cast(Match, match).groups()[1]}_id",
-                    },
-                }
-            else:
-                if omop_table_name in [
-                    "measurement",
-                    "observation_no",
-                    "cost",
-                    "episode_event",
-                ]:
-                    match = re.search(
-                        r"^.+_(?P<first>.+)(?:[.]sql)(?:[.]jinja)?$",
-                        os.path.basename(sql_file),
+            if events := getattr(omop_table_props, "events", None):
+                for event_id, field_id in vars(events).items():
+                    select_query = self._get_query_from_sql_file(
+                        sql_file, omop_table_name
                     )
-                    if match and cast(Match, match).groups():
-                        match omop_table_name:
-                            case "measurement":
-                                fk_column = "measurement_event_id"
-                            case "observation":
-                                fk_column = "observation_event_id"
-                            case "cost":
-                                fk_column = "cost_event_id"
-                            case "episode_event":
-                                fk_column = "event_id"
-                            case _:
-                                raise ValueError("Not a supported omop table")
-                        if match.groups()[0] in [
-                            "location",
-                            "care_site",
-                            "provider",
-                            "episode_event",
-                            "person",
-                            "observation_period",
-                            "visit_occurrence",
-                            "visit_detail",
-                            "condition_occurence",
-                            "drug_exposure",
-                            "procedure_occurrence",
-                            "device_exposure",
-                            "measurement",
-                            "observation",
-                            # "death",
-                            "note",
-                            "note_nlp",
-                            "specimen",
-                        ]:
-                            foreign_key_columns = vars(foreign_key_columns)
-                            foreign_key_columns[fk_column] = {
-                                "table": cast(Match, match).groups()[0],
-                                "column": f"{cast(Match, match).groups()[0]}_id",
-                            }
-                        elif match.groups()[0] == "death":
-                            foreign_key_columns = vars(foreign_key_columns)
-                            foreign_key_columns[fk_column] = {
-                                "table": cast(Match, match).groups()[0],
-                                "column": "person_id",
-                            }
+                    foreign_table = re.search(
+                        rf"['\"](.*?)['\"](?:\s*[aA][sS])?\s*{field_id}", select_query
+                    )
+                    if not foreign_table:
+                        raise Exception(
+                            f"""Improper format in sql-file for field_concept_id {field_id},
+                            should be: 'table_name' as {field_id}"""
+                        )
+                    setattr(
+                        foreign_key_columns,
+                        event_id,
+                        getattr(
+                            getattr(self._omop_tables, foreign_table.group(1)), "pk"
+                        ),
+                    )
 
             # merge everything in the destination OMOP table
             self._merge_into_omop_table(
