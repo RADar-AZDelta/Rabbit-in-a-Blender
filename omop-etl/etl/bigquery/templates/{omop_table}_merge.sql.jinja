@@ -42,7 +42,7 @@ USING (
         {%- set ns.fk_counter = ns.fk_counter + 1 -%}
     {%- endfor %}
 ) AS S 
-{% if omop_table == 'fact_relationship' %}
+{% if omop_table == 'fact_relationship' -%}
     ON S.fact_id_1 = T.fact_id_1 and S.fact_id_2 = T.fact_id_2
 {%- elif primary_key_column -%}
     ON S.{{primary_key_column}} = T.{{primary_key_column}}

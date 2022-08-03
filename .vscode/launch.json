@@ -1,35 +1,35 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "Python: CLI",
-        "type": "python",
-        "request": "launch",
-        "program": "omop-etl/cli.py",
-        "args": [
-          "--verbose",
-          "--db-engine", "BigQuery",
-          //"--google-credentials-file", "/run/secret/sa.json",
-          //"--google-project-id", "?????",
-          "--google-location", "EU",
-          "--bigquery-dataset-id-raw", "hix",
-          "--bigquery-dataset-id-work", "omop_work",
-          "--bigquery-dataset-id-omop", "omop",
-          "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work",
-          //"--cleanup", "measurement",
-          //"--create-db"
-          "--import-vocabularies", "/home/sdupulth00/vocabulary_download_v5_{348558dc-3730-46bd-bdfe-ba21b403abbc}_1656487634005.zip",
-          "/home/sdupulth00/Innovatie/AZDelta-OMOP-CDM/",
-          // "--skip-usagi-and-custom-concept-upload",
-          // "--table", "death"
-        ],
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "python": "${command:python.interpreterPath}"
-      }
-    ]
-  }
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: CLI",
+      "type": "python",
+      "request": "launch",
+      "program": "omop-etl/cli.py",
+      "args": [
+        "--verbose",
+        "--db-engine", "BigQuery",
+        //"--google-credentials-file", "/run/secret/sa.json",
+        //"--google-project-id", "?????",
+        "--google-location", "EU",
+        "--bigquery-dataset-id-raw", "hix",
+        "--bigquery-dataset-id-work", "omop_work",
+        "--bigquery-dataset-id-omop", "my_dataset",
+        "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work",
+        // "--cleanup", "observation",
+        // "--create-db",
+        "--import-vocabularies", "/home/sdupulth00/vocabulary-2022-07-28.zip",
+        "/home/sdupulth00/Innovatie/AZDelta-OMOP-CDM/",
+        // "--skip-usagi-and-custom-concept-upload",
+        "--table", "fact_relationship"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${command:python.interpreterPath}"
+    }
+  ]
+}
   
