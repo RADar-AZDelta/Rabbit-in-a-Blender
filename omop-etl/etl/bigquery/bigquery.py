@@ -15,6 +15,7 @@ import pyarrow.compute as pc
 import pyarrow.csv as pcsv
 import pyarrow.parquet as pq
 from jinja2.utils import select_autoescape
+from simple_ddl_parser import DDLParser
 
 from ..etl import Etl
 from .gcp import Gcp
@@ -131,7 +132,7 @@ class BigQuery(Etl):
 
         ddl = re.sub(
             r"(?:create table @cdmDatabaseSchema)(\S*)",
-            rf"create table if not exists `{self._project_id}.{self._dataset_id_omop}\1`",
+            rf"create table if not exists {self._project_id}.{self._dataset_id_omop}\1",
             ddl,
         )
         ddl = re.sub(r".(?<!not )null", r"", ddl)
@@ -614,27 +615,21 @@ class BigQuery(Etl):
         schema = []
         date_columns = []
 
-        table_ddl = re.search(
-            rf"create\s+table\s+if\s+not\s+exists\s+`?\S*?\.{vocabulary_table}`?\s*\(\s*(.*?)\s*\)\s*(?:;|$)",
-            self._ddl,
-            flags=re.DOTALL,
-        )
-        if table_ddl:
-            table_ddl = table_ddl.group(1)
-        else:
-            raise Exception(
-                "No definition found for {vocabulary_table} in ddl-file (with current regex)."
+        parse_results = DDLParser(self._ddl).run(output_mode="sql")
+        try:
+            table_ddl = next(
+                (tab for tab in parse_results if tab["table_name"] == vocabulary_table)
             )
-        fields = re.findall(
-            r"(?:,|^)\s*(\w+\s+?\w+).*?(?=,|$|;)", table_ddl, flags=re.DOTALL
-        )
-        for idx, field in enumerate(fields):
-            splits = field.split(" ")
-            schema.append((splits[0], _to_pa(splits[1])))
-            if splits[1].lower() == "date":
-                date_columns.append((idx, splits[0]))
-
+        except StopIteration as si_err:
+            raise Exception(f"{vocabulary_table} not found in ddl") from si_err
+        schema = [(col["name"], _to_pa(col["type"])) for col in table_ddl["columns"]]
         schema = pa.schema(schema)
+
+        date_columns = [
+            (idx, col["name"])
+            for idx, col in enumerate(table_ddl["columns"])
+            if col["type"] == "date"
+        ]
 
         return (schema, date_columns)
 
