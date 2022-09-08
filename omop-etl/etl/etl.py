@@ -1,5 +1,5 @@
 # pylint: disable=unsubscriptable-object
-"""Holds the ETL class"""
+"""Holds the ETL abstract base class"""
 import json
 import logging
 import os
@@ -9,7 +9,6 @@ import zipfile
 from abc import ABC, abstractmethod
 from datetime import date
 from pathlib import Path
-from re import Match
 from types import SimpleNamespace
 from typing import Any, List, Optional, cast
 
@@ -23,7 +22,7 @@ class Etl(ABC):
     ETL class that automates the extract-transfer-load process from source data to the OMOP common data model.
     """
 
-    _CUSTOM_CONCEPT_IDS_START = 2_000_000_000
+    _CUSTOM_CONCEPT_IDS_START = 2_000_000_000  # Concepts reserved for site-specific codes and mappings start from 2 billion
 
     def __init__(
         self,
@@ -32,10 +31,12 @@ class Etl(ABC):
         skip_usagi_and_custom_concept_upload: Optional[bool] = None,
     ):
         """Constructor
-        The ETL will read the json with all the OMOP tables. Each OMOP table has a 'pk' (primary key), 'fks' (foreign keys) and 'concepts' property.
+        The ETL will read the json with all the OMOP tables. Each OMOP table has a 'pk' (primary key), 'fks' (foreign keys) and 'events' property.
 
         Args:
+            cdm_folder_path (str): The path to the OMOP folder structure that holds for each OMOP CDM table (folder) the ETL queries, Usagi CSV's and custom concept CSV's0
             only_omop_table (str): Only do ETL on this OMOP CDM table.
+            skip_usagi_and_custom_concept_upload (bool): If no changes have been made to the Usagi and custom concept CSV's, then you can speed up the ETL process by setting this flag to True. The ETL process will skip the upload and processing of the Usagi and custom concept CSV's.
         """  # noqa: E501 # pylint: disable=line-too-long
         self._cdm_folder_path = (
             Path(cdm_folder_path).resolve() if cdm_folder_path else None
@@ -93,7 +94,8 @@ class Etl(ABC):
             for omop_table, table_props in vars(self._omop_tables).items():
                 self._process_omop_folder(omop_table, table_props)
 
-        self._source_to_concept_map_update_invalid_reason(etl_start)
+            # cleanup old source to concept maps by setting the invalid_reason to deleted (we only do this when running a full ETL = all OMOP tables)
+            self._source_to_concept_map_update_invalid_reason(etl_start)
 
     def _process_omop_folder(self, omop_table_name: str, omop_table_props: Any):
         """ETL method for one OMOP table
@@ -161,6 +163,13 @@ class Etl(ABC):
                 )
 
             if events := getattr(omop_table_props, "events", None):
+                # the event fields are a special case of foreign key, because the can point to almost any OMOP table,
+                # and not to 1 specific table. This makes it difficult to swap the source values of the foreign keys to
+                # the autonumber generated primary keys of the specific table.
+                # An event consists always of 2 fields: the foreign key field, and a concept id of the table it is referring to.
+                # We retrieve the concept id of the table it is referring to, out of our query (it is hard coded in the query).
+                # The main disadvantage is that, that one query can only point to one foreign key event table.
+                # So potentially you will need to split your query in multiple ones.
                 for event_id, field_id in vars(events).items():
                     select_query = self._get_query_from_sql_file(
                         sql_file, omop_table_name
@@ -196,8 +205,8 @@ class Etl(ABC):
     def _upload_custom_concepts(self, omop_table: str, concept_id_column: str):
         """Processes all the CSV files (ending with _concept.csv) under the 'custom' subfolder of the '{concept_id_column}' folder.
         The custom concept CSV's are loaded into one large Arrow table.
-        The Arrow table is then saved to a Parquet file in a temp folder, and stored in a destination bucket/folder.
-        The uploaded Parquet file is then loaded in a database table in the work zone.
+        The Arrow table is then saved to a Parquet file in a temp folder.
+        The Parquet file is then loaded in a database upload table (in the work zone).
         The custom concepts are given an unique id (above 2.000.000.000), and are merged in the OMOP concept table.
 
         Args:
@@ -229,7 +238,7 @@ class Etl(ABC):
                 "Creating concept_id swap from custom concept file '%s'",
                 str(concept_csv_file),
             )
-            # convert the CSV to an Arrow table
+            # convert the custom concepts CSV to an Arrow table
             ar_temp_table = self._convert_concept_csv_to_arrow_table(concept_csv_file)
             # concat the Arrow tables into one large Arrow table
             ar_table = (
@@ -272,7 +281,7 @@ class Etl(ABC):
 
     def _apply_usagi_mapping(self, omop_table: str, concept_id_column: str):
         """Processes all the Usagi CSV files (ending with _usagi.csv) under the '{concept_id_column}' folder.
-        The CSV's will be loaded to one large Arrow table, converted to Parquet, uploaded to a Cloud Storage Bucket, and finally loaded in corresponding Big Query table in work dataset.
+        The CSV's will be loaded to one large Arrow table, converted to Parquet, uploaded to an upload table.
         The source values will be swapped with their corresponding concept id's.
         The custom concepts will automatically recieve mapping status 'APPROVED'.
         All source values will be loaded in the SOURCE_TO_CONCEPT_MAP table.
@@ -289,7 +298,7 @@ class Etl(ABC):
         # clean up the usagi upload table
         self._clear_usagi_upload_table(omop_table, concept_id_column)
 
-        # create the Usagi table
+        # create the Usagi upload table
         self._create_usagi_upload_table(omop_table, concept_id_column)
 
         ar_table = None
@@ -391,9 +400,11 @@ class Etl(ABC):
         """Swap the primary key source value of the omop table with a generated incremental number.
 
         Args:
-            sql_file (str): The sql file holding the query on the raw data.
+            sql_file (Path): The sql file holding the query on the raw data.
             omop_table (str): OMOP table.
+            pk_swap_table_name (str): Name of the swap table, for generating the auto numbering.
             primary_key_column (str): The name of the primary key column.
+            concept_id_columns (List[str]): List of the columns that hold concepts
         """  # noqa: E501 # pylint: disable=line-too-long
         logging.info(
             "Swapping primary key column '%s' for query '%s'",
@@ -433,6 +444,7 @@ class Etl(ABC):
             sql_file (str): The sql file holding the query on the raw data.
             omop_table (str): OMOP table.
             columns (List[str]): List of columns of the OMOP table.
+            pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
             primary_key_column (str): The name of the primary key column.
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
             foreign_key_columns (Any): List of foreign key columns.
@@ -474,7 +486,7 @@ class Etl(ABC):
         return table
 
     def _convert_concept_csv_to_arrow_table(self, concept_csv_file: Path) -> pa.Table:
-        """Converts a custom concept CSV file to an Arrow table, maintaining the relevant columns.
+        """Converts a custom concept CSV file to an Arrow table, containing the relevant columns.
 
         Args:
             concept_csv_file (str): Concept CSV file
@@ -659,104 +671,229 @@ class Etl(ABC):
 
     @abstractmethod
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
+        """Cleanup old source to concept maps by setting the invalid_reason to deleted
+        for all source to concept maps with a valid_start_date before the ETL start date.
+
+        Args:
+            etl_start (date): The start data of the ETL.
+        """
         pass
 
     @abstractmethod
     def _get_column_names(self, omop_table_name: str) -> List[str]:
+        """Get list of column names of a omop table.
+
+        Args:
+            omop_table_name (str): OMOP table
+
+        Returns:
+            List[str]: list of column names
+        """
         pass
 
     @abstractmethod
     def _is_pk_auto_numbering(
         self, omop_table_name: str, omop_table_props: Any
     ) -> bool:
+        """Checks if the primary key of the OMOP table needs autonumbering.
+        For example the [Person](https://ohdsi.github.io/CommonDataModel/cdm54.html#PERSON) table has an auto numbering primary key, the [Vocabulary](https://ohdsi.github.io/CommonDataModel/cdm54.html#VOCABULARY) table not.
+
+        Args:
+            omop_table_name (str): OMOP table
+            omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
+
+        Returns:
+            bool: True if the PK needs autonumbering
+        """  # noqa: E501 # pylint: disable=line-too-long
         pass
 
     @abstractmethod
     def _clear_custom_concept_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Clears the custom concept upload table (holds the contents of the custom concept CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _create_custom_concept_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Creates the custom concept upload table (holds the contents of the custom concept CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _create_custom_concept_id_swap_table(self) -> None:
+        """Creates the custom concept id swap tabel (swaps between source value and the concept id)"""
         pass
 
     @abstractmethod
     def _load_custom_concepts_parquet_in_upload_table(
         self, parquet_file: Path, omop_table: str, concept_id_column: str
     ) -> None:
+        """The custom concept CSV's are converted to a parquet file.
+        This method loads the parquet file in a upload table.
+
+        Args:
+            parquet_file (Path): The path to the parquet file
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _give_custom_concepts_an_unique_id_above_2bilj(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Give the custom concepts an unique id (above 2.000.000.000) and store those id's in the concept id swap table.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _merge_custom_concepts_with_the_omop_concepts(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Merges the uploaded custom concepts in the OMOP concept table.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _clear_usagi_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Clears the usagi upload table (holds the contents of the usagi CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _create_usagi_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Creates the Usagi upload table (holds the contents of the Usagi CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _load_usagi_parquet_in_upload_table(
         self, parquet_file: str, omop_table: str, concept_id_column: str
     ) -> None:
+        """The Usagi CSV's are converted to a parquet file.
+        This method loads the parquet file in a upload table.
+
+        Args:
+            parquet_file (Path): The path to the parquet file
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _add_custom_concepts_to_usagi(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """The custom concepts are added to the upload Usagi table with status 'APPROVED'.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _update_custom_concepts_in_usagi(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
+        The concept_id column in the Usagi upload table is swapped by the generated custom concept_id (above 2.000.000.000).
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _cast_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
+        """Because we swapped the concept_id column (that for custom concepts is initially loaded with
+        the concept_code, and that's a string) in the Usagi upload table with the generated custom
+        concept_id (above 2.000.000.000), we need to cast it from string to an integer.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _store_usagi_source_value_to_concept_id_mapping(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the uploaded Usagi CSV's
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _get_query_from_sql_file(self, sql_file: Path, omop_table: str) -> str:
+        """Reads the query from file. If it is a Jinja template, it renders the template.
+
+        Args:
+            sql_file (Path): Path to the sql or jinja file
+            omop_table (str): _description_
+
+        Returns:
+            str: The query (if it is a Jinja template, the rendered query)
+        """
         pass
 
     @abstractmethod
     def _query_into_work_table(self, work_table: str, select_query: str) -> None:
+        """This method inserts the results from our custom SQL queries the the work OMOP table.
+
+        Args:
+            work_table (str): The work omop table
+            select_query (str): The query
+        """
         pass
 
     @abstractmethod
     def _create_pk_auto_numbering_swap_table(
         self, pk_swap_table_name: str, concept_id_columns: List[str]
     ) -> None:
+        """This method created a swap table so that our source codes can be translated to auto numbering primary keys.
+
+        Args:
+            pk_swap_table_name (str): The name of our primary key swap table
+            concept_id_columns (List[str]): List of concept_id columns
+        """
         pass
 
     @abstractmethod
@@ -768,76 +905,126 @@ class Etl(ABC):
         primary_key_column: str,
         concept_id_columns: List[str],
     ) -> None:
+        """This method does the swapping of our source codes to an auto number that will be the primary key
+        of our OMOP table.
+
+        Args:
+            omop_table (str): The OMOP table
+            work_table (str): The OMOP work table
+            pk_swap_table_name (str): Primary key swap table
+            primary_key_column (str): Primary key column
+            concept_id_columns (List[str]): List of concept_id columns
+        """
         pass
 
     @abstractmethod
     def _get_work_tables(self) -> List[str]:
+        """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
+
+        Returns:
+            List[str]: List of all the work tables
+        """
         pass
 
     @abstractmethod
     def _truncate_omop_table(self, table_name: str) -> None:
+        """Remove all rows from an OMOP table
+
+        Args:
+            table_name (str): Omop table to truncate
+        """
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_table(self) -> None:
+        """Remove the custom concepts from the OMOP concept table"""
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
+        """Remove the custom concepts from the OMOP concept_relationship table"""
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
+        """Remove the custom concepts from the OMOP concept_ancestor table"""
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_vocabulary_table(self) -> None:
+        """Remove the custom concepts from the OMOP vocabulary table"""
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept table"""
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table"""
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table"""
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table"""
         pass
 
     @abstractmethod
     def _remove_source_to_concept_map_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table"""
         pass
 
     @abstractmethod
     def _delete_work_table(self, work_table: str) -> None:
-        pass
+        """Remove  work table
 
-    @abstractmethod
-    def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
+        Args:
+            work_table (str): The work table
+        """
         pass
 
     @abstractmethod
     def _load_vocabulary_in_upload_table(
         self, csv_file: Path, vocabulary_table: str
     ) -> None:
+        """Loads the CSV file in the specific standardised vocabulary table
+
+        Args:
+            csv_file (Path): Path to the CSV file
+            vocabulary_table (str): The standardised vocabulary table
+        """
+        pass
+
+    @abstractmethod
+    def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
+        """Removes a specific standardised vocabulary table
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+        """
         pass
 
     @abstractmethod
     def _recreate_vocabulary_table(self, vocabulary_table: str) -> None:
+        """Recreates a specific standardised vocabulary table
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+        """
         pass

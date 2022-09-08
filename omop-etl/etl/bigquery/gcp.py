@@ -47,6 +47,11 @@ class Gcp:
 
     @property
     def _session_id(self) -> Union[str, None]:
+        """Gets the BigQuery [session](https://cloud.google.com/bigquery/docs/sessions-intro) id
+
+        Returns:
+            Union[str, None]: The session id
+        """
         if not self.__session_id:
             self.__session_id = self._create_session()
         return self.__session_id
@@ -88,9 +93,9 @@ class Gcp:
             List[str]: list of table names
         """
         query = f"""
-SELECT table_name
+SELECT DISTINCT table_name
 FROM `{project_id}.{dataset_id}.INFORMATION_SCHEMA.COLUMNS`
-ORDER BY ordinal_position"""
+ORDER BY table_name"""
         rows = self.run_query_job(query)
         return [row.table_name for row in rows]
 
@@ -189,6 +194,11 @@ ORDER BY ordinal_position"""
         return result
 
     def _create_session(self) -> Union[str, None]:
+        """Creates a BigQuery [session](https://cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.job.QueryJobConfig#google_cloud_bigquery_job_QueryJobConfig_create_session)
+
+        Returns:
+            Union[str, None]: The session id
+        """
         job_config = bq.QueryJobConfig()
         job_config.create_session = True
         query = "select true"

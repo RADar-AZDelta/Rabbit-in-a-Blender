@@ -1,6 +1,6 @@
 delete {{project_id}}.{{dataset_id_omop}}.concept
-where concept_id in (
-    select conceptId
+where CAST(concept_id as STRING) in (
+    select CAST(conceptId as STRING)
     from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
     where sourceCode in (
         select concept_code

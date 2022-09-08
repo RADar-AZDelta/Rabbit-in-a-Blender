@@ -1,6 +1,7 @@
 # pylint: disable=unsubscriptable-object
 import logging
 import logging.config
+import os
 import sys
 import traceback
 from argparse import ArgumentParser
@@ -42,13 +43,13 @@ def main() -> None:
                 case _:
                     raise ValueError("Not a supported database engine")
 
-            if args.create_db:
+            if args.create_db:  # create OMOP CDM DataBase
                 etl.create_omop_db()
-            elif args.import_vocabularies:
+            elif args.import_vocabularies:  # impoprt OMOP CDM vocabularies
                 etl.import_vocabularies(args.import_vocabularies)
-            elif args.cleanup:
+            elif args.cleanup:  # cleanup OMOP DB
                 etl.cleanup(args.cleanup)
-            else:
+            else:  # run ETL
                 etl.run()
 
         except Exception:
@@ -58,6 +59,9 @@ def main() -> None:
 
 
 def _contstruct_argument_parser() -> ArgumentParser:
+    """Constructs the argument parser"""
+
+    # parser for the required named arguments
     init_parser = MyParser(add_help=False)
     required_named = init_parser.add_argument_group("required named arguments")
     required_named.add_argument(
@@ -82,6 +86,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         help="Path to the folder structure that holds the queries, Usagi CSV's and the custom concept CSV's",
     )
     args, _ = init_parser.parse_known_args()
+
+    # parser for the optional arguments
     parser = MyParser(
         prog="rabbit-in-a-blender",
         description="Rabbit in a Blender: an OMOP CDM ETL tool",
@@ -277,9 +283,17 @@ def init_logging() -> _TemporaryFileWrapper:
 
 
 class MyParser(ArgumentParser):
+    """Custom ArgumentParser class with better error printing"""
+
     def error(self, message):
+        """Prints a help message to stdout, the error message to stderr and
+        exits.
+
+        Args:
+            message (string): The error message
+        """
         self.print_help()
-        sys.stderr.write("error: %s\n" % message)
+        sys.stderr.write(f"error: {message}{os.linesep}")
         sys.exit(2)
 
 

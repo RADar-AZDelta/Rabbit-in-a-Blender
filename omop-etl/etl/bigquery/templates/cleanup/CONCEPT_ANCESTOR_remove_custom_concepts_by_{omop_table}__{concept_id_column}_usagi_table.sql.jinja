@@ -1,13 +1,13 @@
 delete from {{project_id}}.{{dataset_id_omop}}.concept_ancestor 
-where (ancestor_concept_id in (
-    select conceptId
+where (CAST(ancestor_concept_id as STRING) in (
+    select CAST(conceptId as STRING)
     from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
     where sourceCode in (
         select concept_code
         from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept
     )
-) or descendant_concept_id in (
-    select conceptId
+) or CAST(descendant_concept_id as STRING) in (
+    select CAST(conceptId as STRING)
     from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
     where sourceCode in (
         select concept_code

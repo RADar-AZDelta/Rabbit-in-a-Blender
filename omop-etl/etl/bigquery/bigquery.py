@@ -87,11 +87,17 @@ class BigQuery(Etl):
 
     @property
     def _clustering_fields(self) -> Dict[str, List[str]]:
+        """The BigQuery clustering fields for every OMOP table
+
+        Returns:
+            Dict[str, List[str]]: A dictionary that holds for every OMOP table the clustering fields.
+        """
         if not self.__clustering_fields:
             with open(
                 str(
-                    Path(__file__).parent.absolute()
-                    / "templates/OMOPCDM_bigquery_5.4_clustering_fields.json"
+                    Path(__file__).parent.resolve()
+                    / "templates"
+                    / "OMOPCDM_bigquery_5.4_clustering_fields.json"
                 ),
                 "r",
                 encoding="UTF8",
@@ -100,6 +106,12 @@ class BigQuery(Etl):
         return self.__clustering_fields
 
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
+        """Cleanup old source to concept maps by setting the invalid_reason to deleted
+        for all source to concept maps with a valid_start_date before the ETL start date.
+
+        Args:
+            etl_start (date): The start data of the ETL.
+        """
         template = self._template_env.get_template(
             "SOURCE_TO_CONCEPT_MAP_update_invalid_reason.sql.jinja"
         )
@@ -113,6 +125,14 @@ class BigQuery(Etl):
         )
 
     def _get_column_names(self, omop_table_name: str) -> List[str]:
+        """Get list of column names of a omop table.
+
+        Args:
+            omop_table_name (str): OMOP table
+
+        Returns:
+            List[str]: list of column names
+        """
         columns = self._gcp.get_column_names(
             self._project_id, self._dataset_id_omop, omop_table_name
         )
@@ -122,8 +142,9 @@ class BigQuery(Etl):
     def _ddl(self):
         with open(
             str(
-                Path(__file__).parent.absolute()
-                / "templates/OMOPCDM_bigquery_5.4_ddl.sql"
+                Path(__file__).parent.resolve()
+                / "templates"
+                / "OMOPCDM_bigquery_5.4_ddl.sql"
             ),
             "r",
             encoding="UTF8",
@@ -144,6 +165,16 @@ class BigQuery(Etl):
     def _is_pk_auto_numbering(
         self, omop_table_name: str, omop_table_props: Any
     ) -> bool:
+        """Checks if the primary key of the OMOP table needs autonumbering.
+        For example the [Person](https://ohdsi.github.io/CommonDataModel/cdm54.html#PERSON) table has an auto numbering primary key, the [Vocabulary](https://ohdsi.github.io/CommonDataModel/cdm54.html#VOCABULARY) table not.
+
+        Args:
+            omop_table_name (str): OMOP table
+            omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
+
+        Returns:
+            bool: True if the PK needs autonumbering
+        """  # noqa: E501 # pylint: disable=line-too-long
         if not hasattr(omop_table_props, "pk"):
             return False
         # get the primary key meta data from the the destination OMOP table
@@ -160,6 +191,12 @@ class BigQuery(Etl):
     def _clear_custom_concept_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Clears the custom concept upload table (holds the contents of the custom concept CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         self._gcp.delete_table(
             self._project_id,
             self._dataset_id_work,
@@ -169,6 +206,12 @@ class BigQuery(Etl):
     def _create_custom_concept_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Creates the custom concept upload table (holds the contents of the custom concept CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template(
             "{omop_table}__{concept_id_column}_concept_create.sql.jinja"
         )
@@ -181,6 +224,7 @@ class BigQuery(Etl):
         self._gcp.run_query_job(ddl)
 
     def _create_custom_concept_id_swap_table(self) -> None:
+        """Creates the custom concept id swap tabel (swaps between source value and the concept id)"""
         template = self._template_env.get_template("CONCEPT_ID_swap_create.sql.jinja")
         ddl = template.render(
             project_id=self._project_id,
@@ -191,6 +235,14 @@ class BigQuery(Etl):
     def _load_custom_concepts_parquet_in_upload_table(
         self, parquet_file: Path, omop_table: str, concept_id_column: str
     ) -> None:
+        """The custom concept CSV's are converted to a parquet file.
+        This method loads the parquet file in a upload table.
+
+        Args:
+            parquet_file (Path): The path to the parquet file
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         # upload the Parquet file to the Cloud Storage Bucket
         uri = self._gcp.upload_file_to_bucket(str(parquet_file), self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific custom concept table in the work dataset
@@ -204,6 +256,12 @@ class BigQuery(Etl):
     def _give_custom_concepts_an_unique_id_above_2bilj(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Give the custom concepts an unique id (above 2.000.000.000) and store those id's in the concept id swap table.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template("CONCEPT_ID_swap_merge.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
@@ -217,6 +275,12 @@ class BigQuery(Etl):
     def _merge_custom_concepts_with_the_omop_concepts(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Merges the uploaded custom concepts in the OMOP concept table.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template("CONCEPT_merge.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
@@ -230,6 +294,12 @@ class BigQuery(Etl):
     def _clear_usagi_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Clears the usagi upload table (holds the contents of the Usagi CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         self._gcp.delete_table(
             self._project_id,
             self._dataset_id_work,
@@ -239,6 +309,12 @@ class BigQuery(Etl):
     def _create_usagi_upload_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Creates the Usagi upload table (holds the contents of the Usagi CSV's)
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template(
             "{omop_table}__{concept_id_column}_usagi_create.sql.jinja"
         )
@@ -253,6 +329,14 @@ class BigQuery(Etl):
     def _load_usagi_parquet_in_upload_table(
         self, parquet_file: str, omop_table: str, concept_id_column: str
     ) -> None:
+        """The Usagi CSV's are converted to a parquet file.
+        This method loads the parquet file in a upload table.
+
+        Args:
+            parquet_file (Path): The path to the parquet file
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         # upload the Parquet file to the Cloud Storage Bucket
         uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific usagi table in the work dataset
@@ -266,6 +350,12 @@ class BigQuery(Etl):
     def _add_custom_concepts_to_usagi(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """The custom concepts are added to the upload Usagi table with status 'APPROVED'.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template(
             "{omop_table}__{concept_id_column}_usagi_add_custom_concepts.sql.jinja"
         )
@@ -281,6 +371,13 @@ class BigQuery(Etl):
     def _update_custom_concepts_in_usagi(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
+        The concept_id column in the Usagi upload table is swapped by the generated custom concept_id (above 2.000.000.000).
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template(
             "{omop_table}__{concept_id_column}_usagi_update_custom_concepts.sql.jinja"
         )
@@ -293,6 +390,14 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _cast_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
+        """Because we swapped the concept_id column (that for custom concepts is initially loaded with
+        the concept_code, and that's a string) in the Usagi upload table with the generated custom
+        concept_id (above 2.000.000.000), we need to cast it from string to an integer.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template(
             "{omop_table}__{concept_id_column}_usagi_cast_concepts.sql.jinja"
         )
@@ -307,6 +412,12 @@ class BigQuery(Etl):
     def _store_usagi_source_value_to_concept_id_mapping(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the uploaded Usagi CSV's
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         template = self._template_env.get_template(
             "SOURCE_TO_CONCEPT_MAP_merge.sql.jinja"
         )
@@ -320,6 +431,15 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _get_query_from_sql_file(self, sql_file: Path, omop_table: str) -> str:
+        """Reads the query from file. If it is a Jinja template, it renders the template.
+
+        Args:
+            sql_file (Path): Path to the sql or jinja file
+            omop_table (str): The omop table
+
+        Returns:
+            str: The query (if it is a Jinja template, the rendered query)
+        """
         with open(sql_file, encoding="UTF8") as file:
             select_query = file.read()
             if Path(sql_file).suffix == ".jinja":
@@ -334,6 +454,12 @@ class BigQuery(Etl):
         return select_query
 
     def _query_into_work_table(self, work_table: str, select_query: str) -> None:
+        """This method inserts the results from our custom SQL queries the the work OMOP table.
+
+        Args:
+            work_table (str): The work omop table
+            select_query (str): The query
+        """
         template = self._template_env.get_template(
             "{omop_table}_{sql_file}_insert.sql.jinja"
         )
@@ -348,6 +474,12 @@ class BigQuery(Etl):
     def _create_pk_auto_numbering_swap_table(
         self, pk_swap_table_name: str, concept_id_columns: List[str]
     ) -> None:
+        """This method created a swap table so that our source codes can be translated to auto numbering primary keys.
+
+        Args:
+            pk_swap_table_name (str): The name of our primary key swap table
+            concept_id_columns (List[str]): List of concept_id columns
+        """
         template = self._template_env.get_template(
             "{primary_key_column}_swap_create.sql.jinja"
         )
@@ -368,6 +500,16 @@ class BigQuery(Etl):
         primary_key_column: str,
         concept_id_columns: List[str],
     ) -> None:
+        """This method does the swapping of our source codes to an auto number that will be the primary key
+        of our OMOP table.
+
+        Args:
+            omop_table (str): The OMOP table
+            work_table (str): The OMOP work table
+            pk_swap_table_name (str): Primary key swap table
+            primary_key_column (str): Primary key column
+            concept_id_columns (List[str]): List of concept_id columns
+        """
         template = self._template_env.get_template(
             "{primary_key_column}_swap_merge.sql.jinja"
         )
@@ -393,6 +535,18 @@ class BigQuery(Etl):
         foreign_key_columns: Any,
         concept_id_columns: List[str],
     ):
+        """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+
+        Args:
+            sql_file (str): The sql file holding the query on the raw data.
+            omop_table (str): OMOP table.
+            columns (List[str]): List of columns of the OMOP table.
+            pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
+            primary_key_column (str): The name of the primary key column.
+            pk_auto_numbering (bool): Is the primary key a generated incremental number?
+            foreign_key_columns (Any): List of foreign key columns.
+            concept_id_columns (List[str]): List of concept columns.
+        """  # noqa: E501 # pylint: disable=line-too-long
         logging.info(
             "Merging query '%s' into omop table '%s'", str(sql_file), omop_table
         )
@@ -415,10 +569,20 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _get_work_tables(self) -> List[str]:
+        """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
+
+        Returns:
+            List[str]: List of all the work tables
+        """
         work_tables = self._gcp.get_table_names(self._project_id, self._dataset_id_work)
         return work_tables
 
     def _truncate_omop_table(self, table_name: str) -> None:
+        """Remove all rows from an OMOP table
+
+        Args:
+            table_name (str): Omop table to truncate
+        """
         template = self._template_env.get_template("cleanup/truncate.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
@@ -428,6 +592,7 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_concept_table(self) -> None:
+        """Remove the custom concepts from the OMOP concept table"""
         template = self._template_env.get_template(
             "cleanup/CONCEPT_remove_custom_concepts.sql.jinja"
         )
@@ -439,6 +604,7 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
+        """Remove the custom concepts from the OMOP concept_relationship table"""
         template = self._template_env.get_template(
             "cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts.sql.jinja"
         )
@@ -450,6 +616,7 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
+        """Remove the custom concepts from the OMOP concept_ancestor table"""
         template = self._template_env.get_template(
             "cleanup/CONCEPT_ANCESTOR_remove_custom_concepts.sql.jinja"
         )
@@ -461,6 +628,7 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_vocabulary_table(self) -> None:
+        """Remove the custom concepts from the OMOP vocabulary table"""
         template = self._template_env.get_template(
             "cleanup/VOCABULARY_remove_custom_concepts.sql.jinja"
         )
@@ -474,6 +642,7 @@ class BigQuery(Etl):
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept table"""
         template = self._template_env.get_template(
             "cleanup/CONCEPT_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
@@ -490,6 +659,7 @@ class BigQuery(Etl):
     def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table"""
         template = self._template_env.get_template(
             "cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
@@ -506,6 +676,7 @@ class BigQuery(Etl):
     def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table"""
         template = self._template_env.get_template(
             "cleanup/CONCEPT_ANCESTOR_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
@@ -522,6 +693,7 @@ class BigQuery(Etl):
     def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table"""
         template = self._template_env.get_template(
             "cleanup/VOCABULARY_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
@@ -538,6 +710,7 @@ class BigQuery(Etl):
     def _remove_source_to_concept_map_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
+        """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table"""
         template = self._template_env.get_template(
             "cleanup/SOURCE_TO_CONCEPT_MAP_remove_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
@@ -552,6 +725,11 @@ class BigQuery(Etl):
         self._gcp.run_query_job(sql)
 
     def _delete_work_table(self, work_table: str) -> None:
+        """Remove  work table
+
+        Args:
+            work_table (str): The work table
+        """
         table_id = f"{self._project_id}.{self._dataset_id_work}.{work_table}"
         logging.info("Deleting table '%s'", table_id)
         self._gcp.delete_table(self._project_id, self._dataset_id_work, work_table)
@@ -559,15 +737,21 @@ class BigQuery(Etl):
     def _load_vocabulary_in_upload_table(
         self, csv_file: Path, vocabulary_table: str
     ) -> None:
+        """Loads the CSV file in the specific standardised vocabulary table
+
+        Args:
+            csv_file (Path): Path to the CSV file
+            vocabulary_table (str): The standardised vocabulary table
+        """
         logging.info("Converting '%s.csv' to parquet", vocabulary_table)
         tab = self._read_vocabulary_csv(vocabulary_table, csv_file)
         parquet_file = csv_file.parent / f"{vocabulary_table}.parquet"
         pq.write_table(tab, where=parquet_file)
 
-        logging.info("Loading '%s.parquet' into work table", vocabulary_table)
+        logging.info("Loading '%s.parquet' into vocabulary table", vocabulary_table)
         # upload the Parquet file to the Cloud Storage Bucket
         uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
-        # load the uploaded Parquet file from the bucket into the specific custom concept table in the work dataset
+        # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table in the work dataset
         self._gcp.batch_load_from_bucket_into_bigquery_table(
             uri,
             self._project_id,
@@ -577,11 +761,25 @@ class BigQuery(Etl):
         )
 
     def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
+        """Removes a specific standardised vocabulary table
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+        """
         self._gcp.delete_table(
             self._project_id, self._dataset_id_work, vocabulary_table
         )
 
     def _read_vocabulary_csv(self, vocabulary_table: str, csv_file: Path) -> pa.Table:
+        """Reads a specific standardised vocabulary table CSV file and converts it into an Arrow table
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+            csv_file (Path): Path to the CSV file
+
+        Returns:
+            pa.Table: The CSV converted in an Arrow table
+        """
         schema, date_columns = self._get_vocabulary_schema(vocabulary_table)
         tab = pcsv.read_csv(
             csv_file,
@@ -600,6 +798,15 @@ class BigQuery(Etl):
     def _get_vocabulary_schema(
         self, vocabulary_table: str
     ) -> Tuple[pa.Schema, List[Tuple[int, str]]]:
+        """Returns a Arrow schema of the vocabulary table and a list of all the data columns (column index and name).
+
+        Args:
+            vocabulary_table (str): The vocabulary table.
+
+        Returns:
+            Tuple[pa.Schema, List[Tuple[int, str]]]: _description_
+        """
+
         def _to_pa(type_: str) -> pa.DataType:
             match type_.lower():
                 case "int64":
@@ -634,6 +841,11 @@ class BigQuery(Etl):
         return (schema, date_columns)
 
     def _recreate_vocabulary_table(self, vocabulary_table: str) -> None:
+        """Recreates a specific standardised vocabulary table
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+        """
         template = self._template_env.get_template(
             "vocabulary_table_recreate.sql.jinja"
         )
