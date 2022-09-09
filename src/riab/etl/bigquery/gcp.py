@@ -198,7 +198,7 @@ ORDER BY ordinal_position"""
 
         Returns:
             Union[str, None]: The session id
-        """
+        """  # noqa: E501 # pylint: disable=line-too-long
         job_config = bq.QueryJobConfig()
         job_config.create_session = True
         query = "select true"
