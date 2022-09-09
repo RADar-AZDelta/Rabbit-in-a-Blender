@@ -1,4 +1,4 @@
-![Rabbit in a Blender logo](resources/img/rabbitinablenderlogo.png)
+![Rabbit in a Blender](resources/img/rabbitinablenderlogo.png)
 ===========
 
 **Rabbit in a Blender** is an ETL pipeline to transform your EMP data to OMOP.
@@ -64,6 +64,13 @@ Examples:
 
 For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 
+
+Installation
+========
+
+```bash
+pip install Rabbit-in-a-Blender
+```
 
 CLI Usage
 ========

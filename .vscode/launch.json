@@ -8,9 +8,10 @@
       "name": "Python: CLI",
       "type": "python",
       "request": "launch",
-      "program": "omop-etl/cli.py",
+      "program": "src/riab/__init__.py",
       "args": [
         "--verbose",
+        "--help",
         "--db-engine", "BigQuery",
         //"--google-credentials-file", "/run/secret/sa.json",
         //"--google-project-id", "?????",
@@ -28,7 +29,10 @@
       ],
       "console": "integratedTerminal",
       "justMyCode": false,
-      "python": "${command:python.interpreterPath}"
+      "python": "${command:python.interpreterPath}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }    
     }
   ]
 }

@@ -8,11 +8,11 @@ from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Optional
 
-from etl import Etl
-from etl.bigquery import BigQuery
+from riab.etl import Etl
+from riab.etl.bigquery import BigQuery
 
 
-def main() -> None:
+def cli() -> None:
     """Main entry point of application"""
     with init_logging():
         try:
@@ -89,7 +89,7 @@ def _contstruct_argument_parser() -> ArgumentParser:
 
     # parser for the optional arguments
     parser = MyParser(
-        prog="rabbit-in-a-blender",
+        prog="riab",
         description="Rabbit in a Blender: an OMOP CDM ETL tool",
         parents=[init_parser],
     )
@@ -295,7 +295,3 @@ class MyParser(ArgumentParser):
         self.print_help()
         sys.stderr.write(f"error: {message}{os.linesep}")
         sys.exit(2)
-
-
-if __name__ == "__main__":
-    main()
