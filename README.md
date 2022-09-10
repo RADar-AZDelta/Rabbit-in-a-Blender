@@ -1,7 +1,7 @@
 ![Rabbit in a Blender](resources/img/rabbitinablenderlogo.png)
 ===========
 
-**Rabbit in a Blender** is an ETL pipeline to transform your EMP data to OMOP.
+**Rabbit in a Blender** is an [ETL](https://en.wikipedia.org/wiki/Extract,_transform,_load) pipeline to transform your [EMR](https://en.wikipedia.org/wiki/Electronic_health_record) data to [OMOP](https://www.ohdsi.org/data-standardization/the-common-data-model/).
 
 
 Introduction
