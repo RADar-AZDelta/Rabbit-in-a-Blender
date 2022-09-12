@@ -177,7 +177,7 @@ Cleanup all tables:
 riab --cleanup \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
---bigquery-dataset-id-work "omop_work"
+  --bigquery-dataset-id-work "omop_work"
 ```
 
 Cleanup one tables:
