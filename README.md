@@ -161,7 +161,7 @@ riab --run-etl "~/OMOP-CDM/" \
   --bigquery-dataset-id-raw "emr"
 ```
 
-Run ETL withour reupload of Usagi CSV's and custom concept CSV's:
+Run ETL withour re-upload of Usagi CSV's and custom concept CSV's:
 ```bash
 riab --run-etl "~/OMOP-CDM/" \
   --skip-usagi-and-custom-concept-upload \
@@ -176,14 +176,16 @@ Cleanup all tables:
 ```bash
 riab --cleanup \
   --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \ --bigquery-dataset-id-work "omop_work"
+  --bigquery-dataset-id-omop "omop" \
+--bigquery-dataset-id-work "omop_work"
 ```
 
 Cleanup one tables:
 ```bash
 riab --cleanup "provider" \
   --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \ --bigquery-dataset-id-work "omop_work"
+  --bigquery-dataset-id-omop "omop" \
+  --bigquery-dataset-id-work "omop_work"
 ```
 
 
