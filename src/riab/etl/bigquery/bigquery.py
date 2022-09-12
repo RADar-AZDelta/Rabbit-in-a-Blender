@@ -78,7 +78,7 @@ class BigQuery(Etl):
 
     def create_omop_db(self) -> None:
         """Create OMOP tables in the omop-dataset in BigQuery and apply clustering"""
-        logging.info("Creating OMOP CDM database from DDL (Data Defenition Language)")
+        logging.info("Creating OMOP CDM database from DDL (Data Definition Language)")
         self._gcp.run_query_job(self._ddl)
 
         for table, fields in self._clustering_fields.items():
