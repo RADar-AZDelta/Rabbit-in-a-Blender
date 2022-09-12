@@ -4,6 +4,7 @@
 # build and publish
 rm -fr ./dist # cleanup
 python -m build # build
+# CHANGE THE VERSION in the pyproject.toml file
 python3 -m twine upload --verbose --repository testpypi dist/* # choose between repo pypi and testpypi
 
 
