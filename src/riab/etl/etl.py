@@ -349,24 +349,32 @@ class Etl(ABC):
                 cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/"
             ).glob("*_usagi.csv")
         )
-        if not len(usagi_csv_files):
-            logging.info(
-                "No Usagi CSV's found for column '%s' of table '%s'",
-                concept_id_column,
-                omop_table,
-            )
-            return
 
         logging.info(
             "Creating concept_id swap for column '%s' of table '%s'",
             concept_id_column,
             omop_table,
         )
-        # clean up the usagi upload table
-        self._clear_usagi_upload_table(omop_table, concept_id_column)
+        if len(usagi_csv_files):
+            # clean up the usagi upload table
+            self._clear_usagi_upload_table(omop_table, concept_id_column)
 
         # create the Usagi upload table
         self._create_usagi_upload_table(omop_table, concept_id_column)
+
+        if not len(usagi_csv_files):
+            logging.debug(
+                "Change type to INT64 in usagi table for column '%s' of table '%s'",
+                concept_id_column,
+                omop_table,
+            )
+            self._cast_concepts_in_usagi(omop_table, concept_id_column)
+            logging.info(
+                "No Usagi CSV's found for column '%s' of table '%s'",
+                concept_id_column,
+                omop_table,
+            )
+            return
 
         ar_table = None
         for usagi_csv_file in usagi_csv_files:  # loop all the Usagi CSV's
@@ -394,12 +402,19 @@ class Etl(ABC):
                     parquet_file, omop_table, concept_id_column
                 )
 
-        logging.info(
-            "Updating the custom concepts from code to assigned id in the usagi table for column '%s' of table '%s'",
-            concept_id_column,
-            omop_table,
+        concept_csv_files = list(
+            (
+                cast(Path, self._cdm_folder_path)
+                / f"{omop_table}/{concept_id_column}/custom/"
+            ).glob("*_concept.csv")
         )
-        self._update_custom_concepts_in_usagi(omop_table, concept_id_column)
+        if len(concept_csv_files):
+            logging.info(
+                "Updating the custom concepts from code to assigned id in the usagi table for column '%s' of table '%s'",
+                concept_id_column,
+                omop_table,
+            )
+            self._update_custom_concepts_in_usagi(omop_table, concept_id_column)
 
         logging.debug(
             "Change type to INT64 in usagi table for column '%s' of table '%s'",
@@ -408,14 +423,15 @@ class Etl(ABC):
         )
         self._cast_concepts_in_usagi(omop_table, concept_id_column)
 
-        logging.info(
-            "Adding the custom concepts to the usagi table for column '%s' of table '%s'",
-            concept_id_column,
-            omop_table,
-        )
-        # add the custom concepts with the concept id's and names using the previously filled up swap table
-        # custom concepts will recieve the mapping status 'APPROVED'
-        self._add_custom_concepts_to_usagi(omop_table, concept_id_column)
+        if len(concept_csv_files):
+            logging.info(
+                "Adding the custom concepts to the usagi table for column '%s' of table '%s'",
+                concept_id_column,
+                omop_table,
+            )
+            # add the custom concepts with the concept id's and names using the previously filled up swap table
+            # custom concepts will recieve the mapping status 'APPROVED'
+            self._add_custom_concepts_to_usagi(omop_table, concept_id_column)
 
         logging.info(
             "Merging mapped concepts into SOURCE_TO_CONCEPT_MAP table for column '%s' of table '%s'",
