@@ -6,7 +6,7 @@ import sys
 import traceback
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import Optional
+from typing import List, Optional
 
 from riab.etl import Etl
 from riab.etl.bigquery import BigQuery
@@ -29,7 +29,7 @@ def cli() -> None:
             match args.db_engine:
                 case "BigQuery":
                     etl = BigQuery(
-                        cdm_folder_path=args.cdm_folder_path,
+                        cdm_folder_path=args.run_etl or args.create_folders,
                         only_omop_table=args.table,
                         skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
                         credentials_file=args.google_credentials_file,
@@ -43,14 +43,18 @@ def cli() -> None:
                 case _:
                     raise ValueError("Not a supported database engine")
 
-            if args.create_db:  # create OMOP CDM DataBase
+            if args.create_db:  # create OMOP CDM Database
                 etl.create_omop_db()
+            elif args.create_folders:  # create the ETL folder structure
+                etl.create_etl_folders()
             elif args.import_vocabularies:  # impoprt OMOP CDM vocabularies
                 etl.import_vocabularies(args.import_vocabularies)
+            elif args.run_etl:  # run ETL
+                etl.run()
             elif args.cleanup:  # cleanup OMOP DB
                 etl.cleanup(args.cleanup)
-            else:  # run ETL
-                etl.run()
+            else:
+                raise Exception("Unknown ETL command!")
 
         except Exception:
             logging.error(traceback.format_exc())
@@ -62,8 +66,15 @@ def _contstruct_argument_parser() -> ArgumentParser:
     """Constructs the argument parser"""
 
     # parser for the required named arguments
-    init_parser = MyParser(add_help=False)
-    required_named = init_parser.add_argument_group("required named arguments")
+    required_parser = MyParser(add_help=False)
+    required_parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Verbose logging (logs are also writen to a log file in the systems tmp folder)",
+        action="store_true",
+    )
+
+    required_named = required_parser.add_argument_group("required named arguments")
     required_named.add_argument(
         "-d",
         "--db-engine",
@@ -78,37 +89,26 @@ def _contstruct_argument_parser() -> ArgumentParser:
         metavar="DB-ENGINE",
         required=not bool(set(sys.argv) & {"-h", "--help"}),
     )
-    required_named.add_argument(
-        "cdm_folder_path",
-        metavar="PATH",
-        nargs="?",
-        type=str,
-        help="Path to the folder structure that holds the queries, Usagi CSV's and the custom concept CSV's",
-    )
-    args, _ = init_parser.parse_known_args()
+    args, _ = required_parser.parse_known_args()
 
     # parser for the optional arguments
-    parser = MyParser(
-        prog="riab",
-        description="Rabbit in a Blender: an OMOP CDM ETL tool",
-        parents=[init_parser],
+    command_parser = MyParser(
+        add_help=False,
+        parents=[required_parser],
     )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Verbose logging (logs are also writen to a log file in the systems tmp folder)",
-        action="store_true",
+    commands_group = command_parser.add_argument_group("ETL commands")
+    commands_group.add_argument(
+        "-cd", "--create-db", help="Create the OMOP CDM tables", action="store_true"
     )
-    parser.add_argument(
-        "--create-db", help="Create the OMOP CDM tables", action="store_true"
+    commands_group.add_argument(
+        "-cf",
+        "--create-folders",
+        help="Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.",
+        nargs="?",
+        type=str,
+        metavar="PATH",
     )
-    parser.add_argument(
-        "-s",
-        "--skip-usagi-and-custom-concept-upload",
-        help="Skips the parsing and uploading of the Usagi and custom concept CSV's",
-        action="store_true",
-    )
-    parser.add_argument(
+    commands_group.add_argument(
         "-i",
         "--import-vocabularies",
         nargs="?",
@@ -117,7 +117,15 @@ def _contstruct_argument_parser() -> ArgumentParser:
         into the OMOP CDM database.""",
         metavar="VOCABULARIES_ZIP_FILE",
     )
-    parser.add_argument(
+    commands_group.add_argument(
+        "-r",
+        "--run-etl",
+        help="Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.",
+        nargs="?",
+        type=str,
+        metavar="PATH",
+    )
+    commands_group.add_argument(
         "-c",
         "--cleanup",
         nargs="?",
@@ -151,13 +159,34 @@ def _contstruct_argument_parser() -> ArgumentParser:
             "episode_event",
         ],
         type=str,
-        help="""Cleanup all the OMOP tables, or just one.
+        help="""Cleanup all the OMOP tables (ALL or no TABLE parameter), or just one.
         Be aware that the cleanup of a single table can screw up foreign keys!
         For instance cleaning up only the 'Person' table,
         will result in clicical results being mapped to the wrong persons!!!!""",
         metavar="TABLE",
     )
-    parser.add_argument(
+
+    command_args, _ = command_parser.parse_known_args()
+
+    parser = MyParser(
+        prog="riab",
+        description="Rabbit in a Blender: an OMOP CDM ETL tool",
+        parents=[command_parser],
+    )
+    command_options_group = parser.add_argument_group(
+        "Run ETL specific command options (-r [PATH], --run-etl [PATH])"
+    )
+
+    command_options_group.add_argument(
+        "-s",
+        "--skip-usagi-and-custom-concept-upload",
+        help="""Skips the parsing and uploading of the Usagi and custom concept CSV's.
+        This can be usefull if you only want to upload aditional data to the OMOP database, and there were no changes
+        to the Usagi CSV's an custom concept CSV's.
+        Skipping results in a significant speed boost.""",
+        action="store_true",
+    )
+    command_options_group.add_argument(
         "-t",
         "--table",
         nargs="?",
@@ -192,21 +221,23 @@ def _contstruct_argument_parser() -> ArgumentParser:
         help="""Do only ETL on this specific OMOP CDM table""",
         metavar="TABLE",
     )
-    parser.add_argument(
+
+    bigquery_group = parser.add_argument_group("BigQuery specific arguments")
+    bigquery_group.add_argument(
         "--google-credentials-file",
         nargs="?",
         type=str,
         help="""Loads Google credentials from a file""",
         metavar="GOOGLE_CREDENTIALS_FILE",
     )
-    parser.add_argument(
+    bigquery_group.add_argument(
         "--google-project-id",
         nargs="?",
         type=str,
         help="""The Google GCP project id""",
         metavar="GOOGLE_PROJECT_ID",
     )
-    parser.add_argument(
+    bigquery_group.add_argument(
         "--google-location",
         nargs="?",
         default="EU",
@@ -214,23 +245,29 @@ def _contstruct_argument_parser() -> ArgumentParser:
         help="""The google locations to store the data (see https://cloud.google.com/about/locations)""",
         metavar="GOOGLE_LOCATION",
     )
-    parser.add_argument(
+    bigquery_group.add_argument(
         "--bigquery-dataset-id-raw",
         nargs="?",
         type=str,
         help="""BigQuery dataset that holds the raw EMR data""",
-        required=args.db_engine == "BigQuery",
+        required=args.db_engine == "BigQuery"
+        and not command_args.create_db
+        and not command_args.create_folders
+        and not command_args.import_vocabularies
+        and not command_args.cleanup,
         metavar="BIGQUERY_DATASET_ID_RAW",
     )
-    parser.add_argument(
+    bigquery_group.add_argument(
         "--bigquery-dataset-id-work",
         nargs="?",
         type=str,
         help="""BigQuery dataset that will hold ETL housekeeping tables (ex: swap tablet, etc...)""",
-        required=args.db_engine == "BigQuery",
+        required=args.db_engine == "BigQuery"
+        and not command_args.create_db
+        and not command_args.create_folders,
         metavar="BIGQUERY_DATASET_ID_WORK",
     )
-    parser.add_argument(
+    bigquery_group.add_argument(
         "--bigquery-dataset-id-omop",
         nargs="?",
         type=str,
@@ -238,13 +275,16 @@ def _contstruct_argument_parser() -> ArgumentParser:
         required=args.db_engine == "BigQuery",
         metavar="BIGQUERY_DATASET_ID_OMOP",
     )
-    parser.add_argument(
+    bigquery_group.add_argument(
         "--google-cloud-storage-bucket-uri",
         nargs="?",
         type=str,
         help="""Google Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files.
         (the uri has format 'gs://{bucket_name}/{bucket_path}')""",
-        required=args.db_engine == "BigQuery",
+        required=args.db_engine == "BigQuery"
+        and not command_args.create_db
+        and not command_args.create_folders
+        and not command_args.cleanup,
         metavar="GOOGLE_CLOUD_STORAGE_BUCKET_URI",
     )
 

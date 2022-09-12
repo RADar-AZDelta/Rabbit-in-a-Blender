@@ -81,6 +81,7 @@ CLI Usage
     | -h, --help | Show help message and exit
     | -v, --verbose | Verbose logging (logs are also writen to a log file in the systems tmp folder)
     | --create-db | Create the OMOP CDM tables
+    | --create-folders | Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.
     | -i, --import-vocabularies [VOCABULARIES_ZIP_FILE] | Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.
     | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
     | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table

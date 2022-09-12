@@ -59,6 +59,35 @@ class Etl(ABC):
     def create_omop_db(self) -> None:
         """Create OMOP tables in the database and define indexes/partitions/clusterings"""
 
+    def create_etl_folders(self) -> None:
+        """Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.
+        Based on the OMOP CDM database tables"""
+        for omop_table, table_props in vars(self._omop_tables).items():
+            folder = cast(Path, self._cdm_folder_path) / omop_table
+            Path.mkdir(folder, exist_ok=True)
+            logging.info("Creating folder %s", folder)
+            columns = self._get_column_names(omop_table)
+            for concept_column in (
+                column for column in columns if "concept_id" in column
+            ):
+                folder = cast(Path, self._cdm_folder_path) / omop_table / concept_column
+                Path.mkdir(
+                    folder,
+                    exist_ok=True,
+                )
+                logging.info("Creating folder %s", folder)
+                folder = (
+                    cast(Path, self._cdm_folder_path)
+                    / omop_table
+                    / concept_column
+                    / "custom"
+                )
+                Path.mkdir(
+                    folder,
+                    exist_ok=True,
+                )
+                logging.info("Creating folder %s", folder)
+
     def run(self):
         """
         Start the ETL process.\n
@@ -102,9 +131,22 @@ class Etl(ABC):
 
         Args:
             omop_table_name (str): Name of the OMOP table
-            omop_table_props (Any): Object that holds, the pk (primary key), fks (foreign keys) and concepts of the the OMOP table.
+            omop_table_props (Any): Object that holds, the pk (primary key), fks (foreign keys) and events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info("OMOP table: %s", omop_table_name)
+        omop_table_path = cast(Path, self._cdm_folder_path) / f"{omop_table_name}/"
+        sql_files = [
+            sql_file
+            for suffix in ["*.sql", "*.sql.jinja"]
+            for sql_file in omop_table_path.glob(suffix)
+        ]
+        if not len(sql_files):
+            logging.info(
+                "No SQL files found in ETL folder '%s'",
+                omop_table_path,
+            )
+            return
+
+        logging.info("Processing ETL folder: %s", omop_table_path)
         # get all the columns from the destination OMOP table
         columns = self._get_column_names(omop_table_name)
         concept_columns = [
@@ -140,14 +182,10 @@ class Etl(ABC):
             )
         pk_swap_table_name = getattr(omop_table_props, "pk", None)
 
-        for sql_file in [
-            sql_file
-            for suffix in ["*.sql", "*.sql.jinja"]
-            for sql_file in (
-                cast(Path, self._cdm_folder_path) / f"{omop_table_name}/"
-            ).glob(suffix)
-        ]:  # loop the sql files
+        for sql_file in sql_files:  # loop the sql files
             # execute the sql file and store the results in a temporary work table
+            logging.info("Excecuting ETL query '%s'", sql_file)
+
             self._execute_query_from_sql_file_and_store_results_in_work_table(
                 sql_file, omop_table_name
             )
@@ -191,6 +229,11 @@ class Etl(ABC):
                     )
 
             # merge everything in the destination OMOP table
+            logging.info(
+                "Merging query '%s' into omop table '%s'",
+                str(sql_file),
+                omop_table_name,
+            )
             self._merge_into_omop_table(
                 sql_file=sql_file,
                 omop_table=omop_table_name,
@@ -213,8 +256,23 @@ class Etl(ABC):
             omop_table (str): OMOP table.
             concept_id_column (str): Custom concept_id column.
         """  # noqa: E501 # pylint: disable=line-too-long
+
+        concept_csv_files = list(
+            (
+                cast(Path, self._cdm_folder_path)
+                / f"{omop_table}/{concept_id_column}/custom/"
+            ).glob("*_concept.csv")
+        )
+        if not len(concept_csv_files):
+            logging.info(
+                "No custom concept CSV's found for column '%s' of table '%s'",
+                concept_id_column,
+                omop_table,
+            )
+            return
+
         logging.info(
-            "Creating custom concepts for column '%s' of table '%s'",
+            "Uploading custom concepts for column '%s' of table '%s'",
             concept_id_column,
             omop_table,
         )
@@ -228,12 +286,7 @@ class Etl(ABC):
         self._create_custom_concept_id_swap_table()
 
         ar_table = None
-        for concept_csv_file in (
-            cast(Path, self._cdm_folder_path)
-            / f"{omop_table}/{concept_id_column}/custom/"
-        ).glob(
-            "*_concept.csv"
-        ):  # loop the custon concept CSV's
+        for concept_csv_file in concept_csv_files:  # loop the custon concept CSV's
             logging.info(
                 "Creating concept_id swap from custom concept file '%s'",
                 str(concept_csv_file),
@@ -290,6 +343,20 @@ class Etl(ABC):
             omop_table (str): OMOP table.
             concept_id_column (str): Custom concept_id column.
         """  # noqa: E501 # pylint: disable=line-too-long
+
+        usagi_csv_files = list(
+            (
+                cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/"
+            ).glob("*_usagi.csv")
+        )
+        if not len(usagi_csv_files):
+            logging.info(
+                "No Usagi CSV's found for column '%s' of table '%s'",
+                concept_id_column,
+                omop_table,
+            )
+            return
+
         logging.info(
             "Creating concept_id swap for column '%s' of table '%s'",
             concept_id_column,
@@ -302,11 +369,7 @@ class Etl(ABC):
         self._create_usagi_upload_table(omop_table, concept_id_column)
 
         ar_table = None
-        for usagi_csv_file in (
-            cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/"
-        ).glob(
-            "*_usagi.csv"
-        ):  # loop all the Usagi CSV's
+        for usagi_csv_file in usagi_csv_files:  # loop all the Usagi CSV's
             logging.info(
                 "Creating concept_id swap from Usagi file '%s'", str(usagi_csv_file)
             )
@@ -338,7 +401,7 @@ class Etl(ABC):
         )
         self._update_custom_concepts_in_usagi(omop_table, concept_id_column)
 
-        logging.info(
+        logging.debug(
             "Change type to INT64 in usagi table for column '%s' of table '%s'",
             concept_id_column,
             omop_table,
@@ -378,7 +441,7 @@ class Etl(ABC):
             sql_file (str): The sql file holding the query on the raw data.
             omop_table (str): OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info(
+        logging.debug(
             "Running query '%s' from raw tables into table '%s'",
             str(sql_file),
             f"{omop_table}_{Path(Path(sql_file).stem).stem}",
@@ -406,7 +469,7 @@ class Etl(ABC):
             primary_key_column (str): The name of the primary key column.
             concept_id_columns (List[str]): List of the columns that hold concepts
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info(
+        logging.debug(
             "Swapping primary key column '%s' for query '%s'",
             primary_key_column,
             str(sql_file),
@@ -460,7 +523,7 @@ class Etl(ABC):
         Returns:
             pa.Table: Arrow table.
         """
-        logging.info("Converting Usagi csv '%s' to arrow table", str(usagi_csv_file))
+        logging.debug("Converting Usagi csv '%s' to arrow table", str(usagi_csv_file))
         table = csv.read_csv(
             usagi_csv_file,
             parse_options=csv.ParseOptions(quote_char='"'),
@@ -494,7 +557,7 @@ class Etl(ABC):
         Returns:
             pa.Table: Arrow table
         """
-        logging.info(
+        logging.debug(
             "Converting Concept csv '%s' to arrow table", str(concept_csv_file)
         )
         table = csv.read_csv(
@@ -627,6 +690,7 @@ class Etl(ABC):
             if cleanup_table == "all" or (
                 table_name.startswith(cleanup_table) and table_name != "vocabulary"
             ):
+                logging.info("Deleting work table '%s'", table_name)
                 self._delete_work_table(table_name)
         # truncate omop tables
         omop_tables = vars(self._omop_tables).keys()
@@ -665,6 +729,10 @@ class Etl(ABC):
                     csv_file = (
                         Path(temp_dir_path) / f"{vocabulary_table.upper()}.csv"
                     )  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
+                    logging.info(
+                        "Uploading '%s' to OMOP CDM database. (this takes a while...)",
+                        csv_file,
+                    )
                     self._clear_vocabulary_upload_table(vocabulary_table)
                     self._load_vocabulary_in_upload_table(csv_file, vocabulary_table)
                     self._recreate_vocabulary_table(vocabulary_table)

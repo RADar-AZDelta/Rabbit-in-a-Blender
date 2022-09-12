@@ -169,7 +169,7 @@ ORDER BY ordinal_position"""
                 bq.ConnectionProperty("session_id", str(self._session_id)),
             ],
         )
-        logging.info("Running query: %s", query)
+        logging.debug("Running query: %s", query)
         start = time.time()
         query_job = self._bq_client.query(
             query, job_config=job_config, location=self._location
@@ -182,7 +182,7 @@ ORDER BY ordinal_position"""
             (query_job.total_bytes_billed or 0) / (Gcp._MEGA * 10)
         )
         cost = total_10_mbs_billed * cost_per_10_mb
-        logging.info(
+        logging.debug(
             "Query processed %.2f MB (%.2f MB billed) in %.2f seconds"
             " (%.2f seconds slot time): %.8f $ billed",
             (query_job.total_bytes_processed or 0) / Gcp._MEGA,
@@ -228,7 +228,7 @@ ORDER BY ordinal_position"""
             table_name (str): table name
             clustering_fields (List[str]): list of fields (ordered!) to cluster in table table_name
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info(
+        logging.debug(
             "Setting cluster fields on BigQuery table '%s.%s.%s'",
             project_id,
             dataset_id,
@@ -249,7 +249,7 @@ ORDER BY ordinal_position"""
             dataset_id (str): dataset ID
             table_name (str): table name
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info(
+        logging.debug(
             "Dropping BigQuery table '%s.%s.%s'", project_id, dataset_id, table_name
         )
         table = self._bq_client.dataset(dataset_id, project_id).table(table_name)
@@ -264,7 +264,7 @@ ORDER BY ordinal_position"""
         """
         try:
             scheme, netloc, path, params, query, fragment = urlparse(bucket_uri)
-            logging.info("Delete path '%s' from bucket '%s", netloc, path)
+            logging.debug("Delete path '%s' from bucket '%s", netloc, path)
             bucket = self._cs_client.bucket(netloc)
             blobs = bucket.list_blobs(prefix=path.lstrip("/"))
             for blob in blobs:
@@ -282,7 +282,7 @@ ORDER BY ordinal_position"""
             source_file_path (Path): Path to the local file
             bucket_uri (str): Name of the Cloud Storage bucket and the path in the bucket (directory) to store the file (with format: 'gs://{bucket_name}/{bucket_path}')
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info(
+        logging.debug(
             "Upload file '%s' to bucket '%s'",
             str(source_file_path),
             bucket_uri,
@@ -312,7 +312,7 @@ ORDER BY ordinal_position"""
             dataset_id (str): dataset ID
             table_name (str): table name
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info(
+        logging.debug(
             "Append bucket files '%s' to BigQuery table '%s.%s.%s'",
             uri,
             project_id,
@@ -338,7 +338,7 @@ ORDER BY ordinal_position"""
         table = self._bq_client.get_table(
             bq.DatasetReference(project_id, dataset_id).table(table_name)
         )
-        logging.info(
+        logging.debug(
             "Loaded %i rows into '%s.%s.%s'",
             table.num_rows,
             project_id,
@@ -353,7 +353,7 @@ ORDER BY ordinal_position"""
             local_file_path (str): Path to the local parquet file to write to
             table (pa.Table): The Arrow table
         """
-        logging.info("Writing parquet files to: '%s'", local_file_path)
+        logging.debug("Writing parquet files to: '%s'", local_file_path)
         pq.write_table(table, local_file_path)
 
     @backoff.on_exception(
@@ -374,12 +374,12 @@ ORDER BY ordinal_position"""
         Returns:
             Table: Memory efficient Arrow table, with the query results
         """
-        logging.info("Running query '%s", query)
+        logging.debug("Running query '%s", query)
         start = time.time()
         table: pa.Table = cx.read_sql(conn, query, return_type="arrow")
         end = time.time()
         table_size = table.nbytes
-        logging.info(
+        logging.debug(
             "Query returned %i rows with table size %.2f MB in %.2f seconds",
             table.num_rows,
             table.nbytes / Gcp._MEGA,
@@ -457,7 +457,7 @@ ORDER BY ordinal_position"""
                         if not table
                         else pa.concat_tables([table, temp_table])
                     )
-                    logging.info("Total table size: %f MB", table_size / 1024 / 1024)
+                    logging.debug("Total table size: %f MB", table_size / 1024 / 1024)
                     if table_size > Gcp._GIGA:
                         temp_file_path = os.path.join(temp_dir_path, file_name)
                         self.write_parquet(temp_file_path, table)
@@ -467,7 +467,7 @@ ORDER BY ordinal_position"""
                         counter += 1
                         table = None
                         table_size = 0
-                    logging.info("Queries processed: '%i'", idx)
+                    logging.debug("Queries processed: '%i'", idx)
                 if table:
                     temp_file_path = os.path.join(temp_dir_path, str(file_name))
                     self.write_parquet(temp_file_path, table)

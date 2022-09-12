@@ -10,22 +10,20 @@
       "request": "launch",
       "program": "src/riab/__init__.py",
       "args": [
-        "--verbose",
-        "--help",
-        "--db-engine", "BigQuery",
-        //"--google-credentials-file", "/run/secret/sa.json",
-        //"--google-project-id", "?????",
-        "--google-location", "EU",
-        "--bigquery-dataset-id-raw", "hix",
-        "--bigquery-dataset-id-work", "omop_work",
-        "--bigquery-dataset-id-omop", "omop",
-        "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work",
-        //"--cleanup", "provider",
-        // "--create-db",
-        //"--import-vocabularies", "~/vocabulary-2022-07-28.zip",
-        "~/git/AZDelta-OMOP-CDM/",
-        // "--skip-usagi-and-custom-concept-upload",
-        "--table", "provider"
+        //"--help",
+        //"--verbose",
+        
+        //"--create-db", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pjl",
+        
+        //"--import-vocabularies", "~/vocabulary-2022-07-28.zip", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pjl", "--bigquery-dataset-id-work", "omop_work_pjl", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_pjl",
+        
+        //"--create-folders", "~/OMOP_CDM", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop",
+        
+        "--run-etl", "~/git/AZDelta-OMOP-CDM/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work", "--bigquery-dataset-id-raw", "hix"
+        //  ,"--skip-usagi-and-custom-concept-upload",
+          ,"--table", "provider"
+
+        //"--cleanup", "provider", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work"
       ],
       "console": "integratedTerminal",
       "justMyCode": false,

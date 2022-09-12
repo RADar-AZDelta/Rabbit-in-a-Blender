@@ -78,6 +78,7 @@ class BigQuery(Etl):
 
     def create_omop_db(self) -> None:
         """Create OMOP tables in the omop-dataset in BigQuery and apply clustering"""
+        logging.info("Creating OMOP CDM database from DDL (Data Defenition Language)")
         self._gcp.run_query_job(self._ddl)
 
         for table, fields in self._clustering_fields.items():
@@ -547,9 +548,6 @@ class BigQuery(Etl):
             foreign_key_columns (Any): List of foreign key columns.
             concept_id_columns (List[str]): List of concept columns.
         """  # noqa: E501 # pylint: disable=line-too-long
-        logging.info(
-            "Merging query '%s' into omop table '%s'", str(sql_file), omop_table
-        )
         template = self._template_env.get_template("{omop_table}_merge.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
@@ -731,7 +729,7 @@ class BigQuery(Etl):
             work_table (str): The work table
         """
         table_id = f"{self._project_id}.{self._dataset_id_work}.{work_table}"
-        logging.info("Deleting table '%s'", table_id)
+        logging.debug("Deleting table '%s'", table_id)
         self._gcp.delete_table(self._project_id, self._dataset_id_work, work_table)
 
     def _load_vocabulary_in_upload_table(
@@ -743,12 +741,12 @@ class BigQuery(Etl):
             csv_file (Path): Path to the CSV file
             vocabulary_table (str): The standardised vocabulary table
         """
-        logging.info("Converting '%s.csv' to parquet", vocabulary_table)
+        logging.debug("Converting '%s.csv' to parquet", vocabulary_table)
         tab = self._read_vocabulary_csv(vocabulary_table, csv_file)
         parquet_file = csv_file.parent / f"{vocabulary_table}.parquet"
         pq.write_table(tab, where=parquet_file)
 
-        logging.info("Loading '%s.parquet' into vocabulary table", vocabulary_table)
+        logging.debug("Loading '%s.parquet' into vocabulary table", vocabulary_table)
         # upload the Parquet file to the Cloud Storage Bucket
         uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table
