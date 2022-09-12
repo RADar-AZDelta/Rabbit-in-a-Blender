@@ -80,18 +80,28 @@ CLI Usage
     |---|---
     | -h, --help | Show help message and exit
     | -v, --verbose | Verbose logging (logs are also writen to a log file in the systems tmp folder)
-    | --create-db | Create the OMOP CDM tables
-    | --create-folders | Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.
-    | -i, --import-vocabularies [VOCABULARIES_ZIP_FILE] | Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.
-    | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
-    | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table
-    | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's
 
 * **Required named arguments:**
     |  command | help  
     |---|---
     | -d [DB-ENGINE], --db-engine [DB-ENGINE] | The database engine technology the ETL is running on. Each database engine has its own legacy SQL dialect, so the generated ETL queries can be different for each database engine. For the moment only BigQuery is supported, yet 'Rabbit in a Blender' has an open design, so in the future other database engines can be added easily.
-    | PATH | Path to the folder structure that holds the queries, Usagi CSV's and the custom concept CSV's
+
+
+* **ETL Commands**:
+    |  command | help  
+    |---|---    
+    | -cd, --create-db | Create the OMOP CDM tables
+    | -cf, --create-folders [PATH] | Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.
+    | -i, --import-vocabularies [VOCABULARIES_ZIP_FILE] | Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.
+    | -r [PATH], --run-etl [PATH] | Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.
+    | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
+
+* **Run ETL specific command options (-r [PATH], --run-etl [PATH]):**
+    |  command | help  
+    |---|---  
+    | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table
+    | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
+
 
 * **Bigquery specific options:**
     |  command | help  
@@ -103,6 +113,78 @@ CLI Usage
     | --bigquery-dataset-id-work [BIGQUERY_DATASET_ID_WORK] | BigQuery dataset that will hold ETL housekeeping tables (ex: swap tablet, etc...)
     | --bigquery-dataset-id-omop [BIGQUERY_DATASET_ID_OMOP] | BigQuery dataset that will hold the final OMOP tables
     | --google-cloud-storage-bucket-uri [GOOGLE_CLOUD_STORAGE_BUCKET_URI] | Google Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
+
+CLI Examples
+========
+
+Create the OMOP CDM database:
+```bash
+riab --create-db \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop"
+```
+
+Import your downloaded vocabularies (from [Athena](https://athena.ohdsi.org/vocabulary/list)) zip file:
+```bash
+riab --import-vocabularies "~/vocabulary-2022-07-28.zip" \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop" \
+  --bigquery-dataset-id-work "omop_work" \
+  --google-cloud-storage-bucket-uri "gs://omop/work"
+```
+
+Create the ETL folder structure:
+```bash
+riab --create-folders "~/OMOP_CDM" \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop"
+```     
+
+Run full ETL:
+```bash
+riab --run-etl "~/OMOP-CDM/" \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop" \
+  --bigquery-dataset-id-work "omop_work" \
+  --google-cloud-storage-bucket-uri "gs://omop/work" \
+  --bigquery-dataset-id-raw "emr"
+```
+
+Run ETL on one table:
+```bash
+riab --run-etl "~/OMOP-CDM/" \
+  --table "provider" \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop" \
+  --bigquery-dataset-id-work "omop_work" \
+  --google-cloud-storage-bucket-uri "gs://omop/work" \
+  --bigquery-dataset-id-raw "emr"
+```
+
+Run ETL withour reupload of Usagi CSV's and custom concept CSV's:
+```bash
+riab --run-etl "~/OMOP-CDM/" \
+  --skip-usagi-and-custom-concept-upload \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop" \
+  --bigquery-dataset-id-work "omop_work" \
+  --google-cloud-storage-bucket-uri "gs://omop/work" \
+  --bigquery-dataset-id-raw "emr"
+```
+
+Cleanup all tables:
+```bash
+riab --cleanup \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop" \ --bigquery-dataset-id-work "omop_work"
+```
+
+Cleanup one tables:
+```bash
+riab --cleanup "provider" \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop" \ --bigquery-dataset-id-work "omop_work"
+```
 
 
 BigQuery
