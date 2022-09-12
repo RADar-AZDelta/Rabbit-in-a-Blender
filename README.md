@@ -142,7 +142,7 @@ riab --create-folders "./OMOP_CDM" \
 
 Run full ETL:
 ```bash
-riab --run-etl "./OMOP-CDM/" \
+riab --run-etl "./OMOP-CDM" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
@@ -152,7 +152,7 @@ riab --run-etl "./OMOP-CDM/" \
 
 Run ETL on one table:
 ```bash
-riab --run-etl "./OMOP-CDM/" \
+riab --run-etl "./OMOP-CDM" \
   --table "provider" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
@@ -163,7 +163,7 @@ riab --run-etl "./OMOP-CDM/" \
 
 Run ETL withour re-upload of Usagi CSV's and custom concept CSV's:
 ```bash
-riab --run-etl "./OMOP-CDM/" \
+riab --run-etl "./OMOP-CDM" \
   --skip-usagi-and-custom-concept-upload \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
