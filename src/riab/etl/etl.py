@@ -206,8 +206,8 @@ class Etl(ABC):
                 # the autonumber generated primary keys of the specific table.
                 # An event consists always of 2 fields: the foreign key field, and a concept id of the table it is referring to.
                 # We retrieve the concept id of the table it is referring to, out of our query (it is hard coded in the query).
-                # The main disadvantage is that, that one query can only point to one foreign key event table.
-                # So potentially you will need to split your query in multiple ones.
+                # The main disadvantage is, that one query can only point to one foreign key event table.
+                # So potentially you will need to split your query over multiple files.
                 for event_id, field_id in vars(events).items():
                     select_query = self._get_query_from_sql_file(
                         sql_file, omop_table_name
