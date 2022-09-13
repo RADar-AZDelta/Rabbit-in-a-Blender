@@ -1,6 +1,6 @@
 MERGE INTO {{project_id}}.{{dataset_id_omop}}.concept AS T
 USING (
-    SELECT swap.y as concept_id, t.* EXCEPT(concept_id)
+    SELECT DISTINCT swap.y as concept_id, t.* EXCEPT(concept_id)
     FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept t
     INNER JOIN {{project_id}}.{{dataset_id_work}}.concept_id_swap swap 
         on swap.x = concat('{{concept_id_column}}__', t.concept_code)
