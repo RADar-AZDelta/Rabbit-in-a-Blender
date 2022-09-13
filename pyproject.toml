@@ -1,6 +1,6 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.9"
+version = "0.0.10"
 authors = [
   { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
   { name="Dupulthys Stijn", email="Stijn.Dupulthys@azdelta.be" }
@@ -26,7 +26,8 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/RADar-AZDelta/Rabbit-in-a-Blender"
+"Homepage" = "https://radar-azdelta.github.io/Rabbit-in-a-Blender/"
+"Source Code" = "https://github.com/RADar-AZDelta/Rabbit-in-a-Blender"
 "Bug Tracker" = "https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/issues"
 
 [project.scripts]
