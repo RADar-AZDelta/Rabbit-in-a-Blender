@@ -16,7 +16,7 @@ USING (
         LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap swap on swap.x = t.{{primary_key_column}}
             {%- set ns = namespace(ci_counter=0) %}  
             {%- for column in concept_id_columns %}
-        LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{column.lower()}}_usagi swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
+        LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
                 {%- set ns.ci_counter = ns.ci_counter + 1 -%}
             {%- endfor %} 
         where swap.x is null
