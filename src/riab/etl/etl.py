@@ -115,9 +115,9 @@ class Etl(ABC):
         etl_start = date.today()
 
         if self._only_omop_table:
-            # self._process_omop_folder(
-            #     self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
-            # )
+            self._process_omop_folder(
+                self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
+            )
             self._process_events(
                 self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
             )
