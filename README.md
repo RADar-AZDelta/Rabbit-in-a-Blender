@@ -32,7 +32,7 @@ Notes on Use
 
 You will need to run the cleanup command when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
 
-The measurement table has the **measurement_event_id** field, the observation table has the **observation_event_id** field, the cost table has the **cost_event_id** field, the episode_event table has the **event_id** field and the fact_relationship table has the **fact_id_1** and **fact_id_2** fields. All those fields are foreign keys to almost all OMOP CMD tables. To simplify the ETL-process, we require one sql-file per referenced table: simple put the source id in the event_id field and the reffered table in the field_concept_id field. The source id can vary over rows, the referred tabel has to be unique for the sql-file. An example of how to implement this in the sql-file:
+The measurement table has the **measurement_event_id** field, the observation table has the **observation_event_id** field, the cost table has the **cost_event_id** field, the episode_event table has the **event_id** field and the fact_relationship table has the **fact_id_1** and **fact_id_2** fields. All those fields are foreign keys to almost all OMOP CMD tables. Put the source id in the event_id field and the reffered table in the field_concept_id field. An example of how to implement this in the sql-file:
 - Linking two people with a personal relationship in the fact_relationship table:
 ```sql
 select distinct
