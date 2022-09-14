@@ -473,13 +473,14 @@ class BigQuery(Etl):
         self._gcp.run_query_job(ddl)
 
     def _create_pk_auto_numbering_swap_table(
-        self, pk_swap_table_name: str, concept_id_columns: List[str]
+        self, pk_swap_table_name: str, concept_id_columns: List[str], events: Any
     ) -> None:
         """This method created a swap table so that our source codes can be translated to auto numbering primary keys.
 
         Args:
             pk_swap_table_name (str): The name of our primary key swap table
             concept_id_columns (List[str]): List of concept_id columns
+            events (Any): Object that holds the events of the the OMOP table.
         """
         template = self._template_env.get_template(
             "{primary_key_column}_swap_create.sql.jinja"
@@ -490,6 +491,7 @@ class BigQuery(Etl):
             pk_swap_table_name=pk_swap_table_name,
             # foreign_key_columns=vars(foreign_key_columns),
             concept_id_columns=concept_id_columns,
+            events=events,
         )
         self._gcp.run_query_job(ddl)
 
@@ -500,6 +502,7 @@ class BigQuery(Etl):
         pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
+        events: Any,
     ) -> None:
         """This method does the swapping of our source codes to an auto number that will be the primary key
         of our OMOP table.
@@ -510,6 +513,7 @@ class BigQuery(Etl):
             pk_swap_table_name (str): Primary key swap table
             primary_key_column (str): Primary key column
             concept_id_columns (List[str]): List of concept_id columns
+            events (Any): Object that holds the events of the the OMOP table.
         """
         template = self._template_env.get_template(
             "{primary_key_column}_swap_merge.sql.jinja"
@@ -522,10 +526,11 @@ class BigQuery(Etl):
             concept_id_columns=concept_id_columns,
             omop_table=omop_table,
             work_table=work_table,
+            events=events,
         )
         self._gcp.run_query_job(sql)
 
-    def _merge_into_omop_table(
+    def _merge_into_omop_work_table(
         self,
         sql_file: Path,
         omop_table: str,
@@ -535,6 +540,7 @@ class BigQuery(Etl):
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
         concept_id_columns: List[str],
+        events: Any,
     ):
         """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
@@ -547,8 +553,9 @@ class BigQuery(Etl):
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
             foreign_key_columns (Any): List of foreign key columns.
             concept_id_columns (List[str]): List of concept columns.
+            events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template("{omop_table}_merge.sql.jinja")
+        template = self._template_env.get_template("{omop_work_table}_merge.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
             dataset_id_omop=self._dataset_id_omop,
@@ -563,6 +570,60 @@ class BigQuery(Etl):
             else foreign_key_columns,
             concept_id_columns=concept_id_columns,
             pk_auto_numbering=pk_auto_numbering,
+            events=events,
+        )
+        self._gcp.run_query_job(sql)
+
+    def _merge_into_omop_table(
+        self,
+        omop_table: str,
+        columns: List[str],
+        primary_key_column: Optional[str],
+        events: Any,
+    ):
+        """The one shot merge of OMOP work table into the destination OMOP table applying the events.
+
+        Args:
+            sql_file (str): The sql file holding the query on the raw data.
+            omop_table (str): OMOP table.
+            columns (List[str]): List of columns of the OMOP table.
+            primary_key_column (str): The name of the primary key column.
+            events (Any): Object that holds the events of the the OMOP table.
+        """  # noqa: E501 # pylint: disable=line-too-long
+        event_tables = []
+        if dict(events):  # we have event colomns
+            template = self._template_env.get_template(
+                "{omop_table}_get_event_tables.sql.jinja"
+            )
+            sql = template.render(
+                project_id=self._project_id,
+                omop_table=omop_table,
+                dataset_id_work=self._dataset_id_work,
+                events=events,
+            )
+            rows = self._gcp.run_query_job(sql)
+            event_tables = dict(
+                (table, vars(self._omop_tables)[table].pk)
+                for table in (row.event_table for row in rows)
+            )
+
+        cluster_fields = (
+            self._clustering_fields[omop_table]
+            if omop_table in self._clustering_fields
+            else []
+        )
+
+        template = self._template_env.get_template("{omop_table}_merge.sql.jinja")
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+            omop_table=omop_table,
+            dataset_id_work=self._dataset_id_work,
+            columns=columns,
+            primary_key_column=primary_key_column,
+            events=events,
+            event_tables=event_tables,
+            cluster_fields=cluster_fields,
         )
         self._gcp.run_query_job(sql)
 
@@ -861,3 +922,35 @@ class BigQuery(Etl):
             vocabulary_table,
             self._clustering_fields[vocabulary_table],
         )
+
+    def _create_omop_work_table(self, omop_table: str, events: Any) -> None:
+        """Creates the OMOP work table (if it does'nt yet exists) based on the DDL.
+
+        Args:
+            omop_table (str): The OMOP table
+            events (Any): Object that holds the events of the the OMOP table.
+        """
+        parse_results = DDLParser(self._ddl).run(output_mode="sql")
+        try:
+            table_ddl = next(
+                (tab for tab in parse_results if tab["table_name"] == omop_table)
+            )
+        except StopIteration as si_err:
+            raise Exception(f"{omop_table} not found in ddl") from si_err
+
+        cluster_fields = (
+            self._clustering_fields[omop_table]
+            if omop_table in self._clustering_fields
+            else []
+        )
+
+        template = self._template_env.get_template("create_omop_work_table.sql.jinja")
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_work=self._dataset_id_work,
+            omop_table=omop_table,
+            columns=table_ddl["columns"],
+            events=events,
+            cluster_fields=cluster_fields,
+        )
+        self._gcp.run_query_job(sql)

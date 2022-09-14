@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-import re
 import tempfile
 import zipfile
 from abc import ABC, abstractmethod
@@ -116,12 +115,18 @@ class Etl(ABC):
         etl_start = date.today()
 
         if self._only_omop_table:
-            self._process_omop_folder(
+            # self._process_omop_folder(
+            #     self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
+            # )
+            self._process_events(
                 self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
             )
         else:
             for omop_table, table_props in vars(self._omop_tables).items():
                 self._process_omop_folder(omop_table, table_props)
+
+            for omop_table, table_props in vars(self._omop_tables).items():
+                self._process_events(omop_table, table_props)
 
             # cleanup old source to concept maps by setting the invalid_reason to deleted (we only do this when running a full ETL = all OMOP tables)
             self._source_to_concept_map_update_invalid_reason(etl_start)
@@ -147,6 +152,18 @@ class Etl(ABC):
             return
 
         logging.info("Processing ETL folder: %s", omop_table_path)
+
+        events = vars(
+            getattr(
+                omop_table_props,
+                "events",
+                json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
+            )
+        )
+
+        # create the OMOP work table based on the DDL, but with the event_id columns of type STRING
+        self._create_omop_work_table(omop_table_name, events)
+
         # get all the columns from the destination OMOP table
         columns = self._get_column_names(omop_table_name)
         concept_columns = [
@@ -198,43 +215,16 @@ class Etl(ABC):
                     pk_swap_table_name=cast(str, pk_swap_table_name),
                     primary_key_column=omop_table_props.pk,
                     concept_id_columns=concept_columns,
+                    events=events,
                 )
 
-            if events := getattr(omop_table_props, "events", None):
-                # the event fields are a special case of foreign key, because the can point to almost any OMOP table,
-                # and not to 1 specific table. This makes it difficult to swap the source values of the foreign keys to
-                # the autonumber generated primary keys of the specific table.
-                # An event consists always of 2 fields: the foreign key field, and a concept id of the table it is referring to.
-                # We retrieve the concept id of the table it is referring to, out of our query (it is hard coded in the query).
-                # The main disadvantage is that, that one query can only point to one foreign key event table.
-                # So potentially you will need to split your query in multiple ones.
-                for event_id, field_id in vars(events).items():
-                    select_query = self._get_query_from_sql_file(
-                        sql_file, omop_table_name
-                    )
-                    foreign_table = re.search(
-                        rf"['\"](.*?)['\"](?:\s*[aA][sS])?\s*{field_id}", select_query
-                    )
-                    if not foreign_table:
-                        raise Exception(
-                            f"""Improper format in sql-file for field_concept_id {field_id},
-                            should be: 'table_name' as {field_id}"""
-                        )
-                    setattr(
-                        foreign_key_columns,
-                        event_id,
-                        getattr(
-                            getattr(self._omop_tables, foreign_table.group(1)), "pk"
-                        ),
-                    )
-
-            # merge everything in the destination OMOP table
+            # merge everything in the destination OMOP work table
             logging.info(
-                "Merging query '%s' into omop table '%s'",
+                "Merging query '%s' into omop work table '%s'",
                 str(sql_file),
                 omop_table_name,
             )
-            self._merge_into_omop_table(
+            self._merge_into_omop_work_table(
                 sql_file=sql_file,
                 omop_table=omop_table_name,
                 columns=columns,
@@ -243,6 +233,7 @@ class Etl(ABC):
                 pk_auto_numbering=pk_auto_numbering,
                 foreign_key_columns=foreign_key_columns,
                 concept_id_columns=concept_columns,
+                events=events,
             )
 
     def _upload_custom_concepts(self, omop_table: str, concept_id_column: str):
@@ -443,6 +434,31 @@ class Etl(ABC):
             omop_table, concept_id_column
         )
 
+    def _process_events(self, omop_table_name: str, omop_table_props: Any):
+        events = vars(
+            getattr(
+                omop_table_props,
+                "events",
+                json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
+            )
+        )
+
+        # get all the columns from the destination OMOP table
+        columns = self._get_column_names(omop_table_name)
+
+        # merge everything in the destination OMOP work table
+        logging.info(
+            "Merging work table '%s' into omop table '%s'",
+            omop_table_name,
+            omop_table_name,
+        )
+        self._merge_into_omop_table(
+            omop_table=omop_table_name,
+            columns=columns,
+            primary_key_column=getattr(omop_table_props, "pk", None),
+            events=events,
+        )
+
     def _execute_query_from_sql_file_and_store_results_in_work_table(
         self, sql_file: Path, omop_table: str
     ):
@@ -475,6 +491,7 @@ class Etl(ABC):
         pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
+        events: Any,
     ):
         """Swap the primary key source value of the omop table with a generated incremental number.
 
@@ -484,6 +501,7 @@ class Etl(ABC):
             pk_swap_table_name (str): Name of the swap table, for generating the auto numbering.
             primary_key_column (str): The name of the primary key column.
             concept_id_columns (List[str]): List of the columns that hold concepts
+            events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
         logging.debug(
             "Swapping primary key column '%s' for query '%s'",
@@ -492,7 +510,7 @@ class Etl(ABC):
         )
         # create the swap table for the primary key
         self._create_pk_auto_numbering_swap_table(
-            pk_swap_table_name, concept_id_columns
+            pk_swap_table_name, concept_id_columns, events
         )
 
         # execute the swap query
@@ -503,10 +521,11 @@ class Etl(ABC):
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             concept_id_columns=concept_id_columns,
+            events=events,
         )
 
     @abstractmethod
-    def _merge_into_omop_table(
+    def _merge_into_omop_work_table(
         self,
         sql_file: Path,
         omop_table: str,
@@ -516,6 +535,7 @@ class Etl(ABC):
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
         concept_id_columns: List[str],
+        events: Any,
     ):
         """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
@@ -528,6 +548,7 @@ class Etl(ABC):
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
             foreign_key_columns (Any): List of foreign key columns.
             concept_id_columns (List[str]): List of concept columns.
+            events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
 
     def _convert_usagi_csv_to_arrow_table(self, usagi_csv_file: Path) -> pa.Table:
@@ -970,13 +991,14 @@ class Etl(ABC):
 
     @abstractmethod
     def _create_pk_auto_numbering_swap_table(
-        self, pk_swap_table_name: str, concept_id_columns: List[str]
+        self, pk_swap_table_name: str, concept_id_columns: List[str], events: Any
     ) -> None:
         """This method created a swap table so that our source codes can be translated to auto numbering primary keys.
 
         Args:
             pk_swap_table_name (str): The name of our primary key swap table
             concept_id_columns (List[str]): List of concept_id columns
+            events (Any): Object that holds the events of the the OMOP table.
         """
         pass
 
@@ -988,6 +1010,7 @@ class Etl(ABC):
         pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
+        events: Any,
     ) -> None:
         """This method does the swapping of our source codes to an auto number that will be the primary key
         of our OMOP table.
@@ -998,6 +1021,7 @@ class Etl(ABC):
             pk_swap_table_name (str): Primary key swap table
             primary_key_column (str): Primary key column
             concept_id_columns (List[str]): List of concept_id columns
+            events (Any): Object that holds the events of the the OMOP table.
         """
         pass
 
@@ -1111,4 +1135,33 @@ class Etl(ABC):
         Args:
             vocabulary_table (str): The standardised vocabulary table
         """
+        pass
+
+    @abstractmethod
+    def _create_omop_work_table(self, omop_table: str, events: Any) -> None:
+        """Creates the OMOP work table (if it does'nt yet exists) based on the DDL.
+
+        Args:
+            omop_table (str): The OMOP table
+            events (Any): Object that holds the events of the the OMOP table.
+        """
+        pass
+
+    @abstractmethod
+    def _merge_into_omop_table(
+        self,
+        omop_table: str,
+        columns: List[str],
+        primary_key_column: Optional[str],
+        events: Any,
+    ):
+        """The one shot merge of OMOP work table into the destination OMOP table applying the events.
+
+        Args:
+            sql_file (str): The sql file holding the query on the raw data.
+            omop_table (str): OMOP table.
+            columns (List[str]): List of columns of the OMOP table.
+            primary_key_column (str): The name of the primary key column.
+            events (Any): Object that holds the events of the the OMOP table.
+        """  # noqa: E501 # pylint: disable=line-too-long
         pass

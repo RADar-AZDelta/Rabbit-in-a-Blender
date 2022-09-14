@@ -11,7 +11,7 @@
       "program": "src/riab/__init__.py",
       "args": [
         //"--help",
-        //"--verbose",
+        "--verbose",
         
         //"--create-db", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pjl",
         
@@ -20,10 +20,10 @@
         //"--create-folders", "~/OMOP_CDM", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop",
         
         "--run-etl", "~/git/AZDelta-OMOP-CDM/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work", "--bigquery-dataset-id-raw", "hix"
-        //  ,"--skip-usagi-and-custom-concept-upload",
-        //  ,"--table", "provider"
+          //,"--skip-usagi-and-custom-concept-upload"
+          ,"--table", "fact_relationship"
 
-        //"--cleanup", "provider", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work"
+        //"--cleanup", "measurement", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work"
       ],
       "console": "integratedTerminal",
       "justMyCode": false,

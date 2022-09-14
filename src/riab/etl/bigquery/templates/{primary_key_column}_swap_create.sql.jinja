@@ -1,10 +1,12 @@
 CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap 
 (x STRING,
-{# {%- for column in foreign_key_columns %}
- {{column}} STRING,
-{%- endfor %} #}
 {%- for column in concept_id_columns %}
- {{column}} INT64,
+    {{column}} 
+    {% if not column in events.values() -%}
+        INT64,
+    {%- else -%}
+        STRING,
+    {%- endif -%}
 {%- endfor %}
  y INT64)
 CLUSTER BY x
