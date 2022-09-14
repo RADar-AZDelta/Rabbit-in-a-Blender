@@ -218,39 +218,7 @@ class Etl(ABC):
                     events=events,
                 )
 
-<<<<<<< HEAD
             # merge everything in the destination OMOP work table
-=======
-            if events := getattr(omop_table_props, "events", None):
-                # the event fields are a special case of foreign key, because the can point to almost any OMOP table,
-                # and not to 1 specific table. This makes it difficult to swap the source values of the foreign keys to
-                # the autonumber generated primary keys of the specific table.
-                # An event consists always of 2 fields: the foreign key field, and a concept id of the table it is referring to.
-                # We retrieve the concept id of the table it is referring to, out of our query (it is hard coded in the query).
-                # The main disadvantage is, that one query can only point to one foreign key event table.
-                # So potentially you will need to split your query over multiple files.
-                for event_id, field_id in vars(events).items():
-                    select_query = self._get_query_from_sql_file(
-                        sql_file, omop_table_name
-                    )
-                    foreign_table = re.search(
-                        rf"['\"](.*?)['\"](?:\s*[aA][sS])?\s*{field_id}", select_query
-                    )
-                    if not foreign_table:
-                        raise Exception(
-                            f"""Improper format in sql-file for field_concept_id {field_id},
-                            should be: 'table_name' as {field_id}"""
-                        )
-                    setattr(
-                        foreign_key_columns,
-                        event_id,
-                        getattr(
-                            getattr(self._omop_tables, foreign_table.group(1)), "pk"
-                        ),
-                    )
-
-            # merge everything in the destination OMOP table
->>>>>>> 593cac716dfd7cd5cf2800c63b1a5d4c47e8d11a
             logging.info(
                 "Merging query '%s' into omop work table '%s'",
                 str(sql_file),
