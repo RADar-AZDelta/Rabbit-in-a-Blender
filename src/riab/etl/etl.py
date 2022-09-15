@@ -121,6 +121,18 @@ class Etl(ABC):
             self._process_events(
                 self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
             )
+            for omop_table, table_props in vars(self._omop_tables).items():
+                if omop_table == self._only_omop_table:
+                    continue
+                events = vars(
+                    getattr(
+                        table_props,
+                        "events",
+                        json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
+                    )
+                )
+                if events:
+                    self._process_events(omop_table, table_props)
         else:
             for omop_table, table_props in vars(self._omop_tables).items():
                 self._process_omop_folder(omop_table, table_props)
