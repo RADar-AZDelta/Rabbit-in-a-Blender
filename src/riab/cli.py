@@ -6,7 +6,7 @@ import sys
 import traceback
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import List, Optional
+from typing import Optional
 
 from riab.etl import Etl
 from riab.etl.bigquery import BigQuery

@@ -19,11 +19,11 @@
         
         //"--create-folders", "~/OMOP_CDM", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop",
         
-        "--run-etl", "~/git/AZDelta-OMOP-CDM/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work", "--bigquery-dataset-id-raw", "hix"
+        "--run-etl", "~/Innovatie/AZDelta-OMOP-CDM/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work", "--bigquery-dataset-id-raw", "hix"
           //,"--skip-usagi-and-custom-concept-upload"
-          ,"--table", "fact_relationship"
+          ,"--table", "visit_detail"
 
-        //"--cleanup", "measurement", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work"
+        //"--cleanup", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop", "--bigquery-dataset-id-work", "omop_work"
       ],
       "console": "integratedTerminal",
       "justMyCode": false,

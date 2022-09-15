@@ -277,7 +277,7 @@ class Etl(ABC):
         self._create_custom_concept_id_swap_table()
 
         ar_table = None
-        for concept_csv_file in concept_csv_files:  # loop the custon concept CSV's
+        for concept_csv_file in concept_csv_files:  # loop the custom concept CSV's
             logging.info(
                 "Creating concept_id swap from custom concept file '%s'",
                 str(concept_csv_file),
