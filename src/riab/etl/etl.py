@@ -115,10 +115,10 @@ class Etl(ABC):
         etl_start = date.today()
 
         if self._only_omop_table:
-            self._process_omop_folder(
+            self._process_folder_to_work(
                 self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
             )
-            self._process_events(
+            self._process_work_to_omop(
                 self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
             )
             for omop_table, table_props in vars(self._omop_tables).items():
@@ -132,18 +132,18 @@ class Etl(ABC):
                     )
                 )
                 if events:
-                    self._process_events(omop_table, table_props)
+                    self._process_work_to_omop(omop_table, table_props)
         else:
             for omop_table, table_props in vars(self._omop_tables).items():
-                self._process_omop_folder(omop_table, table_props)
+                self._process_folder_to_work(omop_table, table_props)
 
             for omop_table, table_props in vars(self._omop_tables).items():
-                self._process_events(omop_table, table_props)
+                self._process_work_to_omop(omop_table, table_props)
 
             # cleanup old source to concept maps by setting the invalid_reason to deleted (we only do this when running a full ETL = all OMOP tables)
             self._source_to_concept_map_update_invalid_reason(etl_start)
 
-    def _process_omop_folder(self, omop_table_name: str, omop_table_props: Any):
+    def _process_folder_to_work(self, omop_table_name: str, omop_table_props: Any):
         """ETL method for one OMOP table
 
         Args:
@@ -446,7 +446,7 @@ class Etl(ABC):
             omop_table, concept_id_column
         )
 
-    def _process_events(self, omop_table_name: str, omop_table_props: Any):
+    def _process_work_to_omop(self, omop_table_name: str, omop_table_props: Any):
         events = vars(
             getattr(
                 omop_table_props,
