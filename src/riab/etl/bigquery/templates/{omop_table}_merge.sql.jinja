@@ -24,6 +24,7 @@ as (
             ELSE 0
         END as {{column}}
             {%- elif column in events.values() -%} {# event concept_id #}
+                {%- if events_tables -%} 
         CASE t.{{column}}
                 {%- if "care_site" in event_tables %}
             WHEN "care_site" THEN 1147195
@@ -117,6 +118,8 @@ as (
                 {%- endif %}
             ELSE 0
         END as {{column}}
+                {%- else %}
+        0 as {{column}}
             {%- else %}
         t.{{column}}
             {%- endif %}

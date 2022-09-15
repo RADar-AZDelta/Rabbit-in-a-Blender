@@ -598,7 +598,7 @@ class BigQuery(Etl):
             sql = template.render(
                 project_id=self._project_id,
                 omop_table=omop_table,
-                dataset_id_work=self._dataset_id_work,
+                dataset_id_omop=self._dataset_id_omop,
                 events=events,
             )
             rows = self._gcp.run_query_job(sql)
