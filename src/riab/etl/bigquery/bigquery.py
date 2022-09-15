@@ -125,6 +125,25 @@ class BigQuery(Etl):
             query_parameters=[bq.ScalarQueryParameter("etl_start", "DATE", etl_start)],
         )
 
+    def _source_id_to_omop_id_map_update_invalid_reason(self, etl_start: date) -> None:
+        """Cleanup old source id's to omop id's maps by setting the invalid_reason to deleted
+        for all maps with a valid_start_date before the ETL start date.
+
+        Args:
+            etl_start (date): The start data of the ETL.
+        """
+        template = self._template_env.get_template(
+            "SOURCE_ID_TO_OMOP_ID_MAP_update_invalid_reason.sql.jinja"
+        )
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+        )
+        self._gcp.run_query_job(
+            sql,
+            query_parameters=[bq.ScalarQueryParameter("etl_start", "DATE", etl_start)],
+        )
+
     def _get_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of column names of a omop table.
 
@@ -161,6 +180,18 @@ class BigQuery(Etl):
         ddl = re.sub(r"\"", r"", ddl)
         ddl = re.sub(r"domain_concept_id_", r"field_concept_id_", ddl)
         ddl = re.sub(r"cost_domain_id STRING", r"cost_field_concept_id INT64", ddl)
+
+        template = self._template_env.get_template(
+            "SOURCE_ID_TO_OMOP_ID_MAP_create.sql.jinja"
+        )
+        ddl2 = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+        )
+
+        ddl += f"""
+        
+{ddl2}"""
         return ddl
 
     def _is_pk_auto_numbering(
@@ -427,6 +458,27 @@ class BigQuery(Etl):
             dataset_id_work=self._dataset_id_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
+            dataset_id_omop=self._dataset_id_omop,
+        )
+        self._gcp.run_query_job(sql)
+
+    def _store_usagi_source_id_to_omop_id_mapping(
+        self, omop_table: str, pk_swap_table_name: str
+    ) -> None:
+        """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
+
+        Args:
+            omop_table (str): The omop table
+            pk_swap_table_name (str): The id swap work table
+        """
+        template = self._template_env.get_template(
+            "SOURCE_ID_TO_OMOP_ID_MAP_merge.sql.jinja"
+        )
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_work=self._dataset_id_work,
+            omop_table=omop_table,
+            pk_swap_table_name=pk_swap_table_name,
             dataset_id_omop=self._dataset_id_omop,
         )
         self._gcp.run_query_job(sql)

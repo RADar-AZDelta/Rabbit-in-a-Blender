@@ -8,5 +8,6 @@ CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_na
         STRING,
     {%- endif -%}
 {%- endfor %}
+ source STRING,
  y INT64)
 CLUSTER BY x

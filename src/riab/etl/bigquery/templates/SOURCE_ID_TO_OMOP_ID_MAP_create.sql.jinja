@@ -1,0 +1,10 @@
+create table if not exists {{project_id}}.{{dataset_id_omop}}.source_id_to_omop_id_map (
+    omop_table STRING not null,
+    omop_id INT64 not null,
+    source STRING,
+    source_id STRING not null,
+    valid_start_date DATE not null,
+    valid_end_date DATE not null,
+    invalid_reason STRING
+)
+CLUSTER BY omop_table, omop_id;

@@ -142,6 +142,7 @@ class Etl(ABC):
 
             # cleanup old source to concept maps by setting the invalid_reason to deleted (we only do this when running a full ETL = all OMOP tables)
             self._source_to_concept_map_update_invalid_reason(etl_start)
+            self._source_id_to_omop_id_map_update_invalid_reason(etl_start)
 
     def _process_folder_to_work(self, omop_table_name: str, omop_table_props: Any):
         """ETL method for one OMOP table
@@ -246,6 +247,13 @@ class Etl(ABC):
                 foreign_key_columns=foreign_key_columns,
                 concept_id_columns=concept_columns,
                 events=events,
+            )
+
+        if pk_auto_numbering:
+            # store the ID swap in our 'source_id_to_omop_id_swap' table
+            self._store_usagi_source_id_to_omop_id_mapping(
+                omop_table=omop_table_name,
+                pk_swap_table_name=cast(str, pk_swap_table_name),
             )
 
     def _upload_custom_concepts(self, omop_table: str, concept_id_column: str):
@@ -797,6 +805,16 @@ class Etl(ABC):
         pass
 
     @abstractmethod
+    def _source_id_to_omop_id_map_update_invalid_reason(self, etl_start: date) -> None:
+        """Cleanup old source id's to omop id's maps by setting the invalid_reason to deleted
+        for all maps with a valid_start_date before the ETL start date.
+
+        Args:
+            etl_start (date): The start data of the ETL.
+        """
+        pass
+
+    @abstractmethod
     def _get_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of column names of a omop table.
 
@@ -1176,4 +1194,16 @@ class Etl(ABC):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
+        pass
+
+    @abstractmethod
+    def _store_usagi_source_id_to_omop_id_mapping(
+        self, omop_table: str, pk_swap_table_name: str
+    ) -> None:
+        """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
+
+        Args:
+            omop_table (str): The omop table
+            pk_swap_table_name (str): The id swap work table
+        """
         pass

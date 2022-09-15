@@ -15,6 +15,7 @@ USING (
                 t.{{column}},
                 {%- endif -%}
             {%- endfor %} 
+            '{{work_table}}' as source
         FROM {{project_id}}.{{dataset_id_work}}.{{work_table}} t
         {%- set ns = namespace(fk_counter=0, ci_counter=0) %}    
         LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap swap on swap.x = t.{{primary_key_column}}
@@ -32,6 +33,7 @@ USING (
         {%- for column in concept_id_columns %}
         s.{{column}},
         {%- endfor %} 
+        s.source,
         ROW_NUMBER() OVER() + cte_max.y as y
     FROM swap s
     INNER JOIN cte_max on 1=1

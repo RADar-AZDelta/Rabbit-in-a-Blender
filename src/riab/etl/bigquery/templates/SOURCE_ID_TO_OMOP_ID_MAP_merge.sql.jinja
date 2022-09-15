@@ -1,0 +1,21 @@
+MERGE INTO {{project_id}}.{{dataset_id_omop}}.source_id_to_omop_id_map AS T
+USING (
+    SELECT DISTINCT
+        '{{omop_table}}' as omop_table
+        ,t.y as omop_id
+        ,t.source
+        ,t.x as source_id
+        ,CURRENT_DATE() as valid_start_date
+        ,DATE(2099, 12, 31) as valid_end_date
+        ,cast(NULL as string) as invalid_reason        
+    FROM {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap t
+) AS S
+ON S.omop_table = T.omop_table and S.source_id = T.source_id
+WHEN MATCHED THEN
+    UPDATE SET T.omop_id = S.omop_id
+        ,T.source = S.source
+        ,T.valid_start_date = S.valid_start_date
+        ,T.valid_end_date = S.valid_end_date
+        ,T.invalid_reason = S.invalid_reason
+WHEN NOT MATCHED THEN
+    INSERT ROW
