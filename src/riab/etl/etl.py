@@ -664,6 +664,9 @@ class Etl(ABC):
             logging.info("Truncate omop table 'source_to_concept_map'")
             self._truncate_omop_table("source_to_concept_map")
 
+            logging.info("Truncate omop table 'source_id_to_omop_id_map'")
+            self._truncate_omop_table("source_id_to_omop_id_map")
+
             logging.info(
                 "Removing custom concepts from 'concept' table",
             )
@@ -684,6 +687,11 @@ class Etl(ABC):
             )
             self._remove_custom_concepts_from_vocabulary_table()
         else:
+            logging.info(
+                "Removing mapped source id's to omop id's from SOURCE_ID_TO_OMOP_ID_MAP for OMOP table '%s'",
+                f"{cleanup_table}",
+            )
+            self._remove_omop_ids_from_map_table(omop_table=cleanup_table)
             for table_name in work_tables:
                 if table_name.startswith(cleanup_table) and table_name.endswith(
                     "_concept"
@@ -1097,35 +1105,69 @@ class Etl(ABC):
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept table"""
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept table
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
+        pass
+
+    @abstractmethod
+    def _remove_omop_ids_from_map_table(self, omop_table: str) -> None:
+        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP table.
+
+        Args:
+            omop_table (str): The omop table
+        """  # noqa: E501 # pylint: disable=line-too-long
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table"""
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table"""
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table"""
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod
     def _remove_source_to_concept_map_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table"""
+        """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """
         pass
 
     @abstractmethod

@@ -760,7 +760,12 @@ class BigQuery(Etl):
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept table"""  # noqa: E501 # pylint: disable=line-too-long
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept table
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
             "cleanup/CONCEPT_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
@@ -774,10 +779,31 @@ class BigQuery(Etl):
         )
         self._gcp.run_query_job(sql)
 
+    def _remove_omop_ids_from_map_table(self, omop_table: str) -> None:
+        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP table.
+
+        Args:
+            omop_table (str): The omop table
+        """  # noqa: E501 # pylint: disable=line-too-long
+        template = self._template_env.get_template(
+            "cleanup/SOURCE_ID_TO_OMOP_ID_MAP_remove_ids_by_omop_table.sql.jinja"
+        )
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+            omop_table=omop_table,
+        )
+        self._gcp.run_query_job(sql)
+
     def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table"""  # noqa: E501 # pylint: disable=line-too-long
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table
+                
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
             "cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"  # noqa: E501 # pylint: disable=line-too-long
         )
@@ -794,7 +820,12 @@ class BigQuery(Etl):
     def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table"""  # noqa: E501 # pylint: disable=line-too-long
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table
+                
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
             "cleanup/CONCEPT_ANCESTOR_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"  # noqa: E501 # pylint: disable=line-too-long
         )
@@ -811,7 +842,12 @@ class BigQuery(Etl):
     def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table"""  # noqa: E501 # pylint: disable=line-too-long
+        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table
+                
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
             "cleanup/VOCABULARY_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
@@ -828,7 +864,12 @@ class BigQuery(Etl):
     def _remove_source_to_concept_map_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table"""  # noqa: E501 # pylint: disable=line-too-long
+        """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table
+                
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+        """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
             "cleanup/SOURCE_TO_CONCEPT_MAP_remove_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
