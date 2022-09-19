@@ -14,6 +14,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.csv as pcsv
 import pyarrow.parquet as pq
+from google.cloud.exceptions import NotFound
 from jinja2.utils import select_autoescape
 from simple_ddl_parser import DDLParser
 
@@ -642,42 +643,48 @@ class BigQuery(Etl):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        event_tables = []
-        if dict(events):  # we have event colomns
-            template = self._template_env.get_template(
-                "{omop_table}_get_event_tables.sql.jinja"
+        event_tables = {}
+        try:
+            if dict(events):  # we have event colomns
+                template = self._template_env.get_template(
+                    "{omop_table}_get_event_tables.sql.jinja"
+                )
+                sql = template.render(
+                    project_id=self._project_id,
+                    omop_table=omop_table,
+                    dataset_id_work=self._dataset_id_work,
+                    events=events,
+                )
+                rows = self._gcp.run_query_job(sql)
+                event_tables = dict(
+                    (table, vars(self._omop_tables)[table].pk)
+                    for table in (row.event_table for row in rows)
+                )
+
+            cluster_fields = (
+                self._clustering_fields[omop_table]
+                if omop_table in self._clustering_fields
+                else []
             )
+
+            template = self._template_env.get_template("{omop_table}_merge.sql.jinja")
             sql = template.render(
                 project_id=self._project_id,
-                omop_table=omop_table,
                 dataset_id_omop=self._dataset_id_omop,
+                omop_table=omop_table,
+                dataset_id_work=self._dataset_id_work,
+                columns=columns,
+                primary_key_column=primary_key_column,
                 events=events,
+                event_tables=event_tables,
+                cluster_fields=cluster_fields,
             )
-            rows = self._gcp.run_query_job(sql)
-            event_tables = dict(
-                (table, vars(self._omop_tables)[table].pk)
-                for table in (row.event_table for row in rows)
+            self._gcp.run_query_job(sql)
+        except NotFound:
+            logging.debug(
+                "Table %s not found in work dataset, continue without merge for this table",
+                omop_table,
             )
-
-        cluster_fields = (
-            self._clustering_fields[omop_table]
-            if omop_table in self._clustering_fields
-            else []
-        )
-
-        template = self._template_env.get_template("{omop_table}_merge.sql.jinja")
-        sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            omop_table=omop_table,
-            dataset_id_work=self._dataset_id_work,
-            columns=columns,
-            primary_key_column=primary_key_column,
-            events=events,
-            event_tables=event_tables,
-            cluster_fields=cluster_fields,
-        )
-        self._gcp.run_query_job(sql)
 
     def _get_work_tables(self) -> List[str]:
         """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
