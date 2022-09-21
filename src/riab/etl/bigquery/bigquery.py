@@ -659,6 +659,7 @@ class BigQuery(Etl):
                 event_tables = dict(
                     (table, vars(self._omop_tables)[table].pk)
                     for table in (row.event_table for row in rows)
+                    if table
                 )
 
             cluster_fields = (
@@ -777,7 +778,14 @@ class BigQuery(Etl):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        self._gcp.run_query_job(sql)
+        try:
+            self._gcp.run_query_job(sql)
+        except NotFound:
+            logging.debug(
+                "Table %s__%s_usagi_table not found in work dataset",
+                omop_table,
+                concept_id_column,
+            )
 
     def _remove_omop_ids_from_map_table(self, omop_table: str) -> None:
         """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP table.
@@ -799,7 +807,7 @@ class BigQuery(Etl):
         self, omop_table: str, concept_id_column: str
     ) -> None:
         """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table
-                
+
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
@@ -815,13 +823,20 @@ class BigQuery(Etl):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        self._gcp.run_query_job(sql)
+        try:
+            self._gcp.run_query_job(sql)
+        except NotFound:
+            logging.debug(
+                "Table %s__%s_usagi_table not found in work dataset",
+                omop_table,
+                concept_id_column,
+            )
 
     def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table
-                
+
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
@@ -837,13 +852,20 @@ class BigQuery(Etl):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        self._gcp.run_query_job(sql)
+        try:
+            self._gcp.run_query_job(sql)
+        except NotFound:
+            logging.debug(
+                "Table %s__%s_usagi_table not found in work dataset",
+                omop_table,
+                concept_id_column,
+            )
 
     def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table
-                
+
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
@@ -859,13 +881,20 @@ class BigQuery(Etl):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        self._gcp.run_query_job(sql)
+        try:
+            self._gcp.run_query_job(sql)
+        except NotFound:
+            logging.debug(
+                "Table %s__%s_usagi_table not found in work dataset",
+                omop_table,
+                concept_id_column,
+            )
 
     def _remove_source_to_concept_map_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
         """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table
-                
+
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
