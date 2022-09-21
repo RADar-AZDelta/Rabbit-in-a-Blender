@@ -14,6 +14,7 @@ from riab.etl.bigquery import BigQuery
 
 def cli() -> None:
     """Main entry point of application"""
+
     with init_logging():
         try:
             parser = _contstruct_argument_parser()
