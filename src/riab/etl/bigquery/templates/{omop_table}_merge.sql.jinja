@@ -16,7 +16,7 @@ as (
                 {{','}}
             {%- endif %}
             {%- if column in events -%} {# event foreign key #}
-                {%- if events_tables|length > 0 -%} 
+                {%- if event_tables.keys()|length > 0  %}
         CASE t.{{events[column]}}            
                 {%- for (table, key) in event_tables.items() %}
             WHEN "{{table}}" THEN IFNULL(swap_fk{{ns.fk_counter}}.y, 0)
@@ -28,7 +28,7 @@ as (
         0 as {{column}}
                 {%- endif %}
             {%- elif column in events.values() -%} {# event concept_id #}
-                {%- if events_tables|length > 0 -%} 
+                {%- if event_tables.keys()|length > 0  %} 
         CASE t.{{column}}
                 {%- if "care_site" in event_tables %}
             WHEN "care_site" THEN 1147195
