@@ -77,7 +77,7 @@ class BigQuery(Etl):
         )
 
         self.__clustering_fields = None
-        self.__parse_results = None
+        self.__parsed_ddl = None
         self._lock = Lock()
 
     def create_omop_db(self) -> None:
@@ -91,12 +91,17 @@ class BigQuery(Etl):
             )
 
     @property
-    def _parse_results(self) -> List[Dict]:
+    def _parsed_ddl(self) -> List[Dict]:
+        """Holds the parsed DDL
+
+        Returns:
+            List[Dict]: the parsed DDL
+        """
         self._lock.acquire()
-        if not self.__parse_results:
-            self.__parse_results = DDLParser(self._ddl).run(output_mode="sql")
+        if not self.__parsed_ddl:
+            self.__parsed_ddl = DDLParser(self._ddl).run(output_mode="sql")
         self._lock.release()
-        return self.__parse_results
+        return self.__parsed_ddl
 
     @property
     def _clustering_fields(self) -> Dict[str, List[str]]:
@@ -1028,7 +1033,7 @@ class BigQuery(Etl):
             table_ddl = next(
                 (
                     tab
-                    for tab in self._parse_results
+                    for tab in self._parsed_ddl
                     if tab["table_name"] == vocabulary_table
                 )
             )
@@ -1078,7 +1083,7 @@ class BigQuery(Etl):
         """
         try:
             table_ddl = next(
-                (tab for tab in self._parse_results if tab["table_name"] == omop_table)
+                (tab for tab in self._parsed_ddl if tab["table_name"] == omop_table)
             )
         except StopIteration as si_err:
             raise Exception(f"{omop_table} not found in ddl") from si_err
