@@ -16,7 +16,14 @@ USING (
                 {%- endif -%}
             {%- endfor %} 
             '{{work_table}}' as source
-        FROM {{project_id}}.{{dataset_id_work}}.{{work_table}} t
+        FROM (
+            {%- for work_table in work_tables -%}
+                {%- if not loop.first %}
+            UNION ALL
+                {%- endif %}
+            SELECT * FROM {{project_id}}.{{dataset_id_work}}.{{work_table}} 
+            {%- endfor %}            
+        ) t
         {%- set ns = namespace(fk_counter=0, ci_counter=0) %}    
         LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap swap on swap.x = t.{{primary_key_column}}
             {%- set ns = namespace(ci_counter=0) %}  

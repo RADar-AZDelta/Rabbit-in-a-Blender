@@ -43,18 +43,6 @@ class Gcp:
         self._cs_client = cs.Client(credentials=credentials)
         self._bq_client = bq.Client(credentials=credentials)
         self._location = location
-        self.__session_id = None
-
-    @property
-    def _session_id(self) -> Union[str, None]:
-        """Gets the BigQuery [session](https://cloud.google.com/bigquery/docs/sessions-intro) id
-
-        Returns:
-            Union[str, None]: The session id
-        """
-        if not self.__session_id:
-            self.__session_id = self._create_session()
-        return self.__session_id
 
     def create_dataset(self, project_id: str, dataset_id: str) -> bq.Dataset:
         """Create dataset if not yet exists in the loaction.
@@ -165,9 +153,6 @@ ORDER BY ordinal_position"""
         """  # noqa: E501 # pylint: disable=line-too-long
         job_config = bq.QueryJobConfig(
             query_parameters=query_parameters or [],
-            connection_properties=[
-                bq.ConnectionProperty("session_id", str(self._session_id)),
-            ],
         )
         logging.debug("Running query: %s", query)
         start = time.time()
