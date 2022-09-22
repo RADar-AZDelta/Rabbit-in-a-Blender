@@ -10,10 +10,10 @@ USING (
         ,cast(NULL as string) as invalid_reason        
     FROM {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap t
 ) AS S
-ON S.omop_table = T.omop_table and S.source_id = T.source_id
+ON S.omop_table = T.omop_table and S.omop_id = T.omop_id
 WHEN MATCHED THEN
-    UPDATE SET T.omop_id = S.omop_id
-        ,T.source = S.source
+    UPDATE SET T.source = S.source
+        ,T.source_id = S.source_id
         ,T.valid_start_date = S.valid_start_date
         ,T.valid_end_date = S.valid_end_date
         ,T.invalid_reason = S.invalid_reason
