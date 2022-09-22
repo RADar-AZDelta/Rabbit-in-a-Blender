@@ -1,0 +1,12 @@
+{
+    "tables": [
+        "metadata",
+        "cdm_source",
+        "vocabulary",
+        "location",
+        "fact_relationship"
+    ],
+    "dependent": {
+        "tables": []
+    }
+}
