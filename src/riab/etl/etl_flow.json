@@ -4,9 +4,52 @@
         "cdm_source",
         "vocabulary",
         "location",
-        "fact_relationship"
+        "fact_relationship",
+        "cost"
     ],
     "dependent": {
-        "tables": []
+        "tables": [
+            "care_site"
+        ],
+        "dependent": {
+            "tables": [
+                "provider"
+            ],
+            "dependent": {
+                "tables": [
+                    "person"
+                ],
+                "dependent": {
+                    "tables": [
+                        "visit_occurrence",
+                        "specimen",
+                        "payer_plan_period",
+                        "episode"
+                    ],
+                    "dependent": {
+                        "tables": [
+                            "episode_event",
+                            "visit_detail"
+                        ],
+                        "dependent": {
+                            "tables": [
+                                "condition_occurrence",
+                                "drug_exposure",
+                                "procedure_occurrence",
+                                "device_exposure",
+                                "measurement",
+                                "note"
+                            ],
+                            "dependent": {
+                                "tables": [
+                                    "note_nlp",
+                                    "observation_period"
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -5,6 +5,7 @@ import logging
 import re
 from datetime import date
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import google.auth
@@ -76,6 +77,8 @@ class BigQuery(Etl):
         )
 
         self.__clustering_fields = None
+        self.__parse_results = None
+        self._lock = Lock()
 
     def create_omop_db(self) -> None:
         """Create OMOP tables in the omop-dataset in BigQuery and apply clustering"""
@@ -86,6 +89,14 @@ class BigQuery(Etl):
             self._gcp.set_clustering_fields_on_table(
                 self._project_id, self._dataset_id_omop, table, fields
             )
+
+    @property
+    def _parse_results(self) -> List[Dict]:
+        self._lock.acquire()
+        if not self.__parse_results:
+            self.__parse_results = DDLParser(self._ddl).run(output_mode="sql")
+        self._lock.release()
+        return self.__parse_results
 
     @property
     def _clustering_fields(self) -> Dict[str, List[str]]:
@@ -218,7 +229,9 @@ class BigQuery(Etl):
             omop_table_props.pk,
         )
         # is the primary key an auto numbering column?
-        pk_auto_numbering = pk_column_metadata.get("data_type") == "INT64"
+        pk_auto_numbering = (
+            pk_column_metadata and pk_column_metadata.get("data_type") == "INT64"
+        )
         return pk_auto_numbering
 
     def _clear_custom_concept_upload_table(
@@ -551,7 +564,7 @@ class BigQuery(Etl):
     def _execute_pk_auto_numbering_swap_query(
         self,
         omop_table: str,
-        work_table: str,
+        work_tables: List[str],
         pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
@@ -562,7 +575,7 @@ class BigQuery(Etl):
 
         Args:
             omop_table (str): The OMOP table
-            work_table (str): The OMOP work table
+            work_tables (List[str]): The OMOP work tables of the uploaded queries
             pk_swap_table_name (str): Primary key swap table
             primary_key_column (str): Primary key column
             concept_id_columns (List[str]): List of concept_id columns
@@ -578,14 +591,14 @@ class BigQuery(Etl):
             primary_key_column=primary_key_column,
             concept_id_columns=concept_id_columns,
             omop_table=omop_table,
-            work_table=work_table,
+            work_tables=work_tables,
             events=events,
         )
         self._gcp.run_query_job(sql)
 
     def _merge_into_omop_work_table(
         self,
-        sql_file: Path,
+        sql_files: List[Path],
         omop_table: str,
         columns: List[str],
         pk_swap_table_name: Optional[str],
@@ -598,7 +611,7 @@ class BigQuery(Etl):
         """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
         Args:
-            sql_file (str): The sql file holding the query on the raw data.
+            sql_files (List[Path]): The sql files holding the query on the raw data.
             omop_table (str): OMOP table.
             columns (List[str]): List of columns of the OMOP table.
             pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
@@ -614,7 +627,7 @@ class BigQuery(Etl):
             dataset_id_omop=self._dataset_id_omop,
             omop_table=omop_table,
             dataset_id_work=self._dataset_id_work,
-            sql_file=Path(Path(sql_file).stem).stem,
+            sql_files=[Path(Path(sql_file).stem).stem for sql_file in sql_files],
             columns=columns,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
@@ -702,6 +715,7 @@ class BigQuery(Etl):
         Args:
             table_name (str): Omop table to truncate
         """
+        logging.info("Truncate OMOP table '%s'", table_name)
         template = self._template_env.get_template("cleanup/truncate.sql.jinja")
         sql = template.render(
             project_id=self._project_id,
@@ -919,7 +933,7 @@ class BigQuery(Etl):
             work_table (str): The work table
         """
         table_id = f"{self._project_id}.{self._dataset_id_work}.{work_table}"
-        logging.debug("Deleting table '%s'", table_id)
+        logging.info("Deleting table '%s'", table_id)
         self._gcp.delete_table(self._project_id, self._dataset_id_work, work_table)
 
     def _load_vocabulary_in_upload_table(
@@ -1010,10 +1024,13 @@ class BigQuery(Etl):
         schema = []
         date_columns = []
 
-        parse_results = DDLParser(self._ddl).run(output_mode="sql")
         try:
             table_ddl = next(
-                (tab for tab in parse_results if tab["table_name"] == vocabulary_table)
+                (
+                    tab
+                    for tab in self._parse_results
+                    if tab["table_name"] == vocabulary_table
+                )
             )
         except StopIteration as si_err:
             raise Exception(f"{vocabulary_table} not found in ddl") from si_err
@@ -1059,10 +1076,9 @@ class BigQuery(Etl):
             omop_table (str): The OMOP table
             events (Any): Object that holds the events of the the OMOP table.
         """
-        parse_results = DDLParser(self._ddl).run(output_mode="sql")
         try:
             table_ddl = next(
-                (tab for tab in parse_results if tab["table_name"] == omop_table)
+                (tab for tab in self._parse_results if tab["table_name"] == omop_table)
             )
         except StopIteration as si_err:
             raise Exception(f"{omop_table} not found in ddl") from si_err
