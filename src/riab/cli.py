@@ -1,3 +1,6 @@
+# Copyright 2022 RADar-AZDelta
+# SPDX-License-Identifier: gpl3+
+
 # pylint: disable=unsubscriptable-object
 import logging
 import logging.config

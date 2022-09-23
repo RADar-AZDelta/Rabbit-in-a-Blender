@@ -1,3 +1,6 @@
+# Copyright 2022 RADar-AZDelta
+# SPDX-License-Identifier: gpl3+
+
 """This module holds the Gcp class,
 Google Cloud Provider class with usefull methods for ETL"""
 # pylint: disable=no-member

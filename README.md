@@ -217,9 +217,24 @@ There are 2 ways to [authenticate]((https://cloud.google.com/docs/authentication
     More info can also be found in the [Python API for GCP authentication](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview)
 
 
-TODO:
+TODO
 ========
 
 * improve documentation
 * fix visits and observation period to be data driven (based on other clinical tables in OMOP)
 * generate ERA tables (drug_era, dose_era and condition_era)
+
+Authors
+========
+
+* [Lammertyn Pieter-Jan](https://github.com/pjlammertyn)
+* [Dupulthys Stijn](https://github.com/stijndupulthys)
+* [De Jaeger Peter](https://github.com/peterdejaeger)
+
+License
+========
+
+Copyright © 2022, [RADar-AZDelta](mailto:radar@azdelta.be).
+Released under the [GNU General Public License v3.0](LICENSE).
+
+***

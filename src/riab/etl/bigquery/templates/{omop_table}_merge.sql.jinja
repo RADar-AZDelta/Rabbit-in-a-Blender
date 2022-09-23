@@ -1,3 +1,5 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
 CREATE OR REPLACE TABLE {{project_id}}.{{dataset_id_omop}}.{{omop_table}}
 {% if cluster_fields | length > 0 -%}
 CLUSTER BY

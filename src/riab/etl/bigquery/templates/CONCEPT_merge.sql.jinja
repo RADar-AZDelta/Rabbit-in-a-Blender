@@ -1,3 +1,5 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
 MERGE INTO {{project_id}}.{{dataset_id_omop}}.concept AS T
 USING (
     SELECT DISTINCT swap.y as concept_id, t.* EXCEPT(concept_id)
