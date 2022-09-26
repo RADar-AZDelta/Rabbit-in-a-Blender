@@ -24,7 +24,8 @@
                         "visit_occurrence",
                         "specimen",
                         "payer_plan_period",
-                        "episode"
+                        "episode",
+                        "death"
                     ],
                     "dependent": {
                         "tables": [
