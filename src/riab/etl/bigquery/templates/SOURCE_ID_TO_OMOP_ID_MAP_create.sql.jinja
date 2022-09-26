@@ -1,3 +1,5 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
 create table if not exists {{project_id}}.{{dataset_id_omop}}.source_id_to_omop_id_map (
     omop_table STRING not null,
     omop_id INT64 not null,

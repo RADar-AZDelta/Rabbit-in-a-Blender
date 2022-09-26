@@ -1,9 +1,10 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.11"
+version = "0.0.12"
 authors = [
   { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
-  { name="Dupulthys Stijn", email="Stijn.Dupulthys@azdelta.be" }
+  { name="Dupulthys Stijn", email="stijn.dupulthys@azdelta.be" },
+  { name="De Jaeger Peter", email="peter.dejaeger@azdelta.be" }
 ]
 description = "An ETL pipeline to transform your EMP data to OMOP."
 readme = "README.md"
@@ -12,7 +13,7 @@ keywords= ["OMOP", "CDM", "common data model", "OHDSI"]
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
 ]
 dependencies = [

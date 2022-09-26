@@ -1,3 +1,5 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
 delete from {{project_id}}.{{dataset_id_omop}}.concept_ancestor 
 where (CAST(ancestor_concept_id as STRING) in (
     select CAST(conceptId as STRING)
