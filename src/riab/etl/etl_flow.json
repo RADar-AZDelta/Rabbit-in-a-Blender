@@ -38,6 +38,7 @@
                                 "procedure_occurrence",
                                 "device_exposure",
                                 "measurement",
+                                "observation",
                                 "note"
                             ],
                             "dependent": {
