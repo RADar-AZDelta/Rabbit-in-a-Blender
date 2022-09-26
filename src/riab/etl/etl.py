@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ALL_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from datetime import date
 from pathlib import Path
+from threading import Lock
 from types import SimpleNamespace
 from typing import Any, List, Optional, cast
 
@@ -64,6 +65,8 @@ class Etl(ABC):
             encoding="UTF8",
         ) as file:
             self._etl_flow = json.load(file, object_hook=lambda x: SimpleNamespace(**x))
+
+        self._lock = Lock()
 
     @abstractmethod
     def create_omop_db(self) -> None:
@@ -311,7 +314,7 @@ class Etl(ABC):
 
         # merge everything in the destination OMOP work table
         logging.info(
-            "Merging the upload queries intothe omop work table '%s'",
+            "Merging the upload queries into the omop work table '%s'",
             omop_table_name,
         )
         self._merge_into_omop_work_table(
@@ -422,10 +425,13 @@ class Etl(ABC):
             concept_id_column,
             omop_table,
         )
+
+        self._lock.acquire()
         # give the custom concepts an unique id (above 2.000.000.000) and store those id's in the swap table
         self._give_custom_concepts_an_unique_id_above_2bilj(
             omop_table, concept_id_column
         )
+        self._lock.release()
 
         logging.info(
             "Merging custom concept into CONCEPT table for column '%s' of table '%s'",
