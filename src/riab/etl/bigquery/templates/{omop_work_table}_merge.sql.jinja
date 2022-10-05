@@ -8,30 +8,7 @@ USING (
                 {{','}}
             {%- endif %}
             {% if column.endswith("_source_value") -%}
-                STRING_AGG(s.{{column}}) over (
-                    partition by
-                    {%- set ns = namespace(ci_counter=0) -%}
-                    {%- for column in concept_id_columns %}
-                        {%- if not column in events.values() %}
-                            {%- if not loop.first -%}
-                                {{','}}
-                            {%- endif %}
-                            s.{{column.lower()}}
-                        {%- set ns.ci_counter = ns.ci_counter + 1 -%}
-                        {%- endif -%}
-                    {%- endfor %}
-                    order by
-                    {%- set ns = namespace(ci_counter=0) -%}
-                    {%- for column in concept_id_columns %}
-                        {%- if not column in events.values() %}
-                            {%- if not loop.first -%}
-                                {{','}}
-                            {%- endif %}
-                            s.{{column.lower()}}
-                        {%- set ns.ci_counter = ns.ci_counter + 1 -%}
-                        {%- endif -%}
-                    {%- endfor %}
-                ) as {{column}} 
+                STRING_AGG(s.{{column}}) as {{column}}
             {%- else -%}
                 s.{{column}}
             {%- endif %}            
@@ -96,6 +73,15 @@ USING (
             {%- set ns.fk_counter = ns.fk_counter + 1 -%}
         {%- endfor %}
     ) s
+    GROUP BY 
+    {%- for column in columns -%}
+        {% if not column.endswith("_source_value") -%}
+            {%- if not loop.first -%}
+                {{','}}
+            {%- endif %}
+            {{column}}
+        {%- endif %}
+    {%- endfor %}
 ) AS S 
 {% if omop_table == 'fact_relationship' -%}
     ON S.fact_id_1 = T.fact_id_1 and S.fact_id_2 = T.fact_id_2
