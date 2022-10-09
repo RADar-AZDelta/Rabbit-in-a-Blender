@@ -1,7 +1,7 @@
 ![Rabbit in a Blender](resources/img/rabbitinablenderlogo.png)
 ===========
 
-**Rabbit in a Blender** is an [ETL](https://en.wikipedia.org/wiki/Extract,_transform,_load) pipeline to transform your [EMR](https://en.wikipedia.org/wiki/Electronic_health_record) data to [OMOP](https://www.ohdsi.org/data-standardization/the-common-data-model/).
+**Rabbit in a Blender** is an [ETL](https://en.wikipedia.org/wiki/Extract,_transform,_load) pipeline [CLI](https://nl.wikipedia.org/wiki/Command-line-interface) to transform your [EMR](https://en.wikipedia.org/wiki/Electronic_health_record) data to [OMOP](https://www.ohdsi.org/data-standardization/the-common-data-model/).
 
 Why the name 'Rabbit in a Blender'? It stays in the rabbit theme of the [OHDSI](https://www.ohdsi.org) tools, and an ETL pipeline is like putting all your data in a blender. 
 
