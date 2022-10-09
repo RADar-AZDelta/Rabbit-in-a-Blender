@@ -10,13 +10,16 @@ USING (
         SELECT DISTINCT t.{{primary_key_column}} as x,
             {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
             {%- for column in concept_id_columns %}
-                {%- if not column in events and not column in events.values() %}
+                {% if not column in events.values() -%}
                 IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0) as {{column}},
                 {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                 {%- else %}
                 t.{{column}},
                 {%- endif -%}
             {%- endfor %} 
+            {%- for column in events %}
+                t.{{column}},
+            {%- endfor %}
             '{{work_table}}' as source
         FROM (
             {%- for work_table in work_tables -%}
@@ -42,6 +45,9 @@ USING (
         {%- for column in concept_id_columns %}
         s.{{column}},
         {%- endfor %} 
+        {%- for column in events %}
+        s.{{column}},
+        {%- endfor %}
         s.source,
         ROW_NUMBER() OVER() + cte_max.y as y
     FROM swap s

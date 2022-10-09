@@ -312,6 +312,13 @@ class Etl(ABC):
                 events=events,
             )
 
+        if pk_auto_numbering:
+            # store the ID swap in our 'source_id_to_omop_id_swap' table
+            self._store_usagi_source_id_to_omop_id_mapping(
+                omop_table=omop_table_name,
+                pk_swap_table_name=cast(str, pk_swap_table_name),
+            )
+
         # merge everything in the destination OMOP work table
         logging.info(
             "Merging the upload queries into the omop work table '%s'",
@@ -328,13 +335,6 @@ class Etl(ABC):
             concept_id_columns=concept_columns,
             events=events,
         )
-
-        if pk_auto_numbering:
-            # store the ID swap in our 'source_id_to_omop_id_swap' table
-            self._store_usagi_source_id_to_omop_id_mapping(
-                omop_table=omop_table_name,
-                pk_swap_table_name=cast(str, pk_swap_table_name),
-            )
 
     def _run_etl_query(
         self,
@@ -550,9 +550,11 @@ class Etl(ABC):
             omop_table,
         )
         # fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the Usagi CSV's
+        self._lock.acquire()
         self._store_usagi_source_value_to_concept_id_mapping(
             omop_table, concept_id_column
         )
+        self._lock.release()
 
     def _process_work_to_omop(self, omop_table_name: str, omop_table_props: Any):
         """Maps the event columns to the correct foreign keys and fills up the final OMOP tables

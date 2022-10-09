@@ -1,0 +1,7 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+select {{primary_key_column}}, count(*)
+from {{project_id}}.{{dataset_id_work}}.{{omop_table}}
+group by {{primary_key_column}} 
+having count(*) > 1
+limit 100

@@ -64,6 +64,9 @@ USING (
             {%- endif -%}
             {%- set ns.ci_counter = ns.ci_counter + 1 -%}
         {%- endfor %} 
+        {%- for column in events %}
+        and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
+        {%- endfor %}
     {%- endif -%}
     {%- set ns = namespace(fk_counter=0) -%}
     {%- for column in foreign_key_columns %}
@@ -73,6 +76,8 @@ USING (
 ) AS S 
 {% if omop_table == 'fact_relationship' -%}
     ON S.fact_id_1 = T.fact_id_1 and S.fact_id_2 = T.fact_id_2
+{%- elif omop_table == 'death' -%}
+    ON S.person_id = T.person_id
 {%- elif primary_key_column -%}
     ON S.{{primary_key_column}} = T.{{primary_key_column}}
 {%- else -%}
@@ -83,7 +88,7 @@ USING (
 {%- endfor %}
 WHEN MATCHED THEN
     UPDATE SET 
-        {%- for column in columns if column != primary_key_column -%}
+        {%- for column in columns if (column != primary_key_column and omop_table != "death") or (omop_table == "death" and column != "person_id") -%}
             {% if not loop.first -%}
                 {{','}}
             {%- endif %}
