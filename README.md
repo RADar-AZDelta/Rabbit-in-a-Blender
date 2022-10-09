@@ -97,6 +97,7 @@ CLI Usage
     | -i, --import-vocabularies [VOCABULARIES_ZIP_FILE] | Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.
     | -r [PATH], --run-etl [PATH] | Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.
     | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
+    | -dq, --data-quality | Check the data quality (based on the data quality dashboard). UNDER DEVELOPMENT !!!!
 
 * **Run ETL specific command options (-r [PATH], --run-etl [PATH]):**
     |  command | help  
@@ -179,17 +180,25 @@ Cleanup all tables:
 riab --cleanup \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work"
+  --bigquery-dataset-id-work "omop_work" \
+  --google-cloud-storage-bucket-uri "gs://omop/work"
 ```
 
-Cleanup one tables:
+Cleanup one table (example provider table):
 ```bash
 riab --cleanup "provider" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work"
+  --bigquery-dataset-id-work "omop_work" \
+  --google-cloud-storage-bucket-uri "gs://omop/work"
 ```
 
+Data quality (UNDER DEVELOPMENT):
+```bash
+riab --data-quality \
+  --db-engine "BigQuery" \
+  --bigquery-dataset-id-omop "omop"
+```
 
 BigQuery
 ========
@@ -224,6 +233,7 @@ TODO
 * improve documentation
 * fix visits and observation period to be data driven (based on other clinical tables in OMOP)
 * generate ERA tables (drug_era, dose_era and condition_era)
+* support multiple GCS projects to split up raw, work and omop data
 
 Authors
 ========

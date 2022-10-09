@@ -1145,3 +1145,14 @@ class BigQuery(Etl):
             cluster_fields=cluster_fields,
         )
         self._gcp.run_query_job(sql)
+
+    def _custom_db_engine_cleanup(self, table: str) -> None:
+        """Custom cleanup method for specific database engine implementation
+
+        Args:
+            table (str): Table name (all for all tables)
+        """
+        if table == "all":
+            self._gcp.delete_from_bucket(f"{self._bucket_uri}")
+        else:
+            self._gcp.delete_from_bucket(f"{self._bucket_uri}/{table}")

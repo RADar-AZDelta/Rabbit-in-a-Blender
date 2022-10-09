@@ -16,6 +16,7 @@ from threading import Lock
 from types import SimpleNamespace
 from typing import Any, List, Optional, cast
 
+import polars as pl
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.parquet as pq
@@ -797,6 +798,7 @@ class Etl(ABC):
                     "Removing custom concepts (local vocabularies) from 'vocabulary' table",
                 )
                 self._remove_custom_concepts_from_vocabulary_table()
+                self._custom_db_engine_cleanup("all")
             else:
                 logging.info(
                     "Removing mapped source id's to omop id's from SOURCE_ID_TO_OMOP_ID_MAP for OMOP table '%s'",
@@ -836,6 +838,7 @@ class Etl(ABC):
                 # wait(futures, return_when=ALL_COMPLETED)
                 for result in as_completed(futures):
                     result.result()
+                self._custom_db_engine_cleanup(cleanup_table)
 
             # delete work tables
             tables_to_delete = [
@@ -960,6 +963,51 @@ class Etl(ABC):
                     self._clear_vocabulary_upload_table(vocabulary_table)
                     self._load_vocabulary_in_upload_table(csv_file, vocabulary_table)
                     self._recreate_vocabulary_table(vocabulary_table)
+
+    def check_data_quality(self):
+        logging.info("Checking data quality")
+        df_check_descriptions = pl.read_csv(
+            str(
+                Path(__file__).parent.parent.resolve()
+                / "dqd"
+                / "csv"
+                / "OMOP_CDMv5.4_Check_Descriptions.csv"
+            )
+        )
+        df_table_level = pl.read_csv(
+            str(
+                Path(__file__).parent.parent.resolve()
+                / "dqd"
+                / "csv"
+                / "OMOP_CDMv5.4_Table_Level.csv"
+            )
+        )
+        df_field_level = pl.read_csv(
+            str(
+                Path(__file__).parent.parent.resolve()
+                / "dqd"
+                / "csv"
+                / "OMOP_CDMv5.4_Field_Level.csv"
+            )
+        )
+        df_concept_level = pl.read_csv(
+            str(
+                Path(__file__).parent.parent.resolve()
+                / "dqd"
+                / "csv"
+                / "OMOP_CDMv5.4_Concept_Level.csv"
+            )
+        )
+        print("")
+
+    @abstractmethod
+    def _custom_db_engine_cleanup(self, table: str) -> None:
+        """Custom cleanup method for specific database engine implementation
+
+        Args:
+            table (str): Table name (all for all tables)
+        """
+        pass
 
     @abstractmethod
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:

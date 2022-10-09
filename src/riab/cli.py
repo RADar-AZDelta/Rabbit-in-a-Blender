@@ -57,6 +57,8 @@ def cli() -> None:
                 etl.run()
             elif args.cleanup:  # cleanup OMOP DB
                 etl.cleanup(args.cleanup)
+            elif args.data_quality:  # check data quality
+                etl.check_data_quality()
             else:
                 raise Exception("Unknown ETL command!")
 
@@ -169,6 +171,12 @@ def _contstruct_argument_parser() -> ArgumentParser:
         will result in clicical results being mapped to the wrong persons!!!!""",
         metavar="TABLE",
     )
+    commands_group.add_argument(
+        "-dq",
+        "--data-quality",
+        help="Check the data quality.",
+        action="store_true",
+    )
 
     command_args, _ = command_parser.parse_known_args()
 
@@ -258,7 +266,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         and not command_args.create_db
         and not command_args.create_folders
         and not command_args.import_vocabularies
-        and not command_args.cleanup,
+        and not command_args.cleanup
+        and not command_args.data_quality,
         metavar="BIGQUERY_DATASET_ID_RAW",
     )
     bigquery_group.add_argument(
@@ -268,7 +277,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         help="""BigQuery dataset that will hold ETL housekeeping tables (ex: swap tablet, etc...)""",
         required=args.db_engine == "BigQuery"
         and not command_args.create_db
-        and not command_args.create_folders,
+        and not command_args.create_folders
+        and not command_args.data_quality,
         metavar="BIGQUERY_DATASET_ID_WORK",
     )
     bigquery_group.add_argument(
@@ -288,7 +298,7 @@ def _contstruct_argument_parser() -> ArgumentParser:
         required=args.db_engine == "BigQuery"
         and not command_args.create_db
         and not command_args.create_folders
-        and not command_args.cleanup,
+        and not command_args.data_quality,
         metavar="GOOGLE_CLOUD_STORAGE_BUCKET_URI",
     )
 
