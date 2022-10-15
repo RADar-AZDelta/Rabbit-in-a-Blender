@@ -5,6 +5,8 @@
 
 Why the name 'Rabbit in a Blender'? It stays in the rabbit theme of the [OHDSI](https://www.ohdsi.org) tools, and an ETL pipeline is like putting all your data in a blender. 
 
+No rabbits were harmed during the development of this tool!
+
 Introduction
 ============
 
