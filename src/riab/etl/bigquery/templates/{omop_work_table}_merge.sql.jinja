@@ -84,7 +84,14 @@ USING (
     ON TRUE = TRUE
 {%- endif %}
 {%- for column in concept_id_columns %}
-        and S.{{column}} = T.{{column}}
+    {% if not column in events.values() -%}
+    and S.{{column}} = T.{{column}}
+    {%- else -%}
+    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    {%- endif -%} 
+{%- endfor %}
+{%- for column in events %}
+    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
 {%- endfor %}
 WHEN MATCHED THEN
     UPDATE SET 

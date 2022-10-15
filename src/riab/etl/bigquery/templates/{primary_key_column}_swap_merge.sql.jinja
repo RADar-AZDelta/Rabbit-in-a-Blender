@@ -54,8 +54,12 @@ USING (
     INNER JOIN cte_max on 1=1
 ) AS S
 ON S.x = T.x
-    {%- for column in concept_id_columns %}
-        and S.{{column}} = T.{{column}}
-    {%- endfor %} 
+{%- for column in concept_id_columns %}
+    {% if not column in events.values() -%}
+    and S.{{column}} = T.{{column}}
+    {%- else -%}
+    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    {%- endif -%} 
+{%- endfor %} 
 WHEN NOT MATCHED THEN
     INSERT ROW
