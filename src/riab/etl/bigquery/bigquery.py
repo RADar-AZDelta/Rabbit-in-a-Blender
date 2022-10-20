@@ -1157,3 +1157,20 @@ class BigQuery(Etl):
             self._gcp.delete_from_bucket(f"{self._bucket_uri}")
         else:
             self._gcp.delete_from_bucket(f"{self._bucket_uri}/{table}")
+
+    def _generate_sample_raw_query(self, omop_table: str) -> str:
+        """Generates an example SQL query to query the raw data.
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+        """
+        template = self._template_env.get_template("sample_source_query.sql.jinja")
+
+        columns = self._get_column_names(omop_table)
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_raw=self._dataset_id_raw,
+            omop_table=omop_table,
+            columns=columns,
+        )
+        return sql

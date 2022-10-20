@@ -1,0 +1,8 @@
+SELECT
+{%- for column in columns -%}
+    {%- if not loop.first -%}
+        {{ ',' }}
+    {%- endif %}
+    '?' AS {{ column }}
+{%- endfor %}
+FROM raw_{{ omop_table }}
