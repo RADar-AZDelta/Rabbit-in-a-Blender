@@ -1014,6 +1014,7 @@ class BigQuery(Etl):
         Args:
             vocabulary_table (str): The standardised vocabulary table
         """
+        logging.debug("Deleting vocabulary table %s", vocabulary_table)
         self._gcp.delete_table(
             self._project_id, self._dataset_id_work, vocabulary_table
         )

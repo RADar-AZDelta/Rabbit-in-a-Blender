@@ -942,27 +942,56 @@ class Etl(ABC):
                 )
                 zip_ref.extractall(temp_dir_path)
 
-                for vocabulary_table in [
-                    "concept",
-                    "concept_ancestor",
-                    "concept_class",
-                    "concept_relationship",
-                    "concept_synonym",
-                    "domain",
-                    "drug_strength",
-                    "relationship",
-                    "vocabulary",
-                ]:
-                    csv_file = (
-                        Path(temp_dir_path) / f"{vocabulary_table.upper()}.csv"
-                    )  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
-                    logging.info(
-                        "Uploading '%s' to OMOP CDM database. (this takes a while...)",
-                        csv_file,
-                    )
-                    self._clear_vocabulary_upload_table(vocabulary_table)
-                    self._load_vocabulary_in_upload_table(csv_file, vocabulary_table)
-                    self._recreate_vocabulary_table(vocabulary_table)
+                with ThreadPoolExecutor(max_workers=8) as executor:
+                    vocabulary_tables = [
+                        "concept",
+                        "concept_ancestor",
+                        "concept_class",
+                        "concept_relationship",
+                        "concept_synonym",
+                        "domain",
+                        "drug_strength",
+                        "relationship",
+                        "vocabulary",
+                    ]
+
+                    logging.info("Deleting vocabulary tables.")
+                    futures = [
+                        executor.submit(
+                            self._clear_vocabulary_upload_table,
+                            vocabulary_table,
+                        )
+                        for vocabulary_table in vocabulary_tables
+                    ]
+                    # wait(futures, return_when=ALL_COMPLETED)
+                    for result in as_completed(futures):
+                        result.result()
+
+                    logging.info("Uploading vocabulary CSV's")
+                    futures = [
+                        executor.submit(
+                            self._load_vocabulary_in_upload_table,
+                            Path(temp_dir_path)
+                            / f"{vocabulary_table.upper()}.csv",  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
+                            vocabulary_table,
+                        )
+                        for vocabulary_table in vocabulary_tables
+                    ]
+                    # wait(futures, return_when=ALL_COMPLETED)
+                    for result in as_completed(futures):
+                        result.result()
+
+                    logging.info("Creating vocabulary tables.")
+                    futures = [
+                        executor.submit(
+                            self._recreate_vocabulary_table,
+                            vocabulary_table,
+                        )
+                        for vocabulary_table in vocabulary_tables
+                    ]
+                    # wait(futures, return_when=ALL_COMPLETED)
+                    for result in as_completed(futures):
+                        result.result()
 
     def check_data_quality(self):
         logging.info("Checking data quality")
@@ -998,7 +1027,8 @@ class Etl(ABC):
                 / "OMOP_CDMv5.4_Concept_Level.csv"
             )
         )
-        print("")
+        for row in df_check_descriptions:
+            print(row)
 
     @abstractmethod
     def _custom_db_engine_cleanup(self, table: str) -> None:
