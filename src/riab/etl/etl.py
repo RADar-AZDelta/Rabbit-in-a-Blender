@@ -5,17 +5,20 @@
 """Holds the ETL abstract base class"""
 import json
 import logging
+import math
 import os
 import tempfile
 import zipfile
 from abc import ABC, abstractmethod
 from concurrent.futures import ALL_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from datetime import date
+from lib2to3.pgen2.pgen import DFAState
 from pathlib import Path
 from threading import Lock
 from types import SimpleNamespace
 from typing import Any, List, Optional, cast
 
+import pandas as pd
 import polars as pl
 import pyarrow as pa
 import pyarrow.csv as csv
@@ -1031,42 +1034,188 @@ class Etl(ABC):
                     for result in as_completed(futures):
                         result.result()
 
-    def check_data_quality(self):
+    def check_data_quality(
+        self,
+        tablesToExclude: list[str] = [
+            "CONCEPT",
+            "VOCABULARY",
+            "CONCEPT_ANCESTOR",
+            "CONCEPT_RELATIONSHIP",
+            "CONCEPT_CLASS",
+            "CONCEPT_SYNONYM",
+            "RELATIONSHIP",
+            "DOMAIN",
+        ],
+    ):
         logging.info("Checking data quality")
-        df_check_descriptions = pl.read_csv(
+        df_check_descriptions = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "dqd"
                 / "csv"
                 / "OMOP_CDMv5.4_Check_Descriptions.csv"
-            )
+            ),
+            converters=StringConverter(),
         )
-        df_table_level = pl.read_csv(
+        # df_check_descriptions = df_check_descriptions.filter(items=[22], axis=0)
+
+        df_table_level = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "dqd"
                 / "csv"
                 / "OMOP_CDMv5.4_Table_Level.csv"
-            )
+            ),
+            converters=StringConverter(),
         )
-        df_field_level = pl.read_csv(
+        df_field_level = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "dqd"
                 / "csv"
                 / "OMOP_CDMv5.4_Field_Level.csv"
-            )
+            ),
+            converters=StringConverter(),
         )
-        df_concept_level = pl.read_csv(
+        df_concept_level = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "dqd"
                 / "csv"
                 / "OMOP_CDMv5.4_Concept_Level.csv"
-            )
+            ),
+            converters=StringConverter(),
         )
-        for row in df_check_descriptions:
-            print(row)
+
+        # ensure we use only checks that are intended to be run
+        df_table_level = df_table_level[
+            ~df_table_level["cdmTableName"].isin(tablesToExclude)
+        ]
+        df_field_level = df_field_level[
+            ~df_field_level["cdmTableName"].isin(tablesToExclude)
+        ]
+        df_concept_level = df_concept_level[
+            ~df_concept_level["cdmTableName"].isin(tablesToExclude)
+        ]
+
+        # remove offset from being checked
+        df_field_level = df_field_level[df_field_level["cdmFieldName"] != "offset"]
+
+        reports = pd.DataFrame()
+        for index, check in df_check_descriptions.iterrows():
+            reports = pd.concat(
+                [
+                    reports,
+                    self._run_check(
+                        check,
+                        cast(int, index),
+                        df_table_level,
+                        df_field_level,
+                        df_concept_level,
+                    ),
+                ]
+            )
+
+        print(reports)
+        breakpoint()
+
+    def _run_check(
+        self,
+        check: Any,
+        row: int,
+        df_table_level: pd.DataFrame,
+        df_field_level: pd.DataFrame,
+        df_concept_level: pd.DataFrame,
+    ) -> pd.DataFrame:
+        df = None
+        match check.checkLevel:
+            case "TABLE":
+                df = df_table_level
+            case "FIELD":
+                df = df_field_level
+            case "CONCEPT":
+                df = df_concept_level
+            case _:
+                raise Exception(f"Unknown check level: {check.checkLevel}")
+
+        df = pd.DataFrame(df[df.eval(check.evaluationFilter)])
+
+        reports = []
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [
+                executor.submit(
+                    self._run_check_query,
+                    check,
+                    f"{int(row) + 1}.{cast(int, index) + 1}",
+                    item,
+                )
+                for index, item in df.iterrows()
+            ]
+            # wait(futures, return_when=ALL_COMPLETED)
+            for result in as_completed(futures):
+                report = result.result()
+                reports.append(report)
+        return pd.DataFrame(reports).sort_values(by=["_row"])
+
+    @abstractmethod
+    def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
+        pass
+
+    def _process_check(
+        self,
+        check: Any,
+        row: str,
+        item: Any,
+        sql: Optional[str],
+        result: Optional[Any],
+        execution_time: Optional[float],
+        exception: Optional[Exception],
+    ) -> Any:
+        result_record = {
+            "NUM_VIOLATED_ROWS": result["num_violated_rows"] if result else None,
+            "PCT_VIOLATED_ROWS": round(result["pct_violated_rows"], 4)
+            if result
+            else None,
+            "NUM_DENOMINATOR_ROWS": result["num_denominator_rows"] if result else None,
+            "EXECUTION_TIME": f"{execution_time:.6f} secs",
+            "QUERY_TEXT": sql,
+            "CHECK_NAME": check.checkName,
+            "CHECK_LEVEL": check.checkLevel,
+            "CHECK_DESCRIPTION": check.checkDescription,
+            "CDM_TABLE_NAME": item.cdmTableName
+            if hasattr(item, "cdmTableName")
+            else None,
+            "CDM_FIELD_NAME": item.cdmFieldName
+            if hasattr(item, "cdmFieldName")
+            else None,
+            "CONCEPT_ID": item.conceptId if hasattr(item, "conceptId") else None,
+            "UNIT_CONCEPT_ID": item.unitConceptId
+            if hasattr(item, "unitConceptId")
+            else None,
+            "SQL_FILE": check.sqlFile,
+            "CATEGORY": check.kahnCategory,
+            "SUBCATEGORY": check.kahnSubcategory,
+            "CONTEXT": check.kahnContext,
+            # "WARNING": warning,
+            "ERROR": exception,
+            "checkId": self._get_check_id(check, item),
+            # row.names = NULL,
+            # stringsAsFactors = FALSE
+            "_row": row,
+        }
+        return result_record
+
+    def _get_check_id(self, check: Any, item: Any):
+        id = [check.checkLevel.lower(), check.checkName.lower()]
+        if hasattr(item, "cdmTableName"):
+            id.append(item.cdmTableName.lower())
+        if hasattr(item, "cdmFieldName"):
+            id.append(item.cdmFieldName.lower())
+        if hasattr(item, "conceptId"):
+            id.append(item.conceptId.lower())
+        if hasattr(item, "unitConceptId"):
+            id.append(item.unitConceptId.lower())
+        return "_".join(id)
 
     @abstractmethod
     def _custom_db_engine_cleanup(self, table: str) -> None:
@@ -1533,3 +1682,17 @@ class Etl(ABC):
             vocabulary_table (str): The standardised vocabulary table
         """
         pass
+
+
+class StringConverter(dict):
+    def __contains__(self, item):
+
+        return True
+
+    def __getitem__(self, item):
+
+        return str
+
+    def get(self, default=None):
+
+        return str

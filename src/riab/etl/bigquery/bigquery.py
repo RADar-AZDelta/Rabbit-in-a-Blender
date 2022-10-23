@@ -5,11 +5,15 @@
 """Holds the BigQuery ETL class"""
 import json
 import logging
+import math
 import re
+import time
+import traceback
 from datetime import date
 from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple, cast
+from warnings import catch_warnings
 
 import google.auth
 import google.cloud.bigquery as bq
@@ -657,7 +661,7 @@ class BigQuery(Etl):
                 template = self._template_env.get_template(
                     "{omop_work_table}_merge._check_for_duplicate_rows.sql.jinja"
                 )
-                sql = template.render(
+                sql_doubles = template.render(
                     project_id=self._project_id,
                     omop_table=omop_table,
                     dataset_id_work=self._dataset_id_work,
@@ -665,7 +669,7 @@ class BigQuery(Etl):
                     if omop_table != "death"
                     else "person_id",
                 )
-                rows = self._gcp.run_query_job(sql)
+                rows = self._gcp.run_query_job(sql_doubles)
                 ar_table = rows.to_arrow()
                 if len(ar_table):
                     sample_duplicate_ids = ar_table[
@@ -1174,3 +1178,91 @@ class BigQuery(Etl):
             columns=columns,
         )
         return sql
+
+    def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
+        sql = None
+        result = None
+        exception = None
+        execution_time = -1
+        try:
+            template = self._template_env.get_template(f"dqd/{check.sqlFile}.jinja")
+
+            cdmFieldName = None
+            if hasattr(item, "cdmFieldName"):
+                cdmFieldName = item.cdmFieldName.lower()
+                cdmFieldName = re.sub(
+                    r"domain_concept_id_", r"field_concept_id_", cdmFieldName
+                )
+                cdmFieldName = re.sub(
+                    r"cost_domain_id", r"cost_field_concept_id", cdmFieldName
+                )
+
+            plausibleValueHigh = None
+            if hasattr(item, "plausibleValueHigh"):
+                plausibleValueHigh = item.plausibleValueHigh
+                if plausibleValueHigh == "DATEADD(dd,1,GETDATE())":
+                    plausibleValueHigh = "date_add(current_date(), interval 1 day)"
+                elif plausibleValueHigh == "YEAR(GETDATE())+1":
+                    plausibleValueHigh = "extract(year from current_date()) + 1"
+
+            sql = template.render(
+                project_id=self._project_id,
+                dataset_id_omop=self._dataset_id_omop,
+                cdmTableName=item.cdmTableName.lower()
+                if hasattr(item, "cdmTableName")
+                else None,
+                cdmFieldName=cdmFieldName,
+                cohortDefinitionId=item.cohortDefinitionId
+                if hasattr(item, "cohortDefinitionId")
+                else None,
+                cdmSourceFieldName=item.cdmSourceFieldName.lower()
+                if hasattr(item, "cdmSourceFieldName")
+                else None,
+                fkTableName=item.fkTableName.lower()
+                if hasattr(item, "fkTableName")
+                else None,
+                fkFieldName=item.fkFieldName.lower()
+                if hasattr(item, "fkFieldName")
+                else None,
+                standardConceptFieldName=item.standardConceptFieldName.lower()
+                if hasattr(item, "standardConceptFieldName")
+                else None,
+                plausibleValueHigh=plausibleValueHigh,
+                plausibleValueLow=item.plausibleValueLow
+                if hasattr(item, "plausibleValueLow")
+                else None,
+                cdmDatatype=item.cdmDatatype.lower()
+                if hasattr(item, "cdmDatatype")
+                else None,
+                plausibleTemporalAfterTableName=item.plausibleTemporalAfterTableName.lower()
+                if hasattr(item, "plausibleTemporalAfterTableName")
+                else None,
+                plausibleTemporalAfterFieldName=item.plausibleTemporalAfterFieldName.lower()
+                if hasattr(item, "plausibleTemporalAfterFieldName")
+                else None,
+                fkDomain=item.fkDomain.lower() if hasattr(item, "fkDomain") else None,
+                fkClass=item.fkClass.lower() if hasattr(item, "fkClass") else None,
+                conceptId=item.conceptId.lower()
+                if hasattr(item, "conceptId")
+                else None,
+                unitConceptId=item.unitConceptId.lower()
+                if hasattr(item, "unitConceptId")
+                else None,
+                plausibleUnitConceptIds=item.plausibleUnitConceptIds.lower()
+                if hasattr(item, "plausibleUnitConceptIds")
+                else None,
+            )
+            start = time.time()
+            rows = self._gcp.run_query_job(sql)
+            end = time.time()
+            execution_time = end - start
+            result = dict(next(rows))
+        except Exception as ex:
+            logging.warn(traceback.format_exc())
+            exception = ex
+            if __debug__:
+                breakpoint()
+
+        return self._process_check(
+            check, row, item, sql, result, execution_time, exception
+        )

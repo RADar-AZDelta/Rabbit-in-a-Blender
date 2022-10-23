@@ -47,32 +47,6 @@ class Gcp:
         self._bq_client = bq.Client(credentials=credentials)
         self._location = location
 
-    def create_dataset(self, project_id: str, dataset_id: str) -> bq.Dataset:
-        """Create dataset if not yet exists in the loaction.
-
-        Args:
-            project_id (str): project ID
-            dataset_id (str): dataset ID
-
-        Returns:
-            Dataset: the created or existing dataset
-        """
-        dataset = bq.Dataset(f"{project_id}.{dataset_id}")
-        dataset.location = self._location
-        return self._bq_client.create_dataset(dataset, exists_ok=True)
-
-    def create_bucket(self, bucket_name: str):
-        """Create bucket if not yet exists in the loaction.
-        see https://googleapis.dev/python/storage/latest/client.html?highlight=create_bucket#google.cloud.storage.client.Client.create_bucket
-
-        Args:
-            bucket_name (str): The bucket resource to pass or name to create.
-        """  # noqa: E501 # pylint: disable=line-too-long
-        try:
-            self._cs_client.create_bucket(bucket_name, location=self._location)
-        except Conflict:
-            pass
-
     def get_table_names(self, project_id: str, dataset_id: str) -> List[str]:
         """Get all table names from a specific dataset in Big Query
 
@@ -180,25 +154,6 @@ ORDER BY ordinal_position"""
             cost,
         )
         return result
-
-    def _create_session(self) -> Union[str, None]:
-        """Creates a BigQuery [session](https://cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.job.QueryJobConfig#google_cloud_bigquery_job_QueryJobConfig_create_session)
-
-        Returns:
-            Union[str, None]: The session id
-        """  # noqa: E501 # pylint: disable=line-too-long
-        job_config = bq.QueryJobConfig()
-        job_config.create_session = True
-        query = "select true"
-        query_job = self._bq_client.query(
-            query, job_config=job_config, location=self._location
-        )
-        query_job.result()
-        return (
-            query_job.session_info.session_id
-            if query_job.session_info and query_job.session_info.session_id
-            else None
-        )
 
     def set_clustering_fields_on_table(
         self,
@@ -373,101 +328,7 @@ ORDER BY ordinal_position"""
             table.nbytes / Gcp._MEGA,
             end - start,
         )
-        return deepcopy(table), table_size
-
-    def load_local_query_result_into_data_frame(
-        self, conn: str, query: str
-    ) -> Union[pl.DataFrame, pl.Series]:
-        """Executes a local query and loads the results in a lightning-fast Polars DataFrame
-        see https://pola-rs.github.io/polars/py-polars/html/reference/dataframe.html
-
-        Args:
-            conn (str): The connection string
-            query (str): The SQL statement of the select query
-
-        Returns:
-            (DataFrame | Series): Memory efficient Arrow table, with the query results
-        """
-        table, _ = self.load_local_query_result(conn, query)
-        return pl.from_arrow(table)
-
-    def upload_local_queries_to_bigquery_table(
-        self,
-        conn_str: str,
-        queries: Iterable[str],
-        bucket_uri: str,
-        project_id: str,
-        dataset_id: str,
-        table_name: str,
-        drop_bq_table: bool = True,
-        delete_files_from_bucket: bool = True,
-        query_to_parquet_and_upload_to_cs: bool = True,
-        upload_to_bq: bool = True,
-    ):
-        """Uploads one or multiple queries to a Big Query table.
-        First it stores the query result localy in on or more Parquet files.
-        Secondly it uploads the Parquet files to a Cloud Storage bucket.
-        Finaly a load job loads the Parquet files in a Big Query table.
-
-        Args:
-            conn_str (str): Connection string to the local database
-            queries (Iterable[str]): Iterator with the query or multiple queries
-            bucket_uri (str): The bucket and path (directory) to store the Parquet file(s) (ex: gs://{bucket_name}/{bucket_path}). The Parquet files will be stored in a folder with the 'table_name' as name.
-            project_id (str): project ID
-            dataset_id (str): dataset ID
-            table_name (str): table name
-            drop_bq_table (bool, optional): Truncate the Big Query table up front? Defaults to True.
-            delete_files_from_bucket (bool, optional): Remove all the parquet files from the bucket path up front? Defaults to False.
-            query_to_parquet_and_upload_to_cs (bool, optional): Do the local query to Parquet file(s) and upload them to the bucket? Defaults to True.
-            upload_to_bq (bool, optional): Load the Parquet files in the Big Query table? Defaults to True.
-        """  # noqa: E501 # pylint: disable=line-too-long
-        if drop_bq_table:
-            self.delete_table(project_id, dataset_id, table_name)
-        # delete the parquet file from the bucket
-        if delete_files_from_bucket:
-            self.delete_from_bucket(f"{bucket_uri}/{table_name}/")
-
-        # create temporary dir to store parquet files before uploading
-        if query_to_parquet_and_upload_to_cs:
-            with tempfile.TemporaryDirectory() as temp_dir_path:
-                counter = 0
-                table = None
-                file_name = None
-                table_size = 0
-                for idx, query in enumerate(queries):
-                    file_name = f"{table_name}_part{counter}.parquet"
-                    temp_table, temp_size = self.load_local_query_result(
-                        conn_str, query
-                    )
-                    table_size += temp_size
-                    table = (
-                        temp_table
-                        if not table
-                        else pa.concat_tables([table, temp_table])
-                    )
-                    logging.debug("Total table size: %f MB", table_size / 1024 / 1024)
-                    if table_size > Gcp._GIGA:
-                        temp_file_path = os.path.join(temp_dir_path, file_name)
-                        self.write_parquet(temp_file_path, table)
-                        self.upload_file_to_bucket(
-                            temp_file_path, f"{bucket_uri}/{table_name}"
-                        )
-                        counter += 1
-                        table = None
-                        table_size = 0
-                    logging.debug("Queries processed: '%i'", idx)
-                if table:
-                    temp_file_path = os.path.join(temp_dir_path, str(file_name))
-                    self.write_parquet(temp_file_path, table)
-                    self.upload_file_to_bucket(
-                        temp_file_path, f"{bucket_uri}/{table_name}"
-                    )
-
-        # upload parquet file in bucket and append to Bigquery table
-        if upload_to_bq:
-            self.batch_load_from_bucket_into_bigquery_table(
-                f"{bucket_uri}/{table_name}/*.parquet",
-                project_id,
-                dataset_id,
-                table_name,
-            )
+        return (
+            deepcopy(table),
+            table_size,
+        )  # deepcopy because of https://github.com/sfu-db/connector-x/issues/196

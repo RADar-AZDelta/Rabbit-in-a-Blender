@@ -21,5 +21,7 @@
     "jupyter.notebookFileRoot": "${workspaceFolder}",
     "files.associations": {
       "*.sql.jinja": "jinja-sql"
-    },  
+    },
+    "sqlfluff.executablePath": "${workspaceFolder}/.venv/bin/sqlfluff" 
   }
+

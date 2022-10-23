@@ -1,4 +1,4 @@
-
+{#
 /*********
 CONCEPT LEVEL check:
 PLAUSIBLE_GENDER - number of records of a given concept which occur in person with implausible gender for that concept
@@ -14,40 +14,45 @@ cohortDefinitionId = @cohortDefinitionId
 cohortDatabaseSchema = @cohortDatabaseSchema
 }
 **********/
-
+#}
 
 SELECT num_violated_rows, CASE WHEN denominator.num_rows = 0 THEN 0 ELSE 1.0*num_violated_rows/denominator.num_rows END AS pct_violated_rows, 
   denominator.num_rows as num_denominator_rows
 FROM
 (
-	SELECT COUNT_BIG(*) AS num_violated_rows
+	SELECT COUNT(*) AS num_violated_rows
 	FROM
 	(
 		SELECT cdmTable.* 
-		FROM @cdmDatabaseSchema.@cdmTableName cdmTable
-			INNER JOIN @cdmDatabaseSchema.person p
+		FROM {{project_id}}.{{dataset_id_omop}}.{{cdmTableName}} cdmTable
+			INNER JOIN {{project_id}}.{{dataset_id_omop}}.person p
 			ON cdmTable.person_id = p.person_id
 			
-			{@cohort}?{
-    	JOIN @cohortDatabaseSchema.COHORT c
+		{% if cohort -%}
+    	JOIN {{project_id}}.{{dataset_id_omop}}.COHORT c
     	ON cdmTable.PERSON_ID = c.SUBJECT_ID
-    	AND c.COHORT_DEFINITION_ID = @cohortDefinitionId
-    	}
+    	AND c.COHORT_DEFINITION_ID = {{cohortDefinitionId}}
+    	{%- endif %}
 			
-		WHERE cdmTable.@cdmFieldName = @conceptId
-		AND p.gender_concept_id <> {@plausibleGender == 'Male'} ? {8507} : {8532} 
+		WHERE cdmTable.{{cdmFieldName}} = {{conceptId}}
+		AND p.gender_concept_id <> 
+		{% if plausibleGender == 'Male' -%}
+		8507
+		{%- else -%}
+		8532
+		{%- endif %}
 	) violated_rows
 ) violated_row_count,
 ( 
-	SELECT COUNT_BIG(*) AS num_rows
-	FROM @cdmDatabaseSchema.@cdmTableName cdmTable
+	SELECT COUNT(*) AS num_rows
+	FROM {{project_id}}.{{dataset_id_omop}}.{{cdmTableName}} cdmTable
 	
-	{@cohort}?{
-	JOIN @cohortDatabaseSchema.COHORT c
+	{% if cohort -%}
+	JOIN {{project_id}}.{{dataset_id_omop}}.COHORT c
 	ON cdmTable.PERSON_ID = c.SUBJECT_ID
-	AND c.COHORT_DEFINITION_ID = @cohortDefinitionId
-	}
+	AND c.COHORT_DEFINITION_ID = {{cohortDefinitionId}}
+	{%- endif %}
 	
-	WHERE @cdmFieldName = @conceptId
+	WHERE {{cdmFieldName}} = {{conceptId}} 
 ) denominator
 ;

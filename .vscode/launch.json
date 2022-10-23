@@ -15,13 +15,13 @@
         
         //"--create-db", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pjl",
         
-        //"--import-vocabularies", "~/vocabulary-2022-07-28.zip", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pjl", "--bigquery-dataset-id-work", "omop_work_pjl", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_pjl",
+        //--import-vocabularies", "~/vocabulary-2022-07-28.zip", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder",
         
-        //"--create-folders", "~/OMOP_CDM", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop",
+        //"--create-folders", "~/OMOP_CDM_test", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop",
         
         //"--run-etl", "~/git/AZDelta-OMOP-CDM/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder", "--bigquery-dataset-id-raw", "hix"
           //,"--skip-usagi-and-custom-concept-upload"
-          //,"--table", "observation"
+          //,"--table", "measurement"
 
         //"--cleanup", "all", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
 
