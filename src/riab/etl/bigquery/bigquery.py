@@ -7,11 +7,11 @@ import json
 import logging
 import math
 import re
-import time
 import traceback
 from datetime import date
 from pathlib import Path
 from threading import Lock
+from time import time
 from typing import Any, Dict, List, Optional, Tuple, cast
 from warnings import catch_warnings
 
@@ -1252,17 +1252,31 @@ class BigQuery(Etl):
                 if hasattr(item, "plausibleUnitConceptIds")
                 else None,
             )
-            start = time.time()
+            start = time()
             rows = self._gcp.run_query_job(sql)
-            end = time.time()
+            end = time()
             execution_time = end - start
             result = dict(next(rows))
         except Exception as ex:
             logging.warn(traceback.format_exc())
             exception = ex
-            if __debug__:
-                breakpoint()
+            # if __debug__:
+            #     breakpoint()
 
         return self._process_check(
             check, row, item, sql, result, execution_time, exception
         )
+
+    def _get_cdm_sources(self) -> List[Any]:
+        """Merges the uploaded custom concepts in the OMOP concept table.
+
+        Returns:
+            RowIterator | _EmptyRowIterator: The result rows
+        """
+        template = self._template_env.get_template("dqd/cdm_sources.sql.jinja")
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+        )
+        rows = self._gcp.run_query_job(sql)
+        return [dict(row.items()) for row in rows]

@@ -21,6 +21,7 @@ google-cloud-storage = "*"
 google-auth = "*"
 simple-ddl-parser = "*"
 pandas = "*"
+humanfriendly = "*"
 
 [requires]
 python_version = "3.10"

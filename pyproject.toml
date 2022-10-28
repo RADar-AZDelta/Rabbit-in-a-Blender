@@ -24,7 +24,8 @@ dependencies = [
     'google-cloud-bigquery >= 3.3.2',
     'google-cloud-storage >= 2.5.0',
     'simple-ddl-parser >= 0.27.0',
-    'pandas >= 1.5.1'
+    'pandas >= 1.5.1',
+    'humanfriendly >= 10.0'
 ]
 
 [project.urls]
