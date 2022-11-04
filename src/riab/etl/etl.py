@@ -2,42 +2,36 @@
 # SPDX-License-Identifier: gpl3+
 
 # pylint: disable=unsubscriptable-object
-"""Holds the ETL abstract base class"""
+"""Holds the ETL abstract class"""
 import json
 import logging
-import math
 import os
 import tempfile
-import zipfile
-from abc import ABC, abstractmethod
-from concurrent.futures import ALL_COMPLETED, ThreadPoolExecutor, as_completed, wait
-from datetime import date, datetime
+from abc import abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import date
 from pathlib import Path
 from threading import Lock
-from time import time
 from types import SimpleNamespace
 from typing import Any, List, Optional, cast
 
-import pandas as pd
-import polars as pl
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.parquet as pq
-from humanfriendly import format_timespan
+
+from .etl_base import EtlBase
 
 
-class Etl(ABC):
+class Etl(EtlBase):
     """
     ETL class that automates the extract-transfer-load process from source data to the OMOP common data model.
     """
 
-    _CUSTOM_CONCEPT_IDS_START = 2_000_000_000  # Concepts reserved for site-specific codes and mappings start from 2 billion
-
     def __init__(
         self,
-        cdm_folder_path: str,
         only_omop_table: Optional[str] = None,
         skip_usagi_and_custom_concept_upload: Optional[bool] = None,
+        **kwargs,
     ):
         """Constructor
         The ETL will read the json with all the OMOP tables. Each OMOP table has a 'pk' (primary key), 'fks' (foreign keys) and 'events' property.
@@ -47,22 +41,12 @@ class Etl(ABC):
             only_omop_table (str): Only do ETL on this OMOP CDM table.
             skip_usagi_and_custom_concept_upload (bool): If no changes have been made to the Usagi and custom concept CSV's, then you can speed up the ETL process by setting this flag to True. The ETL process will skip the upload and processing of the Usagi and custom concept CSV's.
         """  # noqa: E501 # pylint: disable=line-too-long
-        self._cdm_folder_path = (
-            Path(cdm_folder_path).resolve() if cdm_folder_path else None
-        )
+        super().__init__(**kwargs)
+
         self._only_omop_table = only_omop_table
         self._skip_usagi_and_custom_concept_upload = (
             skip_usagi_and_custom_concept_upload
         )
-
-        with open(
-            str(Path(__file__).parent.resolve() / "cdm_5.4_schema.json"),
-            "r",
-            encoding="UTF8",
-        ) as file:
-            self._omop_tables = json.load(
-                file, object_hook=lambda x: SimpleNamespace(**x)
-            )
 
         with open(
             str(Path(__file__).parent.resolve() / "etl_flow.json"),
@@ -71,78 +55,8 @@ class Etl(ABC):
         ) as file:
             self._etl_flow = json.load(file, object_hook=lambda x: SimpleNamespace(**x))
 
-        self._lock = Lock()
-
-    @abstractmethod
-    def create_omop_db(self) -> None:
-        """Create OMOP tables in the database and define indexes/partitions/clusterings"""
-
-    def create_etl_folders(self) -> None:
-        """Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.
-        Based on the OMOP CDM database tables"""
-
-        Path.mkdir(cast(Path, self._cdm_folder_path), exist_ok=True)
-
-        for omop_table, table_props in vars(self._omop_tables).items():
-            folder = cast(Path, self._cdm_folder_path) / omop_table
-            Path.mkdir(folder, exist_ok=True)
-            logging.info("Creating folder %s", folder)
-
-            sql = self._generate_sample_raw_query(omop_table)
-            query_path = (
-                cast(Path, self._cdm_folder_path) / omop_table / "example_query.sql"
-            )
-            with open(query_path, "w", encoding="UTF8") as f:
-                f.write(sql)
-            logging.info("Creating example query %s", query_path)
-
-            columns = self._get_column_names(omop_table)
-            for concept_column in (
-                column for column in columns if "concept_id" in column
-            ):
-                folder = cast(Path, self._cdm_folder_path) / omop_table / concept_column
-                Path.mkdir(
-                    folder,
-                    exist_ok=True,
-                )
-                logging.info("Creating folder %s", folder)
-
-                usagi_csv_path = (
-                    cast(Path, self._cdm_folder_path)
-                    / omop_table
-                    / concept_column
-                    / "example_usagi.csv"
-                )
-                with open(usagi_csv_path, "w", encoding="UTF8") as f:
-                    f.write(
-                        "sourceCode,sourceName,sourceFrequency,sourceAutoAssignedConceptIds,ADD_INFO:additionalInfo,matchScore,mappingStatus,equivalence,statusSetBy,statusSetOn,conceptId,conceptName,domainId,mappingType,comment,createdBy,createdOn,assignedReviewer"
-                    )
-                logging.info("Creating example usagi CSV %s", query_path)
-
-                folder = (
-                    cast(Path, self._cdm_folder_path)
-                    / omop_table
-                    / concept_column
-                    / "custom"
-                )
-                Path.mkdir(
-                    folder,
-                    exist_ok=True,
-                )
-                logging.info("Creating folder %s", folder)
-
-                custom_concepts_csv_path = (
-                    cast(Path, self._cdm_folder_path)
-                    / omop_table
-                    / concept_column
-                    / "custom"
-                    / "example_custom_concept.csv"
-                )
-                with open(custom_concepts_csv_path, "w", encoding="UTF8") as f:
-                    f.write(
-                        "concept_id,concept_name,domain_id,vocabulary_id,concept_class_id,standard_concept,concept_code,valid_start_date,valid_end_date,invalid_reason"
-                    )
-                logging.info("Creating example usagi CSV %s", query_path)
+        self._lock_custom_concepts = Lock()
+        self._lock_source_value_to_concept_id_mapping = Lock()
 
     def run(self):
         """
@@ -236,14 +150,14 @@ class Etl(ABC):
         if hasattr(elt_flow, "dependent"):
             self._do_folder_to_work_etl_flow(elt_flow.dependent)
 
-    def _process_folder_to_work(self, omop_table_name: str, omop_table_props: Any):
+    def _process_folder_to_work(self, omop_table: str, omop_table_props: Any):
         """ETL method for one OMOP table
 
         Args:
             omop_table_name (str): Name of the OMOP table
             omop_table_props (Any): Object that holds, the pk (primary key), fks (foreign keys) and events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        omop_table_path = cast(Path, self._cdm_folder_path) / f"{omop_table_name}/"
+        omop_table_path = cast(Path, self._cdm_folder_path) / f"{omop_table}/"
         sql_files = [
             sql_file
             for suffix in ["*.sql", "*.sql.jinja"]
@@ -267,19 +181,17 @@ class Etl(ABC):
         )
 
         # create the OMOP work table based on the DDL, but with the event_id columns of type STRING
-        self._create_omop_work_table(omop_table_name, events)
+        self._create_omop_work_table(omop_table, events)
 
         # get all the columns from the destination OMOP table
-        columns = self._get_column_names(omop_table_name)
+        columns = self._get_column_names(omop_table)
         concept_columns = [
             column
             for column in columns
             if "concept_id" in column  # and "source_concept_id" not in column
         ]
         # is the primary key an auto numbering column?
-        pk_auto_numbering = self._is_pk_auto_numbering(
-            omop_table_name, omop_table_props
-        )
+        pk_auto_numbering = self._is_pk_auto_numbering(omop_table, omop_table_props)
 
         if not self._skip_usagi_and_custom_concept_upload:
             with ThreadPoolExecutor(max_workers=len(concept_columns)) as executor:
@@ -287,7 +199,7 @@ class Etl(ABC):
                 futures = [
                     executor.submit(
                         self._upload_custom_concepts,
-                        omop_table_name,
+                        omop_table,
                         concept_id_column.lower(),
                     )
                     for concept_id_column in concept_columns
@@ -300,7 +212,7 @@ class Etl(ABC):
                 futures = [
                     executor.submit(
                         self._apply_usagi_mapping,
-                        omop_table_name,
+                        omop_table,
                         concept_id_column.lower(),
                     )
                     for concept_id_column in concept_columns
@@ -329,14 +241,9 @@ class Etl(ABC):
             # upload an apply the custom concept CSV's
             futures = [
                 executor.submit(
-                    self._run_etl_query,
+                    self._run_upload_query,
                     sql_file,
-                    omop_table_name,
-                    pk_swap_table_name,
-                    pk_auto_numbering,
-                    omop_table_props,
-                    concept_columns,
-                    events,
+                    omop_table,
                 )
                 for sql_file in sql_files
             ]
@@ -347,29 +254,32 @@ class Etl(ABC):
         if pk_auto_numbering:
             # swap the primary key with an auto number
             self._swap_primary_key_auto_numbering_column(
-                sql_files=sql_files,
-                omop_table=omop_table_name,
+                omop_table=omop_table,
                 pk_swap_table_name=cast(str, pk_swap_table_name),
                 primary_key_column=omop_table_props.pk,
                 concept_id_columns=concept_columns,
                 events=events,
+                sql_files=[Path(Path(sql_file).stem).stem for sql_file in sql_files],
             )
-
-        if pk_auto_numbering:
             # store the ID swap in our 'source_id_to_omop_id_swap' table
             self._store_usagi_source_id_to_omop_id_mapping(
-                omop_table=omop_table_name,
+                omop_table=omop_table,
                 pk_swap_table_name=cast(str, pk_swap_table_name),
             )
+
+        # usefull to combine all upload results into one large table
+        self._combine_upload_tables(
+            omop_table, [Path(Path(sql_file).stem).stem for sql_file in sql_files]
+        )
 
         # merge everything in the destination OMOP work table
         logging.info(
             "Merging the upload queries into the omop work table '%s'",
-            omop_table_name,
+            omop_table,
         )
         self._merge_into_omop_work_table(
-            sql_files=sql_files,
-            omop_table=omop_table_name,
+            sql_files=[Path(Path(sql_file).stem).stem for sql_file in sql_files],
+            omop_table=omop_table,
             columns=columns,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=getattr(omop_table_props, "pk", None),
@@ -379,22 +289,42 @@ class Etl(ABC):
             events=events,
         )
 
-    def _run_etl_query(
+    def _run_upload_query(
         self,
         sql_file: Path,
-        omop_table_name: str,
-        pk_swap_table_name: str | None,
-        pk_auto_numbering: bool,
-        omop_table_props: Any,
-        concept_columns: List[str],
-        events: dict[str, Any],
+        omop_table: str,
     ):
-        # execute the sql file and store the results in a temporary work table
-        logging.info("Excecuting ETL query '%s'", sql_file)
+        """Executes the query from the .sql file.
+        The results are loaded in a temporary work table (which name will have the format {omop_table}_{sql_file_name}).
+        The query must keep the source values for the primary key, foreign key(s) en concept ids.
+        The ETL process will automatically replace the primary key source values with autonumbering.
+        The foreign key(s) will be replaced by the ETL process with their corresponding autonumbers, that were generated by a previous ETL table. Therefor the sequence of the OMOP tables in the 'omop_tables' parameter of this class is extremely imortant!
+        The source values in the concept_id columns will alse be automatically replaced by the ETL process with the mapped values from the supplied Usagi CSV's and the custom concept CSV's.
 
-        self._execute_query_from_sql_file_and_store_results_in_work_table(
-            sql_file, omop_table_name
+        Args:
+            sql_file (str): The sql file holding the query on the raw data.
+            omop_table (str): OMOP table.
+        """  # noqa: E501 # pylint: disable=line-too-long
+        logging.debug(
+            "Running query '%s' from raw tables into table '%s'",
+            str(sql_file),
+            f"{omop_table}__upload__{Path(Path(sql_file).stem).stem}",
         )
+        select_query = self._get_query_from_sql_file(sql_file, omop_table)
+
+        # load the results of the query in the tempopary work table
+        upload_table = f"{omop_table}__upload__{Path(Path(sql_file).stem).stem}"
+        self._query_into_upload_table(upload_table, select_query)
+
+    @abstractmethod
+    def _combine_upload_tables(self, omop_table: str, sql_files: List[str]):
+        """_summary_
+
+        Args:
+            omop_table_name (str): Name of the OMOP table
+            sql_files (List[str]): sql_files (List[Path]): The sql files holding the query on the raw data.
+        """
+        pass
 
     def _upload_custom_concepts(self, omop_table: str, concept_id_column: str):
         """Processes all the CSV files (ending with _concept.csv) under the 'custom' subfolder of the '{concept_id_column}' folder.
@@ -469,12 +399,12 @@ class Etl(ABC):
             omop_table,
         )
 
-        self._lock.acquire()
+        self._lock_custom_concepts.acquire()
+
         # give the custom concepts an unique id (above 2.000.000.000) and store those id's in the swap table
         self._give_custom_concepts_an_unique_id_above_2bilj(
             omop_table, concept_id_column
         )
-        self._lock.release()
 
         logging.info(
             "Merging custom concept into CONCEPT table for column '%s' of table '%s'",
@@ -485,6 +415,8 @@ class Etl(ABC):
         self._merge_custom_concepts_with_the_omop_concepts(
             omop_table, concept_id_column
         )
+
+        self._lock_custom_concepts.release()
 
     def _apply_usagi_mapping(self, omop_table: str, concept_id_column: str):
         """Processes all the Usagi CSV files (ending with _usagi.csv) under the '{concept_id_column}' folder.
@@ -537,6 +469,15 @@ class Etl(ABC):
             )
             # convert the CSV to an Arrow table
             ar_temp_table = self._convert_usagi_csv_to_arrow_table(usagi_csv_file)
+            if len(
+                ar_temp_table.group_by(["sourceCode", "conceptId"]).aggregate(
+                    [("sourceCode", "count")]
+                )
+            ) != len(ar_temp_table):
+                logging.warning(
+                    "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV '%s'!",
+                    usagi_csv_file,
+                )
             # concat the Arrow tables into one large Arrow table
             ar_table = (
                 ar_temp_table
@@ -554,6 +495,16 @@ class Etl(ABC):
                 # load the Parquet file into the specific usagi upload table
                 self._load_usagi_parquet_in_upload_table(
                     parquet_file, omop_table, concept_id_column
+                )
+            if len(
+                ar_table.group_by(["sourceCode", "conceptId"]).aggregate(
+                    [("sourceCode", "count")]
+                )
+            ) != len(ar_table):
+                logging.warning(
+                    "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV's for concept column '%s' of OMOP table '%s'!",
+                    concept_id_column,
+                    omop_table,
                 )
 
         concept_csv_files = list(
@@ -593,11 +544,11 @@ class Etl(ABC):
             omop_table,
         )
         # fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the Usagi CSV's
-        self._lock.acquire()
+        self._lock_source_value_to_concept_id_mapping.acquire()
         self._store_usagi_source_value_to_concept_id_mapping(
             omop_table, concept_id_column
         )
-        self._lock.release()
+        self._lock_source_value_to_concept_id_mapping.release()
 
     def _process_work_to_omop(self, omop_table_name: str, omop_table_props: Any):
         """Maps the event columns to the correct foreign keys and fills up the final OMOP tables
@@ -630,44 +581,18 @@ class Etl(ABC):
             events=events,
         )
 
-    def _execute_query_from_sql_file_and_store_results_in_work_table(
-        self, sql_file: Path, omop_table: str
-    ):
-        """Executes the query from the .sql file.
-        The results are loaded in a temporary work table (which name will have the format {omop_table}_{sql_file_name}).
-        The query must keep the source values for the primary key, foreign key(s) en concept ids.
-        The ETL process will automatically replace the primary key source values with autonumbering.
-        The foreign key(s) will be replaced by the ETL process with their corresponding autonumbers, that were generated by a previous ETL table. Therefor the sequence of the OMOP tables in the 'omop_tables' parameter of this class is extremely imortant!
-        The source values in the concept_id columns will alse be automatically replaced by the ETL process with the mapped values from the supplied Usagi CSV's and the custom concept CSV's.
-
-        Args:
-            sql_file (str): The sql file holding the query on the raw data.
-            omop_table (str): OMOP table.
-        """  # noqa: E501 # pylint: disable=line-too-long
-        logging.debug(
-            "Running query '%s' from raw tables into table '%s'",
-            str(sql_file),
-            f"{omop_table}_{Path(Path(sql_file).stem).stem}",
-        )
-        select_query = self._get_query_from_sql_file(sql_file, omop_table)
-
-        # load the results of the query in the tempopary work table
-        work_table = f"{omop_table}_{Path(Path(sql_file).stem).stem}"
-        self._query_into_work_table(work_table, select_query)
-
     def _swap_primary_key_auto_numbering_column(
         self,
-        sql_files: List[Path],
         omop_table: str,
         pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
         events: Any,
+        sql_files: List[str],
     ):
         """Swap the primary key source value of the omop table with a generated incremental number.
 
         Args:
-            sql_file (Path): The sql file holding the query on the raw data.
             omop_table (str): OMOP table.
             pk_swap_table_name (str): Name of the swap table, for generating the auto numbering.
             primary_key_column (str): The name of the primary key column.
@@ -685,22 +610,19 @@ class Etl(ABC):
         )
 
         # execute the swap query
-        work_tables = [
-            f"{omop_table}_{Path(Path(sql_file).stem).stem}" for sql_file in sql_files
-        ]
         self._execute_pk_auto_numbering_swap_query(
             omop_table=omop_table,
-            work_tables=work_tables,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             concept_id_columns=concept_id_columns,
             events=events,
+            sql_files=sql_files,
         )
 
     @abstractmethod
     def _merge_into_omop_work_table(
         self,
-        sql_files: List[Path],
+        sql_files: List[str],
         omop_table: str,
         columns: List[str],
         pk_swap_table_name: Optional[str],
@@ -802,568 +724,6 @@ class Etl(ABC):
         )
         return table
 
-    def cleanup(self, cleanup_table: str = "all"):
-        """
-        Cleanup the ETL process:\n
-        All work tables in the work dataset are deleted.\n
-        All 'clinical' and 'health system' tables in the omop dataset are truncated. (the ones configured in the omop_tables variable)\n
-        The 'source_to_concept_map' table in the omop dataset is truncated.\n
-        All custom concepts are removed from the 'concept', 'concept_relationship' and 'concept_ancestor' tables in the omop dataset.\n
-        All local vocabularies are removed from the 'vocabulary' table in the omop dataset.\n
-        """  # noqa: E501 # pylint: disable=line-too-long
-        work_tables = self._get_work_tables()
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            # custom cleanup
-            if cleanup_table == "all":
-                logging.info("Truncate omop table 'source_to_concept_map'")
-                self._truncate_omop_table("source_to_concept_map")
-
-                logging.info("Truncate omop table 'source_id_to_omop_id_map'")
-                self._truncate_omop_table("source_id_to_omop_id_map")
-
-                logging.info(
-                    "Removing custom concepts from 'concept' table",
-                )
-                self._remove_custom_concepts_from_concept_table()
-
-                logging.info(
-                    "Removing custom concepts from 'concept_relationship' table",
-                )
-                self._remove_custom_concepts_from_concept_relationship_table()
-
-                logging.info(
-                    "Removing custom concepts from 'concept_ancestor' table",
-                )
-                self._remove_custom_concepts_from_concept_ancestor_table()
-
-                logging.info(
-                    "Removing custom concepts (local vocabularies) from 'vocabulary' table",
-                )
-                self._remove_custom_concepts_from_vocabulary_table()
-                self._custom_db_engine_cleanup("all")
-            else:
-                logging.info(
-                    "Removing mapped source id's to omop id's from SOURCE_ID_TO_OMOP_ID_MAP for OMOP table '%s'",
-                    f"{cleanup_table}",
-                )
-                self._remove_omop_ids_from_map_table(omop_table=cleanup_table)
-
-                concept_tables = [
-                    table_name
-                    for table_name in work_tables
-                    if table_name.startswith(cleanup_table)
-                    and table_name.endswith("_concept")
-                ]
-                futures = [
-                    executor.submit(
-                        self._cleanup_custom_concept_tables, table_name, cleanup_table
-                    )
-                    for table_name in concept_tables
-                ]
-                # wait(futures, return_when=ALL_COMPLETED)
-                for result in as_completed(futures):
-                    result.result()
-
-                usagi_tables = [
-                    table_name
-                    for table_name in work_tables
-                    if table_name.startswith(cleanup_table)
-                    and table_name.endswith("_usagi")
-                ]
-                futures = [
-                    executor.submit(
-                        self._cleanup_usagi_tables,
-                        table_name,
-                    )
-                    for table_name in usagi_tables
-                ]
-                # wait(futures, return_when=ALL_COMPLETED)
-                for result in as_completed(futures):
-                    result.result()
-                self._custom_db_engine_cleanup(cleanup_table)
-
-            # delete work tables
-            tables_to_delete = [
-                table_name
-                for table_name in work_tables
-                if cleanup_table == "all"
-                or (table_name.startswith(cleanup_table) and table_name != "vocabulary")
-            ]
-            futures = [
-                executor.submit(
-                    self._delete_work_table,
-                    table_name,
-                )
-                for table_name in tables_to_delete
-            ]
-            # wait(futures, return_when=ALL_COMPLETED)
-            for result in as_completed(futures):
-                result.result()
-
-            # truncate omop tables
-            omop_tables_to_delete = [
-                table_name
-                for table_name in (
-                    x for x in vars(self._omop_tables).keys() if x not in ["vocabulary"]
-                )
-                if cleanup_table == "all" or table_name == cleanup_table
-            ]
-            futures = [
-                executor.submit(
-                    self._truncate_omop_table,
-                    table_name,
-                )
-                for table_name in omop_tables_to_delete
-            ]
-            # wait(futures, return_when=ALL_COMPLETED)
-            for result in as_completed(futures):
-                result.result()
-
-    def _cleanup_usagi_tables(self, table_name: str):
-        omop_table = table_name.split("__")[0]
-        concept_id_column = table_name.split("__")[1].removesuffix("_usagi")
-        logging.info(
-            "Removing source to comcept maps from '%s' based on values from '%s' CSV",
-            "source_to_concept_map",
-            f"{omop_table}__{concept_id_column}_usagi",
-        )
-        self._remove_source_to_concept_map_using_usagi_table(
-            omop_table, concept_id_column
-        )
-
-    def _cleanup_custom_concept_tables(self, table_name: str, cleanup_table: str):
-        omop_table = table_name.split("__")[0]
-        concept_id_column = table_name.split("__")[1].removesuffix("_concept")
-        logging.info(
-            "Removing custom concepts from '%s' based on values from '%s' CSV",
-            "concept",
-            f"{omop_table}__{concept_id_column}_concept",
-        )
-        self._remove_custom_concepts_from_concept_table_using_usagi_table(
-            omop_table, concept_id_column
-        )
-
-        logging.info(
-            "Removing custom concepts from '%s' based on values from '%s' CSV",
-            "concept_relationship",
-            f"{omop_table}__{concept_id_column}_usagi",
-        )
-        self._remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
-            omop_table, concept_id_column
-        )
-
-        logging.info(
-            "Removing custom concepts from '%s' based on values from '%s' CSV",
-            "concept_ancestor",
-            f"{omop_table}__{concept_id_column}_usagi",
-        )
-        self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
-            omop_table, concept_id_column
-        )
-
-        if cleanup_table == "vocabulary":
-            logging.info(
-                "Removing custom concepts from '%s' based on values from '%s' CSV",
-                "vocabulary",
-                f"{omop_table}__{concept_id_column}_usagi",
-            )
-            self._remove_custom_concepts_from_vocabulary_table_using_usagi_table(
-                omop_table, concept_id_column
-            )
-
-    def import_vocabularies(self, path_to_zip_file: str):
-        """import vocabularies, as zip-file downloaded from athena.ohdsi.org, into"""
-        with zipfile.ZipFile(path_to_zip_file, "r") as zip_ref:
-            with tempfile.TemporaryDirectory(
-                prefix="omop_vocabularies_"
-            ) as temp_dir_path:
-                logging.info(
-                    "Extracting vocabularies zip file '%s' to temporary dir '%s'",
-                    path_to_zip_file,
-                    temp_dir_path,
-                )
-                zip_ref.extractall(temp_dir_path)
-
-                with ThreadPoolExecutor(max_workers=8) as executor:
-                    vocabulary_tables = [
-                        "concept",
-                        "concept_ancestor",
-                        "concept_class",
-                        "concept_relationship",
-                        "concept_synonym",
-                        "domain",
-                        "drug_strength",
-                        "relationship",
-                        "vocabulary",
-                    ]
-
-                    logging.info("Deleting vocabulary tables.")
-                    futures = [
-                        executor.submit(
-                            self._clear_vocabulary_upload_table,
-                            vocabulary_table,
-                        )
-                        for vocabulary_table in vocabulary_tables
-                    ]
-                    # wait(futures, return_when=ALL_COMPLETED)
-                    for result in as_completed(futures):
-                        result.result()
-
-                    logging.info("Uploading vocabulary CSV's")
-                    futures = [
-                        executor.submit(
-                            self._load_vocabulary_in_upload_table,
-                            Path(temp_dir_path)
-                            / f"{vocabulary_table.upper()}.csv",  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
-                            vocabulary_table,
-                        )
-                        for vocabulary_table in vocabulary_tables
-                    ]
-                    # wait(futures, return_when=ALL_COMPLETED)
-                    for result in as_completed(futures):
-                        result.result()
-
-                    logging.info("Creating vocabulary tables.")
-                    futures = [
-                        executor.submit(
-                            self._recreate_vocabulary_table,
-                            vocabulary_table,
-                        )
-                        for vocabulary_table in vocabulary_tables
-                    ]
-                    # wait(futures, return_when=ALL_COMPLETED)
-                    for result in as_completed(futures):
-                        result.result()
-
-    def check_data_quality(
-        self,
-        tablesToExclude: list[str] = [
-            "CONCEPT",
-            "VOCABULARY",
-            "CONCEPT_ANCESTOR",
-            "CONCEPT_RELATIONSHIP",
-            "CONCEPT_CLASS",
-            "CONCEPT_SYNONYM",
-            "RELATIONSHIP",
-            "DOMAIN",
-        ],
-    ):
-        logging.info("Checking data quality")
-
-        start = time()
-
-        df_check_descriptions = pd.read_csv(
-            str(
-                Path(__file__).parent.parent.resolve()
-                / "dqd"
-                / "csv"
-                / "OMOP_CDMv5.4_Check_Descriptions.csv"
-            ),
-            converters=StringConverter(),
-        )
-        # df_check_descriptions = df_check_descriptions.filter(items=[22], axis=0)
-
-        df_table_level = pd.read_csv(
-            str(
-                Path(__file__).parent.parent.resolve()
-                / "dqd"
-                / "csv"
-                / "OMOP_CDMv5.4_Table_Level.csv"
-            ),
-            converters=StringConverter(),
-        )
-        df_field_level = pd.read_csv(
-            str(
-                Path(__file__).parent.parent.resolve()
-                / "dqd"
-                / "csv"
-                / "OMOP_CDMv5.4_Field_Level.csv"
-            ),
-            converters=StringConverter(),
-        )
-        df_concept_level = pd.read_csv(
-            str(
-                Path(__file__).parent.parent.resolve()
-                / "dqd"
-                / "csv"
-                / "OMOP_CDMv5.4_Concept_Level.csv"
-            ),
-            converters=StringConverter(),
-        )
-
-        # ensure we use only checks that are intended to be run
-        df_table_level = df_table_level[
-            ~df_table_level["cdmTableName"].isin(tablesToExclude)
-        ]
-        df_field_level = df_field_level[
-            ~df_field_level["cdmTableName"].isin(tablesToExclude)
-        ]
-        df_concept_level = df_concept_level[
-            ~df_concept_level["cdmTableName"].isin(tablesToExclude)
-        ]
-
-        # remove offset from being checked
-        df_field_level = df_field_level[df_field_level["cdmFieldName"] != "offset"]
-
-        metadata = self._capture_check_metadata()
-
-        check_results = pd.DataFrame()
-        for index, check in df_check_descriptions.iterrows():
-            check_results = pd.concat(
-                [
-                    check_results,
-                    self._run_check(
-                        check,
-                        cast(int, index),
-                        df_table_level,
-                        df_field_level,
-                        df_concept_level,
-                    ),
-                ]
-            )
-
-        end = time()
-        execution_time = end - start
-
-        check_summary = {
-            "startTimestamp": datetime.fromtimestamp(start),
-            "endTimestamp": datetime.fromtimestamp(end),
-            "executionTime": format_timespan(execution_time),
-            "Overview": self._summarize_check_results(check_results),
-            "Metadata": metadata,
-        }
-
-        # uppercase columns names
-        check_results.columns = [
-            column.upper() if column not in ["checkId", "_row"] else column
-            for column in check_results.columns
-        ]
-        check_summary["CheckResults"] = [
-            row.dropna().to_dict() for index, row in check_results.iterrows()
-        ]
-        with open(
-            f"{metadata[0]['CDM_SOURCE_ABBREVIATION'] if len(metadata) else 'cdm'}-{datetime.fromtimestamp(end)}.json",
-            "w",
-            encoding="utf-8",
-        ) as f:  # outputFile <- sprintf("%s-%s.json", tolower(metadata$CDM_SOURCE_ABBREVIATION),endTimestamp)
-            json.dump(check_summary, f, indent=4, sort_keys=True, default=str)
-
-    def _capture_check_metadata(self):
-        cdm_soures = self._get_cdm_sources()
-        return [
-            dict((k.upper(), v) for k, v in cdm_soure.items())
-            for cdm_soure in cdm_soures
-        ]
-
-    def _run_check(
-        self,
-        check: Any,
-        row: int,
-        df_table_level: pd.DataFrame,
-        df_field_level: pd.DataFrame,
-        df_concept_level: pd.DataFrame,
-    ) -> pd.DataFrame:
-        df = None
-        match check.checkLevel:
-            case "TABLE":
-                df = df_table_level
-            case "FIELD":
-                df = df_field_level
-            case "CONCEPT":
-                df = df_concept_level
-            case _:
-                raise Exception(f"Unknown check level: {check.checkLevel}")
-
-        df = pd.DataFrame(df[df.eval(check.evaluationFilter)])
-
-        check_results = []
-        with ThreadPoolExecutor(max_workers=16) as executor:
-            futures = [
-                executor.submit(
-                    self._run_check_query,
-                    check,
-                    f"{int(row) + 1}.{cast(int, index) + 1}",
-                    item,
-                )
-                for index, item in df.iterrows()
-            ]
-            # wait(futures, return_when=ALL_COMPLETED)
-            for result in as_completed(futures):
-                check_result = result.result()
-                check_results.append(check_result)
-        return pd.DataFrame(check_results).sort_values(by=["_row"])
-
-    @abstractmethod
-    def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
-        pass
-
-    @abstractmethod
-    def _get_cdm_sources(self) -> List[Any]:
-        """Merges the uploaded custom concepts in the OMOP concept table.
-
-        Returns:
-            RowIterator | _EmptyRowIterator: The result rows
-        """
-        pass
-
-    def _summarize_check_results(self, check_results: pd.DataFrame) -> Any:
-        countTotal = len(check_results.index)
-        countThresholdFailed = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["error"].isna()
-            ].index
-        )
-        countErrorFailed = len(check_results[~check_results["error"].isna()].index)
-        countOverallFailed = len(check_results[check_results["failed"] == 1].index)
-        countPassed = countTotal - countOverallFailed
-        percentPassed = round((countPassed / countTotal) * 100)
-        percentFailed = round((countOverallFailed / countTotal) * 100)
-        countTotalPlausibility = len(
-            check_results[check_results["category"] == "Plausibility"].index
-        )
-        countTotalConformance = len(
-            check_results[check_results["category"] == "Conformance"].index
-        )
-        countTotalCompleteness = len(
-            check_results[check_results["category"] == "Completeness"].index
-        )
-        countFailedPlausibility = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["category"]
-                == "Plausibility"
-            ].index
-        )
-        countFailedConformance = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["category"]
-                == "Conformance"
-            ].index
-        )
-        countFailedCompleteness = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["category"]
-                == "Completeness"
-            ].index
-        )
-
-        check_summary = {
-            "countTotal": countTotal,
-            "countThresholdFailed": countThresholdFailed,
-            "countErrorFailed": countErrorFailed,
-            "countOverallFailed": countOverallFailed,
-            "countPassed": countPassed,
-            "percentPassed": percentPassed,
-            "percentFailed": percentFailed,
-            "countTotalPlausibility": countTotalPlausibility,
-            "countTotalConformance": countTotalConformance,
-            "countTotalCompleteness": countTotalCompleteness,
-            "countFailedPlausibility": countFailedPlausibility,
-            "countFailedConformance": countFailedConformance,
-            "countFailedCompleteness": countFailedCompleteness,
-            "countPassedPlausibility": countTotalPlausibility - countFailedPlausibility,
-            "countPassedConformance": countTotalConformance - countFailedConformance,
-            "countPassedCompleteness": countTotalCompleteness - countFailedCompleteness,
-        }
-
-        return check_summary
-
-    def _evaluate_check_threshold(
-        self,
-        check: Any,
-        item: Any,
-        result: Any,
-    ) -> Any:
-        threshold_field = f"{check.checkName}Threshold"
-        notes_field = f"{check.checkName}Notes"
-        check_threshold = {"failed": 0}
-
-        if hasattr(item, threshold_field):
-            try:
-                check_threshold["threshold_value"] = float(item[threshold_field])
-            except ValueError:
-                check_threshold["threshold_value"] = 0
-            check_threshold["notes_value"] = item[notes_field]
-
-        if ("threshold_value" not in check_threshold) or (
-            check_threshold["threshold_value"] == 0
-        ):
-            if result["num_violated_rows"] and result["num_violated_rows"] > 0:
-                check_threshold["failed"] = 1
-        else:
-            if result["pct_violated_rows"] * 100 > check_threshold["threshold_value"]:
-                check_threshold["failed"] = 1
-
-        return check_threshold
-
-    def _process_check(
-        self,
-        check: Any,
-        row: str,
-        item: Any,
-        sql: Optional[str],
-        result: Optional[Any],
-        execution_time: Optional[float],
-        exception: Optional[Exception],
-    ) -> Any:
-        check_result = {
-            "num_violated_rows": result["num_violated_rows"] if result else None,
-            "pct_violated_rows": round(result["pct_violated_rows"], 4)
-            if result
-            else None,
-            "num_denominator_rows": result["num_denominator_rows"] if result else None,
-            "execution_time": f"{execution_time:.6f} secs",
-            "query_text": sql,
-            "check_name": check.checkName,
-            "check_level": check.checkLevel,
-            "check_description": check.checkDescription,
-            "cdm_table_name": item.cdmTableName
-            if hasattr(item, "cdmTableName")
-            else None,
-            "cdm_field_name": item.cdmFieldName
-            if hasattr(item, "cdmFieldName")
-            else None,
-            "concept_id": item.conceptTd if hasattr(item, "conceptTd") else None,
-            "unit_concept_id": item.unitConceptId
-            if hasattr(item, "unitConceptId")
-            else None,
-            "sql_file": check.sqlFile,
-            "category": check.kahnCategory,
-            "subcategory": check.kahnSubcategory,
-            "context": check.kahnContext,
-            # "warning": warning,
-            "error": exception,
-            "checkId": self._get_check_id(check, item),
-            # row.names = NULL,
-            # stringsAsFactors = FALSE
-            "_row": row,
-        }
-        if exception:
-            check_result["failed"] = 1
-        elif result:
-            check_result.update(self._evaluate_check_threshold(check, item, result))
-        return check_result
-
-    def _get_check_id(self, check: Any, item: Any):
-        id = [check.checkLevel.lower(), check.checkName.lower()]
-        if hasattr(item, "cdmTableName"):
-            id.append(item.cdmTableName.lower())
-        if hasattr(item, "cdmFieldName"):
-            id.append(item.cdmFieldName.lower())
-        if hasattr(item, "conceptId"):
-            id.append(item.conceptId.lower())
-        if hasattr(item, "unitConceptId"):
-            id.append(item.unitConceptId.lower())
-        return "_".join(id)
-
-    @abstractmethod
-    def _custom_db_engine_cleanup(self, table: str) -> None:
-        """Custom cleanup method for specific database engine implementation
-
-        Args:
-            table (str): Table name (all for all tables)
-        """
-        pass
-
     @abstractmethod
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
         """Cleanup old source to concept maps by setting the invalid_reason to deleted
@@ -1381,18 +741,6 @@ class Etl(ABC):
 
         Args:
             etl_start (date): The start data of the ETL.
-        """
-        pass
-
-    @abstractmethod
-    def _get_column_names(self, omop_table_name: str) -> List[str]:
-        """Get list of column names of a omop table.
-
-        Args:
-            omop_table_name (str): OMOP table
-
-        Returns:
-            List[str]: list of column names
         """
         pass
 
@@ -1580,11 +928,11 @@ class Etl(ABC):
         pass
 
     @abstractmethod
-    def _query_into_work_table(self, work_table: str, select_query: str) -> None:
-        """This method inserts the results from our custom SQL queries the the work OMOP table.
+    def _query_into_upload_table(self, upload_table: str, select_query: str) -> None:
+        """This method inserts the results from our custom SQL queries the the work OMOP upload table.
 
         Args:
-            work_table (str): The work omop table
+            upload_table (str): The work omop table
             select_query (str): The query
         """
         pass
@@ -1606,168 +954,22 @@ class Etl(ABC):
     def _execute_pk_auto_numbering_swap_query(
         self,
         omop_table: str,
-        work_tables: List[str],
         pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
         events: Any,
+        sql_files: List[str],
     ) -> None:
         """This method does the swapping of our source codes to an auto number that will be the primary key
         of our OMOP table.
 
         Args:
             omop_table (str): The OMOP table
-            work_tables (List[str]): The OMOP work tables of the uploaded queries
             pk_swap_table_name (str): Primary key swap table
             primary_key_column (str): Primary key column
             concept_id_columns (List[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
-        """
-        pass
-
-    @abstractmethod
-    def _get_work_tables(self) -> List[str]:
-        """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
-
-        Returns:
-            List[str]: List of all the work tables
-        """
-        pass
-
-    @abstractmethod
-    def _truncate_omop_table(self, table_name: str) -> None:
-        """Remove all rows from an OMOP table
-
-        Args:
-            table_name (str): Omop table to truncate
-        """
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_table(self) -> None:
-        """Remove the custom concepts from the OMOP concept table"""
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
-        """Remove the custom concepts from the OMOP concept_relationship table"""
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
-        """Remove the custom concepts from the OMOP concept_ancestor table"""
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_vocabulary_table(self) -> None:
-        """Remove the custom concepts from the OMOP vocabulary table"""
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _remove_omop_ids_from_map_table(self, omop_table: str) -> None:
-        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP table.
-
-        Args:
-            omop_table (str): The omop table
-        """  # noqa: E501 # pylint: disable=line-too-long
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _remove_source_to_concept_map_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _delete_work_table(self, work_table: str) -> None:
-        """Remove  work table
-
-        Args:
-            work_table (str): The work table
-        """
-        pass
-
-    @abstractmethod
-    def _load_vocabulary_in_upload_table(
-        self, csv_file: Path, vocabulary_table: str
-    ) -> None:
-        """Loads the CSV file in the specific standardised vocabulary table
-
-        Args:
-            csv_file (Path): Path to the CSV file
-            vocabulary_table (str): The standardised vocabulary table
-        """
-        pass
-
-    @abstractmethod
-    def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
-        """Removes a specific standardised vocabulary table
-
-        Args:
-            vocabulary_table (str): The standardised vocabulary table
-        """
-        pass
-
-    @abstractmethod
-    def _recreate_vocabulary_table(self, vocabulary_table: str) -> None:
-        """Recreates a specific standardised vocabulary table
-
-        Args:
-            vocabulary_table (str): The standardised vocabulary table
+            sql_files (List[str]): List of upload SQL files
         """
         pass
 
@@ -1811,26 +1013,3 @@ class Etl(ABC):
             pk_swap_table_name (str): The id swap work table
         """
         pass
-
-    @abstractmethod
-    def _generate_sample_raw_query(self, omop_table: str) -> str:
-        """Generates an example SQL query to query the raw data.
-
-        Args:
-            vocabulary_table (str): The standardised vocabulary table
-        """
-        pass
-
-
-class StringConverter(dict):
-    def __contains__(self, item):
-
-        return True
-
-    def __getitem__(self, item):
-
-        return str
-
-    def get(self, default=None):
-
-        return str

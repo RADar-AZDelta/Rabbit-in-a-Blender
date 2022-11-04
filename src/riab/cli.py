@@ -11,8 +11,22 @@ from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Optional
 
-from riab.etl import Etl
-from riab.etl.bigquery import BigQuery
+from .etl import (
+    Cleanup,
+    CreateEtlFolders,
+    CreateOmopDb,
+    DataQuality,
+    Etl,
+    ImportVocabularies,
+)
+from .etl.bigquery import (
+    BigQueryCleanup,
+    BigQueryCreateEtlFolders,
+    BigQueryCreateOmopDb,
+    BigQueryDataQuality,
+    BigQueryEtl,
+    BigQueryImportVocabularies,
+)
 
 
 def cli() -> None:
@@ -29,36 +43,89 @@ def cli() -> None:
             if args.verbose:
                 logging.getLogger().setLevel(logging.DEBUG)
 
-            etl: Optional[Etl] = None
+            bigquery_kwargs = None
             match args.db_engine:
                 case "BigQuery":
-                    etl = BigQuery(
-                        cdm_folder_path=args.run_etl or args.create_folders,
-                        only_omop_table=args.table,
-                        skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
-                        credentials_file=args.google_credentials_file,
-                        project_id=args.google_project_id,
-                        location=args.google_location,
-                        dataset_id_raw=args.bigquery_dataset_id_raw,
-                        dataset_id_work=args.bigquery_dataset_id_work,
-                        dataset_id_omop=args.bigquery_dataset_id_omop,
-                        bucket_uri=args.google_cloud_storage_bucket_uri,
-                    )
+                    bigquery_kwargs = {
+                        "credentials_file": args.google_credentials_file,
+                        "project_id": args.google_project_id,
+                        "location": args.google_location,
+                        "dataset_id_raw": args.bigquery_dataset_id_raw,
+                        "dataset_id_work": args.bigquery_dataset_id_work,
+                        "dataset_id_omop": args.bigquery_dataset_id_omop,
+                        "bucket_uri": args.google_cloud_storage_bucket_uri,
+                    }
                 case _:
                     raise ValueError("Not a supported database engine")
 
             if args.create_db:  # create OMOP CDM Database
-                etl.create_omop_db()
+                create_omop_db: Optional[CreateOmopDb] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        create_omop_db = BigQueryCreateOmopDb(
+                            cdm_folder_path=args.run_etl or args.create_folders,
+                            **bigquery_kwargs,
+                        )
+                        create_omop_db.run()
+                    case _:
+                        raise ValueError("Not a supported database engine")
             elif args.create_folders:  # create the ETL folder structure
-                etl.create_etl_folders()
+                create_folders: Optional[CreateEtlFolders] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        create_folders = BigQueryCreateEtlFolders(
+                            cdm_folder_path=args.run_etl or args.create_folders,
+                            **bigquery_kwargs,
+                        )
+                        create_folders.run()
+                    case _:
+                        raise ValueError("Not a supported database engine")
             elif args.import_vocabularies:  # impoprt OMOP CDM vocabularies
-                etl.import_vocabularies(args.import_vocabularies)
+                import_vocabularies: Optional[ImportVocabularies] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        import_vocabularies = BigQueryImportVocabularies(
+                            cdm_folder_path=args.run_etl or args.create_folders,
+                            **bigquery_kwargs,
+                        )
+                        import_vocabularies.run(args.import_vocabularies)
+                    case _:
+                        raise ValueError("Not a supported database engine")
             elif args.run_etl:  # run ETL
-                etl.run()
+                etl: Optional[Etl] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        etl = BigQueryEtl(
+                            cdm_folder_path=args.run_etl or args.create_folders,
+                            only_omop_table=args.table,
+                            skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
+                            **bigquery_kwargs,
+                        )
+                        etl.run()
+                    case _:
+                        raise ValueError("Not a supported database engine")
             elif args.cleanup:  # cleanup OMOP DB
-                etl.cleanup(args.cleanup)
+                cleanup: Optional[Cleanup] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        cleanup = BigQueryCleanup(
+                            cdm_folder_path=args.run_etl or args.create_folders,
+                            **bigquery_kwargs,
+                        )
+                        cleanup.run(args.cleanup)
+                    case _:
+                        raise ValueError("Not a supported database engine")
             elif args.data_quality:  # check data quality
-                etl.check_data_quality()
+                data_quality: Optional[DataQuality] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        data_quality = BigQueryDataQuality(
+                            cdm_folder_path=args.run_etl or args.create_folders,
+                            **bigquery_kwargs,
+                        )
+                        data_quality.run()
+                    case _:
+                        raise ValueError("Not a supported database engine")
             else:
                 raise Exception("Unknown ETL command!")
 

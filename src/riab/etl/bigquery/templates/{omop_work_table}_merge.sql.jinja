@@ -38,14 +38,7 @@ USING (
             t.{{column}}
         {%- endif %}
         {%- endfor %}
-    FROM (
-        {%- for sql_file in sql_files -%}
-            {%- if not loop.first %}
-        UNION ALL
-            {%- endif %}
-        SELECT * FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}_{{sql_file}} 
-        {%- endfor %}
-    ) t
+    FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}_upload t
     {%- set ns = namespace(ci_counter=0) -%}
     {%- for column in concept_id_columns %}
         {%- if not column in events.values() %}
