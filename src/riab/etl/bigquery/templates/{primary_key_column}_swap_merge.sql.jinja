@@ -16,11 +16,12 @@ USING (
 
             {%- endif %}
             SELECT t.{{primary_key_column}} as x,
-                {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
+                {%- set ns = namespace(ci_counter=0) -%}
                 {%- for column in concept_id_columns %}
                     {% if not column in events.values() -%}
                     IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0) as {{column}},
-                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+                    {# t.{{column}} as {{column}}_source_value, #}
+                        {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                     {%- else %}
                     t.{{column}},
                     {%- endif -%}
@@ -30,13 +31,13 @@ USING (
                 {%- endfor %}
                 '{{sql_file}}.sql' as source
             FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__upload__{{sql_file}} t      
-            {%- set ns = namespace(fk_counter=0, ci_counter=0) %}    
+            {%- set ns = namespace(ci_counter=0) %}    
             LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_name}}_swap swap on swap.x = t.{{primary_key_column}}
                 {%- set ns = namespace(ci_counter=0) %}  
                 {%- for column in concept_id_columns %}
                     {%- if not column in events and not column in events.values() %}
             LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
-                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+                        {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                     {%- endif -%}
                 {%- endfor %} 
             where swap.x is null    
@@ -47,6 +48,7 @@ USING (
         s.x,
         {%- for column in concept_id_columns %}
         s.{{column}},
+        {# s.{{column}}_source_value, #}
         {%- endfor %} 
         {%- for column in events %}
         s.{{column}},

@@ -508,60 +508,42 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        try:
-            template = self._template_env.get_template(
-                "{omop_work_table}_merge.sql.jinja"
+        template = self._template_env.get_template(
+            "{omop_work_table}_merge._check_for_duplicate_rows.sql.jinja"
+        )
+        sql_doubles = template.render(
+            project_id=self._project_id,
+            omop_table=omop_table,
+            dataset_id_work=self._dataset_id_work,
+            primary_key_column=primary_key_column,
+            concept_id_columns=concept_id_columns,
+            events=events,
+        )
+        rows = self._gcp.run_query_job(sql_doubles)
+        ar_table = rows.to_arrow()
+        if len(ar_table):
+            raise Exception(
+                f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\n"
             )
-            sql = template.render(
-                project_id=self._project_id,
-                dataset_id_omop=self._dataset_id_omop,
-                omop_table=omop_table,
-                dataset_id_work=self._dataset_id_work,
-                sql_files=sql_files,
-                columns=columns,
-                pk_swap_table_name=pk_swap_table_name,
-                primary_key_column=primary_key_column,
-                foreign_key_columns=vars(foreign_key_columns)
-                if hasattr(foreign_key_columns, "__dict__")
-                else foreign_key_columns,
-                concept_id_columns=concept_id_columns,
-                pk_auto_numbering=pk_auto_numbering,
-                events=events,
-            )
-            self._gcp.run_query_job(sql)
 
-            if primary_key_column or omop_table == "death":
-                template = self._template_env.get_template(
-                    "{omop_work_table}_merge._check_for_duplicate_rows.sql.jinja"
-                )
-                sql_doubles = template.render(
-                    project_id=self._project_id,
-                    omop_table=omop_table,
-                    dataset_id_work=self._dataset_id_work,
-                    primary_key_column=primary_key_column
-                    if omop_table != "death"
-                    else "person_id",
-                )
-                rows = self._gcp.run_query_job(sql_doubles)
-                ar_table = rows.to_arrow()
-                if len(ar_table):
-                    sample_duplicate_ids = ar_table[
-                        primary_key_column if omop_table != "death" else "person_id"
-                    ].__str__()
-                    raise Exception(
-                        f"Duplicate rows supplied! Check ETL queries for table {omop_table} and run the 'clean' command!\n"
-                        + sample_duplicate_ids
-                    )
-
-        except BadRequest as br:
-            if br.message.startswith(
-                "UPDATE/MERGE must match at most one source row for each target row"
-            ):
-                logging.error(
-                    f"Duplicate rows supplied! Check ETL queries for table {omop_table} and run the 'clean' command!"
-                )
-            if __debug__:
-                breakpoint()
+        template = self._template_env.get_template("{omop_work_table}_merge.sql.jinja")
+        sql = template.render(
+            project_id=self._project_id,
+            dataset_id_omop=self._dataset_id_omop,
+            omop_table=omop_table,
+            dataset_id_work=self._dataset_id_work,
+            sql_files=sql_files,
+            columns=columns,
+            pk_swap_table_name=pk_swap_table_name,
+            primary_key_column=primary_key_column,
+            foreign_key_columns=vars(foreign_key_columns)
+            if hasattr(foreign_key_columns, "__dict__")
+            else foreign_key_columns,
+            concept_id_columns=concept_id_columns,
+            pk_auto_numbering=pk_auto_numbering,
+            events=events,
+        )
+        self._gcp.run_query_job(sql)
 
     def _merge_into_omop_table(
         self,

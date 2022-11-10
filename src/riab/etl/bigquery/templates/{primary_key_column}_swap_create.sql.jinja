@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_work}}.{{pk_swap_table_na
     {{column}} 
     {% if not column in events.values() -%}
         INT64,
+    {# {{column}}_source_value STRING, #}
     {%- else -%}
         STRING,
     {%- endif -%}
