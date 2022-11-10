@@ -50,3 +50,15 @@ class EtlBase(ABC):
             List[str]: list of column names
         """
         pass
+
+    @abstractmethod
+    def _get_required_column_names(self, omop_table_name: str) -> List[str]:
+        """Get list of required column names of a omop table.
+
+        Args:
+            omop_table_name (str): OMOP table
+
+        Returns:
+            List[str]: list of column names
+        """
+        pass

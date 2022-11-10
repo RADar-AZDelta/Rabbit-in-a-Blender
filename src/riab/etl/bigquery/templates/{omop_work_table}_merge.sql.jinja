@@ -38,7 +38,11 @@ USING (
                         t.{{column}} as {{column}}
                     {%- endif -%}
                 {%- elif column in foreign_key_columns -%}
+                    {%- if column in required_columns -%}
                     IFNULL(swap_fk{{ns.fk_counter}}.y, 0) as {{column}}
+                    {%- else -%}
+                    swap_fk{{ns.fk_counter}}.y as {{column}}
+                    {%- endif -%}
                     {%- set ns.fk_counter = ns.fk_counter + 1 -%}
                 {%- elif column in concept_id_columns -%}
                     {%- if not column in events.values() -%}
@@ -74,7 +78,7 @@ USING (
                 {%- set ns = namespace(ci_counter=0) -%}
                 {%- for column in concept_id_columns %}
                     {%- if not column in events.values() %}
-                and swap_pk.{{column}} = IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0)
+                and IFNULL(swap_pk.{{column}}, 0) = IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0)
                     {%- else -%}
                 and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
                     {%- endif -%}

@@ -1,15 +1,7 @@
 {# Copyright 2022 RADar-AZDelta #}
 {# SPDX-License-Identifier: gpl3+ #}
 CREATE OR REPLACE TABLE {{project_id}}.{{dataset_id_omop}}.{{omop_table}}
-{% if cluster_fields | length > 0 -%}
-CLUSTER BY
-  {% for field in cluster_fields -%}
-      {%- if not loop.first -%}
-          {{ ',' }}
-      {%- endif -%}
-      {{ field }}   
-  {%- endfor -%}
-{%- endif %}
+LIKE {{project_id}}.{{dataset_id_omop}}.{{omop_table}}
 as (
     SELECT DISTINCT 
         {%- set ns = namespace(fk_counter=0) -%}
@@ -21,13 +13,13 @@ as (
                 {%- if event_tables.keys()|length > 0  %}
         CASE t.{{events[column]}}            
                 {%- for (table, key) in event_tables.items() %}
-            WHEN "{{table}}" THEN IFNULL(swap_fk{{ns.fk_counter}}.y, 0)
+            WHEN "{{table}}" THEN swap_fk{{ns.fk_counter}}.y
                     {%- set ns.fk_counter = ns.fk_counter + 1 %}
                 {%- endfor %}
             ELSE 0
         END as {{column}}
                 {%- else %}
-        0 as {{column}}
+        null as {{column}}
                 {%- endif %}
             {%- elif column in events.values() -%} {# event concept_id #}
                 {%- if event_tables.keys()|length > 0  %} 
@@ -122,10 +114,10 @@ as (
                 {%- if "vocabulary" in event_tables %}
             WHEN "vocabulary" THEN 1146955
                 {%- endif %}
-            ELSE 0
+            ELSE null
         END as {{column}}
                 {%- else %}
-        0 as {{column}}
+        null as {{column}}
                 {%- endif %}
             {%- else %}
         t.{{column}}

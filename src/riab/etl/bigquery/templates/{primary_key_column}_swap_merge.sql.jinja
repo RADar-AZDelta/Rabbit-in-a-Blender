@@ -19,7 +19,7 @@ USING (
                 {%- set ns = namespace(ci_counter=0) -%}
                 {%- for column in concept_id_columns %}
                     {% if not column in events.values() -%}
-                    IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0) as {{column}},
+                    swap_ci{{ns.ci_counter}}.conceptId as {{column}},
                     {# t.{{column}} as {{column}}_source_value, #}
                         {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                     {%- else %}

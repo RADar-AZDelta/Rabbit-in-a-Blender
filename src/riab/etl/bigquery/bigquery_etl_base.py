@@ -139,7 +139,23 @@ class BigQueryEtlBase(EtlBase, ABC):
         Returns:
             List[str]: list of column names
         """
-        columns = self._gcp.get_column_names(
+        columns = self._gcp.get_columns(
             self._project_id, self._dataset_id_omop, omop_table_name
         )
-        return columns
+        return [column["column_name"] for column in columns]
+
+    def _get_required_column_names(self, omop_table_name: str) -> List[str]:
+        """Get list of required column names of a omop table.
+
+        Args:
+            omop_table_name (str): OMOP table
+
+        Returns:
+            List[str]: list of column names
+        """
+        columns = self._gcp.get_columns(
+            self._project_id, self._dataset_id_omop, omop_table_name
+        )
+        return [
+            column["column_name"] for column in columns if column["is_nullable"] == "NO"
+        ]

@@ -190,6 +190,8 @@ class Etl(EtlBase):
             for column in columns
             if "concept_id" in column  # and "source_concept_id" not in column
         ]
+        required_columns = self._get_required_column_names(omop_table)
+
         # is the primary key an auto numbering column?
         pk_auto_numbering = self._is_pk_auto_numbering(omop_table, omop_table_props)
 
@@ -281,6 +283,7 @@ class Etl(EtlBase):
             sql_files=[Path(Path(sql_file).stem).stem for sql_file in sql_files],
             omop_table=omop_table,
             columns=columns,
+            required_columns=required_columns,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=getattr(omop_table_props, "pk", None),
             pk_auto_numbering=pk_auto_numbering,
@@ -625,6 +628,7 @@ class Etl(EtlBase):
         sql_files: List[str],
         omop_table: str,
         columns: List[str],
+        required_columns: List[str],
         pk_swap_table_name: Optional[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
@@ -638,6 +642,7 @@ class Etl(EtlBase):
             sql_files (List[Path]): The sql files holding the query on the raw data.
             omop_table (str): OMOP table.
             columns (List[str]): List of columns of the OMOP table.
+            required_columns (List[str]): List of required columns of the OMOP table.
             pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
             primary_key_column (str): The name of the primary key column.
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
@@ -645,6 +650,7 @@ class Etl(EtlBase):
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
+        pass
 
     def _convert_usagi_csv_to_arrow_table(self, usagi_csv_file: Path) -> pa.Table:
         """Converts a Usagi CSV file to an Arrow table, maintaining the relevant columns.

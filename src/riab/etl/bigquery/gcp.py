@@ -64,38 +64,13 @@ ORDER BY table_name"""
         rows = self.run_query_job(query)
         return [row.table_name for row in rows]
 
-    def get_column_names(
-        self, project_id: str, dataset_id: str, table_name: str
-    ) -> List[str]:
-        """Get all column names of a specific table in a Big Query dataset
+    def get_columns(self, project_id: str, dataset_id: str, table_name: str) -> Any:
+        """Get metadata from all column in a table in a Big Query dataset
 
         Args:
             project_id (str): project ID
             dataset_id (str): dataset ID
             table_name (str): table name
-
-        Returns:
-            List[str]: list of column names
-        """
-        query = f"""
-SELECT column_name
-FROM `{project_id}.{dataset_id}.INFORMATION_SCHEMA.COLUMNS`
-WHERE table_name = @table_name
-ORDER BY ordinal_position"""
-        query_parameters = [bq.ScalarQueryParameter("table_name", "STRING", table_name)]
-        rows = self.run_query_job(query, query_parameters)
-        return [row.column_name for row in rows]
-
-    def get_column_metadata(
-        self, project_id: str, dataset_id: str, table_name: str, column_name: str
-    ) -> Any:
-        """Get metadata from a specific column in a table in a Big Query dataset
-
-        Args:
-            project_id (str): project ID
-            dataset_id (str): dataset ID
-            table_name (str): table name
-            column_name (str): column name
 
         Returns:
             Any: the column metadata
@@ -103,15 +78,13 @@ ORDER BY ordinal_position"""
         query = f"""
 SELECT *
 FROM `{project_id}.{dataset_id}.INFORMATION_SCHEMA.COLUMNS`
-WHERE table_name = @table_name and column_name = @column_name
+WHERE table_name = @table_name
 ORDER BY ordinal_position"""
         query_parameters = [
             bq.ScalarQueryParameter("table_name", "STRING", table_name),
-            bq.ScalarQueryParameter("column_name", "STRING", column_name),
         ]
         rows = self.run_query_job(query, query_parameters)
-        first_row = next(iter(rows), None)
-        return first_row
+        return rows
 
     def run_query_job(
         self,

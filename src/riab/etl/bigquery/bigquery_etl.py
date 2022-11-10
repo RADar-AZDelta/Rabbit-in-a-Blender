@@ -91,12 +91,14 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         if not hasattr(omop_table_props, "pk"):
             return False
         # get the primary key meta data from the the destination OMOP table
-        pk_column_metadata = self._gcp.get_column_metadata(
+        columns = self._gcp.get_columns(
             self._project_id,
             self._dataset_id_omop,
             omop_table_name,
-            omop_table_props.pk,
         )
+        pk_column_metadata = [
+            column for column in columns if column["column_name"] == omop_table_props.pk
+        ][0]
         # is the primary key an auto numbering column?
         pk_auto_numbering = (
             pk_column_metadata and pk_column_metadata.get("data_type") == "INT64"
@@ -488,6 +490,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         sql_files: List[str],
         omop_table: str,
         columns: List[str],
+        required_columns: List[str],
         pk_swap_table_name: Optional[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
@@ -501,6 +504,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             sql_files (List[str]): The sql files holding the query on the raw data.
             omop_table (str): OMOP table.
             columns (List[str]): List of columns of the OMOP table.
+            required_columns (List[str]): List of required columns of the OMOP table.
             pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
             primary_key_column (str): The name of the primary key column.
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
@@ -534,6 +538,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             dataset_id_work=self._dataset_id_work,
             sql_files=sql_files,
             columns=columns,
+            required_columns=required_columns,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             foreign_key_columns=vars(foreign_key_columns)
