@@ -16,7 +16,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         self,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(target_dialect="bigquery", **kwargs)
 
     def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
         sql = None
@@ -24,73 +24,21 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         exception = None
         execution_time = -1
         try:
-            template = self._template_env.get_template(f"dqd/{check.sqlFile}.jinja")
+            parameters = item.to_dict()
 
-            cdmFieldName = None
-            if hasattr(item, "cdmFieldName"):
-                cdmFieldName = item.cdmFieldName.lower()
-                cdmFieldName = re.sub(
-                    r"domain_concept_id_", r"field_concept_id_", cdmFieldName
-                )
-                cdmFieldName = re.sub(
-                    r"cost_domain_id", r"cost_field_concept_id", cdmFieldName
-                )
-
-            plausibleValueHigh = None
-            if hasattr(item, "plausibleValueHigh"):
-                plausibleValueHigh = item.plausibleValueHigh
-                if plausibleValueHigh == "DATEADD(dd,1,GETDATE())":
-                    plausibleValueHigh = "date_add(current_date(), interval 1 day)"
-                elif plausibleValueHigh == "YEAR(GETDATE())+1":
-                    plausibleValueHigh = "extract(year from current_date()) + 1"
-
-            sql = template.render(
-                project_id=self._project_id,
-                dataset_id_omop=self._dataset_id_omop,
-                cdmTableName=item.cdmTableName.lower()
-                if hasattr(item, "cdmTableName")
-                else None,
-                cdmFieldName=cdmFieldName,
-                cohortDefinitionId=item.cohortDefinitionId
-                if hasattr(item, "cohortDefinitionId")
-                else None,
-                cdmSourceFieldName=item.cdmSourceFieldName.lower()
-                if hasattr(item, "cdmSourceFieldName")
-                else None,
-                fkTableName=item.fkTableName.lower()
-                if hasattr(item, "fkTableName")
-                else None,
-                fkFieldName=item.fkFieldName.lower()
-                if hasattr(item, "fkFieldName")
-                else None,
-                standardConceptFieldName=item.standardConceptFieldName.lower()
-                if hasattr(item, "standardConceptFieldName")
-                else None,
-                plausibleValueHigh=plausibleValueHigh,
-                plausibleValueLow=item.plausibleValueLow
-                if hasattr(item, "plausibleValueLow")
-                else None,
-                cdmDatatype=item.cdmDatatype.lower()
-                if hasattr(item, "cdmDatatype")
-                else None,
-                plausibleTemporalAfterTableName=item.plausibleTemporalAfterTableName.lower()
-                if hasattr(item, "plausibleTemporalAfterTableName")
-                else None,
-                plausibleTemporalAfterFieldName=item.plausibleTemporalAfterFieldName.lower()
-                if hasattr(item, "plausibleTemporalAfterFieldName")
-                else None,
-                fkDomain=item.fkDomain.lower() if hasattr(item, "fkDomain") else None,
-                fkClass=item.fkClass.lower() if hasattr(item, "fkClass") else None,
-                conceptId=item.conceptId.lower()
-                if hasattr(item, "conceptId")
-                else None,
-                unitConceptId=item.unitConceptId.lower()
-                if hasattr(item, "unitConceptId")
-                else None,
-                plausibleUnitConceptIds=item.plausibleUnitConceptIds.lower()
-                if hasattr(item, "plausibleUnitConceptIds")
-                else None,
+            parameters["cohort"] = (
+                "TRUE" if hasattr(parameters, "cohortDefinitionId") else "FALSE"
             )
+            parameters[
+                "cdmDatabaseSchema"
+            ] = f"{self._project_id}.{self._dataset_id_omop}"
+
+            sql = self._render_sqlfile(
+                check.sqlFile,
+                list(parameters.keys()),
+                list(parameters.values()),
+            )
+
             start = time()
             rows = self._gcp.run_query_job(sql)
             end = time()

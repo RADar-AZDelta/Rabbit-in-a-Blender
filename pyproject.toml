@@ -25,7 +25,8 @@ dependencies = [
     'google-cloud-storage >= 2.5.0',
     'simple-ddl-parser >= 0.27.0',
     'pandas >= 1.5.1',
-    'humanfriendly >= 10.0'
+    'humanfriendly >= 10.0',
+    'jpype1 >= 1.4.1'
 ]
 
 [project.urls]
@@ -45,4 +46,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 riab = ["*.json", "*.sql", "*.jinja", "*.csv"]
+"riab.libs.SqlRender.inst.csv" = ["*.csv"]
+"riab.libs.SqlRender.inst.java" = ["*.jar"]
 "riab.libs.DataQualityDashboard.inst.csv" = ["*.csv"]
+"riab.libs.DataQualityDashboard.inst.sql.sql_server" = ["*.sql"]

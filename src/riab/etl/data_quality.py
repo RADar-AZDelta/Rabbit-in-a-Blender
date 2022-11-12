@@ -10,13 +10,12 @@ from pathlib import Path
 from time import time
 from typing import Any, List, Optional, cast
 
+import jpype
+import jpype.imports
 import pandas as pd
 from humanfriendly import format_timespan
 
 from .etl_base import EtlBase
-
-# import jpype
-# import jpype.imports
 
 
 class DataQuality(EtlBase, ABC):
@@ -26,9 +25,57 @@ class DataQuality(EtlBase, ABC):
 
     def __init__(
         self,
+        target_dialect: str,
         **kwargs,
     ):
         super().__init__(**kwargs)
+
+        self.target_dialect = target_dialect
+        self.path_to_replacement_patterns = str(
+            Path(__file__).parent.parent.resolve()
+            / "libs"
+            / "SqlRender"
+            / "inst"
+            / "csv"
+            / "replacementPatterns.csv"
+        )
+
+        # launch the JVM
+        sqlrender_path = str(
+            Path(__file__).parent.parent.resolve()
+            / "libs"
+            / "SqlRender"
+            / "inst"
+            / "java"
+            / "SqlRender.jar"
+        )
+        jpype.startJVM(classpath=[sqlrender_path])
+
+    def _render_sqlfile(self, sql_file: str, parameters: List[str], values: List[str]):
+        with open(
+            Path(__file__).parent.parent.resolve()
+            / "libs"
+            / "DataQualityDashboard"
+            / "inst"
+            / "sql"
+            / "sql_server"
+            / sql_file,
+            "r",
+            encoding="utf-8",
+        ) as f:
+            sql = f.read()
+
+        # import the Java module
+        from org.ohdsi.sql import SqlRender, SqlTranslate
+
+        sql = str(SqlRender.renderSql(sql, parameters, values))
+
+        sql = str(
+            SqlTranslate.translateSqlWithPath(
+                sql, self.target_dialect, None, None, self.path_to_replacement_patterns
+            )
+        )
+        return sql
 
     def run(
         self,
@@ -43,23 +90,6 @@ class DataQuality(EtlBase, ABC):
             "DOMAIN",
         ],
     ):
-        # # launch the JVM
-        # sqlrender_path = Path(__file__).resolve().parent / "jar" / "SqlRender-1.10.0.jar"
-        # jpype.startJVM(classpath=[str(sqlrender_path)])
-
-        # # import the Java module
-        # from org.ohdsi.sql import SqlRender, SqlTranslate
-
-        # sql = "SELECT CAST(middle_initial AS VARCHAR) + 'abc' FROM my_table;"
-        # replaceme_patterns_path = (
-        #     Path(__file__).resolve().parent / "jar" / "replacementPatterns.csv"
-        # )
-
-        # sql = SqlTranslate.translateSqlWithPath(
-        #     sql, "bigquery", None, None, str(replaceme_patterns_path)
-        # )
-        # SqlRender.loadRenderTranslateSql
-
         logging.info("Checking data quality")
 
         start = time()
@@ -67,7 +97,9 @@ class DataQuality(EtlBase, ABC):
         df_check_descriptions = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
-                / "dqd"
+                / "libs"
+                / "DataQualityDashboard"
+                / "inst"
                 / "csv"
                 / "OMOP_CDMv5.4_Check_Descriptions.csv"
             ),
@@ -78,7 +110,9 @@ class DataQuality(EtlBase, ABC):
         df_table_level = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
-                / "dqd"
+                / "libs"
+                / "DataQualityDashboard"
+                / "inst"
                 / "csv"
                 / "OMOP_CDMv5.4_Table_Level.csv"
             ),
@@ -87,7 +121,9 @@ class DataQuality(EtlBase, ABC):
         df_field_level = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
-                / "dqd"
+                / "libs"
+                / "DataQualityDashboard"
+                / "inst"
                 / "csv"
                 / "OMOP_CDMv5.4_Field_Level.csv"
             ),
@@ -96,7 +132,9 @@ class DataQuality(EtlBase, ABC):
         df_concept_level = pd.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
-                / "dqd"
+                / "libs"
+                / "DataQualityDashboard"
+                / "inst"
                 / "csv"
                 / "OMOP_CDMv5.4_Concept_Level.csv"
             ),
@@ -192,7 +230,7 @@ class DataQuality(EtlBase, ABC):
         df = pd.DataFrame(df[df.eval(check.evaluationFilter)])
 
         check_results = []
-        with ThreadPoolExecutor(max_workers=16) as executor:
+        with ThreadPoolExecutor(max_workers=16) as executor:  # 16 threads
             futures = [
                 executor.submit(
                     self._run_check_query,
