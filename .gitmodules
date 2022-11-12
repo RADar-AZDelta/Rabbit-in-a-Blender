@@ -1,8 +1,8 @@
 [submodule "DataQualityDashboard"]
-	path = libs/DataQualityDashboard
+	path = src/riab/libs/DataQualityDashboard
 	url = ssh://git@github.com/OHDSI/DataQualityDashboard.git
 	branch = main
 [submodule "SqlRender"]
-	path = libs/SqlRender
+	path = src/riab/libs/SqlRender
 	url = ssh://git@github.com/OHDSI/SqlRender.git
 	branch = main

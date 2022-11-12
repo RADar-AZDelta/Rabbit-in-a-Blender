@@ -2,8 +2,7 @@
 #python3 -m pip install --upgrade pip twine
 
 # build and publish
-rm -fr ./dist # cleanup
-python -m build # build
+rm -fr ./dist && python -m build # cleanup and build
 # CHANGE THE VERSION in the pyproject.toml file
 python3 -m twine upload --verbose --repository pypi dist/* # choose between repo pypi and testpypi
 
