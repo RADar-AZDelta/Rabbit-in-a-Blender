@@ -5,9 +5,9 @@ USING (
     SELECT
         t.sourceCode as source_code
         ,t.conceptId as target_concept_id
-    FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi t
+    FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted t
 ) AS S
 ON S.source_code = T.source_code 
-    and CAST(S.target_concept_id AS STRING) = CAST(T.target_concept_id AS STRING)
+    and S.target_concept_id = T.target_concept_id
 WHEN MATCHED THEN
   DELETE
