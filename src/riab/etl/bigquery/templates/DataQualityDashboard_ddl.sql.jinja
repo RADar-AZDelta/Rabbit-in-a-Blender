@@ -1,0 +1,52 @@
+CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_omop}}.dqdashboard_runs
+(
+  id                        STRING NOT NULL, 
+  startTimestamp            TIMESTAMP NOT NULL,
+  endTimestamp              TIMESTAMP,
+  executionTime             STRING,
+  countTotal                INT64,
+  countThresholdFailed      INT64,
+  countErrorFailed          INT64,
+  countOverallFailed        INT64,
+  countPassed               INT64,
+  percentPassed             INT64,
+  percentFailed             INT64,
+  countTotalPlausibility    INT64,
+  countTotalConformance     INT64,
+  countTotalCompleteness    INT64,
+  countFailedPlausibility   INT64,
+  countFailedConformance    INT64,
+  countFailedCompleteness   INT64,
+  countPassedPlausibility   INT64, 
+  countPassedConformance    INT64,
+  countPassedCompleteness   INT64
+)
+CLUSTER BY startTimestamp;
+
+CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_omop}}.dqdashboard_results
+(
+  run_id                STRING NOT NULL,
+  checkid               STRING NOT NULL,
+  num_violated_rows     INT64,
+  pct_violated_rows     FLOAT64,
+  num_denominator_rows  INT64,
+  execution_time        STRING,
+  query_text            STRING,
+  check_name            STRING,
+  check_level           STRING,
+  check_description     STRING,
+  cdm_table_name        STRING,
+  cdm_field_name        STRING,
+  concept_id            STRING,
+  unit_concept_id       STRING,
+  sql_file              STRING,
+  category              STRING,
+  subcategory           STRING,
+  context               STRING,
+  warning               STRING,
+  error                 STRING,
+  failed                INT64,
+  threshold_value       INT64,
+  notes_value           STRING
+)
+CLUSTER BY run_id, category, subcategory, check_level;

@@ -1,9 +1,7 @@
 # Copyright 2022 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
-import logging
 from abc import ABC, abstractmethod
-from typing import cast
 
 from .etl_base import EtlBase
 
@@ -15,9 +13,12 @@ class CreateOmopDb(EtlBase, ABC):
 
     def __init__(
         self,
+        target_dialect: str,
         **kwargs,
     ):
         super().__init__(**kwargs)
+
+        self.target_dialect = target_dialect
 
     @abstractmethod
     def run(self) -> None:

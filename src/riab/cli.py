@@ -364,8 +364,7 @@ def _contstruct_argument_parser() -> ArgumentParser:
         (the uri has format 'gs://{bucket_name}/{bucket_path}')""",
         required=args.db_engine == "BigQuery"
         and not command_args.create_db
-        and not command_args.create_folders
-        and not command_args.data_quality,
+        and not command_args.create_folders,
         metavar="GOOGLE_CLOUD_STORAGE_BUCKET_URI",
     )
 

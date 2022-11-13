@@ -12,11 +12,22 @@ class BigQueryCreateOmopDb(CreateOmopDb, BigQueryEtlBase):
         self,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(target_dialect="bigquery", **kwargs)
 
     def run(self) -> None:
         """Create OMOP tables in the omop-dataset in BigQuery and apply clustering"""
         logging.info("Creating OMOP CDM database from DDL (Data Definition Language)")
+
+        #         template = self._template_env.get_template("DataQualityDashboard_ddl.sql.jinja")
+        #         dqdashboard_ddl = template.render(
+        #             project_id=self._project_id,
+        #             dataset_id_omop=self._dataset_id_omop,
+        #         )
+
+        #         ddl = f"""{self._ddl}
+
+        # {dqdashboard_ddl}"""
+
         self._gcp.run_query_job(self._ddl)
 
         for table, fields in self._clustering_fields.items():

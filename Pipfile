@@ -23,6 +23,7 @@ simple-ddl-parser = "*"
 pandas = "*"
 humanfriendly = "*"
 jpype1 = "*"
+shiny = "*"
 
 [requires]
 python_version = "3.10"

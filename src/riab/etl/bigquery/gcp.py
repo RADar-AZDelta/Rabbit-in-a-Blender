@@ -6,25 +6,21 @@ Google Cloud Provider class with usefull methods for ETL"""
 # pylint: disable=no-member
 import logging
 import math
-import os
-import tempfile
 import time
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
 import backoff
 import connectorx as cx
 import google.cloud.bigquery as bq
 import google.cloud.storage as cs
-import polars as pl
 import pyarrow as pa
-import pyarrow.parquet as pq
 from google.auth.credentials import Credentials
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import RowIterator, _EmptyRowIterator
-from google.cloud.exceptions import Conflict, NotFound
+from google.cloud.exceptions import NotFound
 
 
 class Gcp:
@@ -261,16 +257,6 @@ ORDER BY ordinal_position"""
             dataset_id,
             table_name,
         )
-
-    def write_parquet(self, local_file_path: str, table: pa.Table):
-        """Write Arrow table to local parquet file
-
-        Args:
-            local_file_path (str): Path to the local parquet file to write to
-            table (pa.Table): The Arrow table
-        """
-        logging.debug("Writing parquet files to: '%s'", local_file_path)
-        pq.write_table(table, local_file_path)
 
     @backoff.on_exception(
         backoff.expo,

@@ -13,7 +13,7 @@
         //"--help",
         "--verbose",
         
-        //"--create-db", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pjl",
+        //"--create-db", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder",
         
         //--import-vocabularies", "~/vocabulary-2022-07-28.zip", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder",
         
@@ -25,7 +25,7 @@
 
         //"--cleanup", "all", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
 
-        "--data-quality", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder"
+        "--data-quality", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
       ],
       "console": "integratedTerminal",
       "justMyCode": false,

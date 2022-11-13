@@ -3,6 +3,8 @@
 
 import json
 import logging
+import re
+import uuid
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -13,6 +15,7 @@ from typing import Any, List, Optional, cast
 import jpype
 import jpype.imports
 import pandas as pd
+import polars as pl
 from humanfriendly import format_timespan
 
 from .etl_base import EtlBase
@@ -26,9 +29,12 @@ class DataQuality(EtlBase, ABC):
     def __init__(
         self,
         target_dialect: str,
+        data_quality_dashboard_version: str = "1.4.1",
         **kwargs,
     ):
         super().__init__(**kwargs)
+
+        self.data_quality_dashboard_version = data_quality_dashboard_version
 
         self.target_dialect = target_dialect
         self.path_to_replacement_patterns = str(
@@ -50,32 +56,6 @@ class DataQuality(EtlBase, ABC):
             / "SqlRender.jar"
         )
         jpype.startJVM(classpath=[sqlrender_path])
-
-    def _render_sqlfile(self, sql_file: str, parameters: List[str], values: List[str]):
-        with open(
-            Path(__file__).parent.parent.resolve()
-            / "libs"
-            / "DataQualityDashboard"
-            / "inst"
-            / "sql"
-            / "sql_server"
-            / sql_file,
-            "r",
-            encoding="utf-8",
-        ) as f:
-            sql = f.read()
-
-        # import the Java module
-        from org.ohdsi.sql import SqlRender, SqlTranslate
-
-        sql = str(SqlRender.renderSql(sql, parameters, values))
-
-        sql = str(
-            SqlTranslate.translateSqlWithPath(
-                sql, self.target_dialect, None, None, self.path_to_replacement_patterns
-            )
-        )
-        return sql
 
     def run(
         self,
@@ -101,7 +81,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / "OMOP_CDMv5.4_Check_Descriptions.csv"
+                / f"OMOP_CDM{self.omop_cdm_version}_Check_Descriptions.csv"
             ),
             converters=StringConverter(),
         )
@@ -114,7 +94,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / "OMOP_CDMv5.4_Table_Level.csv"
+                / f"OMOP_CDM{self.omop_cdm_version}_Table_Level.csv"
             ),
             converters=StringConverter(),
         )
@@ -125,7 +105,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / "OMOP_CDMv5.4_Field_Level.csv"
+                / f"OMOP_CDM{self.omop_cdm_version}_Field_Level.csv"
             ),
             converters=StringConverter(),
         )
@@ -136,7 +116,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / "OMOP_CDMv5.4_Concept_Level.csv"
+                / f"OMOP_CDM{self.omop_cdm_version}_Concept_Level.csv"
             ),
             converters=StringConverter(),
         )
@@ -183,6 +163,19 @@ class DataQuality(EtlBase, ABC):
             "Metadata": metadata,
         }
 
+        # write results to database
+        dqd_run = check_summary["Overview"]
+        dqd_run["startTimestamp"] = check_summary["startTimestamp"]
+        dqd_run["endTimestamp"] = check_summary["endTimestamp"]
+        dqd_run["executionTime"] = check_summary["executionTime"]
+        dqd_run["id"] = str(uuid.uuid4())
+        self._store_dqd_run(dqd_run)
+
+        dqd_results = check_results.copy(deep=True)
+        dqd_results["run_id"] = dqd_run["id"]
+        dqd_results = dqd_results.drop(columns=["_row"])
+        self._store_dqd_result(dqd_results)
+
         # uppercase columns names
         check_results.columns = [
             column.upper() if column not in ["checkId", "_row"] else column
@@ -205,7 +198,7 @@ class DataQuality(EtlBase, ABC):
             for cdm_soure in cdm_soures
         ]
         for item in metadata:
-            item["DQD_VERSION"] = "1.4.1"
+            item["DQD_VERSION"] = self.data_quality_dashboard_version
         return metadata
 
     def _run_check(
@@ -407,6 +400,43 @@ class DataQuality(EtlBase, ABC):
         if hasattr(item, "unitConceptId"):
             id.append(item.unitConceptId.lower())
         return "_".join(id)
+
+    @abstractmethod
+    def _store_dqd_run(self, dqd_run: dict):
+        pass
+
+    @abstractmethod
+    def _store_dqd_result(self, dqd_result: pd.DataFrame):
+        pass
+
+    def _render_sqlfile(self, sql_file: str, parameters: List[str], values: List[str]):
+        with open(
+            Path(__file__).parent.parent.resolve()
+            / "libs"
+            / "DataQualityDashboard"
+            / "inst"
+            / "sql"
+            / "sql_server"
+            / sql_file,
+            "r",
+            encoding="utf-8",
+        ) as f:
+            sql = f.read()
+
+        # import the Java module
+        from org.ohdsi.sql import SqlRender, SqlTranslate
+
+        sql = str(SqlRender.renderSql(sql, parameters, values))
+
+        sql = re.sub(r"domain_concept_id_", r"field_concept_id_", sql)
+        sql = re.sub(r"cost_domain_id", r"cost_field_concept_id", sql)
+
+        sql = str(
+            SqlTranslate.translateSqlWithPath(
+                sql, self.target_dialect, None, None, self.path_to_replacement_patterns
+            )
+        )
+        return sql
 
 
 class StringConverter(dict):

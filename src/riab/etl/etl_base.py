@@ -16,10 +16,7 @@ class EtlBase(ABC):
 
     _CUSTOM_CONCEPT_IDS_START = 2_000_000_000  # Concepts reserved for site-specific codes and mappings start from 2 billion
 
-    def __init__(
-        self,
-        cdm_folder_path: str,
-    ):
+    def __init__(self, cdm_folder_path: str, omop_cdm_version: str = "v5.4"):
         """Constructor
         Base class constructor for the ETL commands
 
@@ -29,6 +26,7 @@ class EtlBase(ABC):
         self._cdm_folder_path = (
             Path(cdm_folder_path).resolve() if cdm_folder_path else None
         )
+        self.omop_cdm_version = omop_cdm_version
 
         with open(
             str(Path(__file__).parent.resolve() / "cdm_5.4_schema.json"),
