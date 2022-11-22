@@ -26,7 +26,10 @@ dependencies = [
     'simple-ddl-parser >= 0.27.0',
     'pandas >= 1.5.1',
     'humanfriendly >= 10.0',
-    'jpype1 >= 1.4.1'
+    'jpype1 >= 1.4.1',
+    'dash >= 2.7.0',
+    'dash-table >= 5.0.0',
+    'dash-bootstrap-components >= 1.2.1'
 ]
 
 [project.urls]

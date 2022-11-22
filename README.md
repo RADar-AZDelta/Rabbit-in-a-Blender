@@ -99,7 +99,8 @@ CLI Usage
     | -i, --import-vocabularies [VOCABULARIES_ZIP_FILE] | Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.
     | -r [PATH], --run-etl [PATH] | Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.
     | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
-    | -dq, --data-quality | Check the data quality (based on the data quality dashboard). UNDER DEVELOPMENT !!!!
+    | -dq, --data-quality | Check the data quality and store the results.
+    | -dqd, --data-quality-dashnoard | View the results of the data quality checks. (UNDER DEVELOPMENT)
 
 * **Run ETL specific command options (-r [PATH], --run-etl [PATH]):**
     |  command | help  
@@ -107,6 +108,15 @@ CLI Usage
     | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table
     | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
 
+* **Data quality specific command options (-dq, --data-quality):**
+    |  command | help  
+    |---|---  
+    | --json [PATH] | Save the data quality result as [JSON file](https://ohdsi.github.io/DataQualityDashboard/articles/DataQualityDashboard.html#viewing-results) for use in the OHDSI [Data Quality Dashboard](https://ohdsi.github.io/DataQualityDashboard/).
+
+* **Data quality dashboard specific command options (-dqd, --data-quality-check):**
+    |  command | help  
+    |---|---  
+    | --port [PORT] | The port the dashboard schould listen on.
 
 * **Bigquery specific options:**
     |  command | help  
@@ -135,7 +145,7 @@ riab --import-vocabularies "./vocabulary-2022-07-28.zip" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/work"
+  --google-cloud-storage-bucket-uri "gs://omop/upload"
 ```
 
 Create the ETL folder structure:
@@ -151,7 +161,7 @@ riab --run-etl "./OMOP-CDM" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/work" \
+  --google-cloud-storage-bucket-uri "gs://omop/upload" \
   --bigquery-dataset-id-raw "emr"
 ```
 
@@ -162,7 +172,7 @@ riab --run-etl "./OMOP-CDM" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/work" \
+  --google-cloud-storage-bucket-uri "gs://omop/upload" \
   --bigquery-dataset-id-raw "emr"
 ```
 
@@ -173,7 +183,7 @@ riab --run-etl "./OMOP-CDM" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/work" \
+  --google-cloud-storage-bucket-uri "gs://omop/upload" \
   --bigquery-dataset-id-raw "emr"
 ```
 
@@ -183,7 +193,7 @@ riab --cleanup \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/work"
+  --google-cloud-storage-bucket-uri "gs://omop/upload"
 ```
 
 Cleanup one table (example provider table):
@@ -192,14 +202,14 @@ riab --cleanup "provider" \
   --db-engine "BigQuery" \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/work"
+  --google-cloud-storage-bucket-uri "gs://omop/upload"
 ```
 
-Data quality (UNDER DEVELOPMENT):
+Data quality check:
 ```bash
 riab --data-quality \
   --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop"
+  --bigquery-dataset-id-omop "omop" \
 ```
 
 BigQuery

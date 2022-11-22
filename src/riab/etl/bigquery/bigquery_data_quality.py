@@ -27,7 +27,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
     def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
         sql = None
         result = None
-        exception = None
+        exception: str | None = None
         execution_time = -1
         try:
             parameters = item.to_dict()
@@ -83,7 +83,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         table = pa.Table.from_pylist([dqd_run])
         with TemporaryDirectory(prefix="dqd_run_") as tmp_dir:
             logging.debug("Writing DQD run to parquet")
-            tmp_file = str(Path(tmp_dir) / "dqd_runs.parquet")
+            tmp_file = str(Path(tmp_dir) / "dqdashboard_runs.parquet")
             pq.write_table(table, where=tmp_file)
 
             logging.debug("Loading DQD run parquet into BigQuery table")
@@ -102,7 +102,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         table = pa.Table.from_pandas(dqd_result)
         with TemporaryDirectory(prefix="dqd_results_") as tmp_dir:
             logging.debug("Writing DQD results to parquet")
-            tmp_file = str(Path(tmp_dir) / "dqd_results.parquet")
+            tmp_file = str(Path(tmp_dir) / "dqdashboard_results.parquet")
             pq.write_table(table, where=tmp_file)
 
             logging.debug("Loading DQD results parquet into BigQuery table")

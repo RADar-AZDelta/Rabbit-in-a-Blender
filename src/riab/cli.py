@@ -16,6 +16,7 @@ from .etl import (
     CreateEtlFolders,
     CreateOmopDb,
     DataQuality,
+    DataQualityDashboard,
     Etl,
     ImportVocabularies,
 )
@@ -24,6 +25,7 @@ from .etl.bigquery import (
     BigQueryCreateEtlFolders,
     BigQueryCreateOmopDb,
     BigQueryDataQuality,
+    BigQueryDataQualityDashboard,
     BigQueryEtl,
     BigQueryImportVocabularies,
 )
@@ -121,9 +123,21 @@ def cli() -> None:
                     case "BigQuery":
                         data_quality = BigQueryDataQuality(
                             cdm_folder_path=args.run_etl or args.create_folders,
+                            json_path=args.json,
                             **bigquery_kwargs,
                         )
                         data_quality.run()
+                    case _:
+                        raise ValueError("Not a supported database engine")
+            elif args.data_quality_dashboard:  # view data quality results
+                data_quality_dashboard: Optional[DataQualityDashboard] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        data_quality_dashboard = BigQueryDataQualityDashboard(
+                            port=args.port if args.port else 8050,
+                            **bigquery_kwargs,
+                        )
+                        data_quality_dashboard.run()
                     case _:
                         raise ValueError("Not a supported database engine")
             else:
@@ -244,6 +258,12 @@ def _contstruct_argument_parser() -> ArgumentParser:
         help="Check the data quality.",
         action="store_true",
     )
+    commands_group.add_argument(
+        "-dqd",
+        "--data-quality-dashboard",
+        help="View the data quality results.",
+        action="store_true",
+    )
 
     command_args, _ = command_parser.parse_known_args()
 
@@ -301,6 +321,26 @@ def _contstruct_argument_parser() -> ArgumentParser:
         metavar="TABLE",
     )
 
+    data_quality_group = parser.add_argument_group("Data quality specific arguments")
+    data_quality_group.add_argument(
+        "--json",
+        nargs="?",
+        type=str,
+        help="""Path to store the data quality result as JSON file.""",
+        metavar="PATH",
+    )
+
+    data_quality_dashboard_group = parser.add_argument_group(
+        "Data quality dashboard specific arguments"
+    )
+    data_quality_dashboard_group.add_argument(
+        "--port",
+        nargs="?",
+        type=int,
+        help="""Port where the data quality dashboard schould listen on.""",
+        metavar="PORT",
+    )
+
     bigquery_group = parser.add_argument_group("BigQuery specific arguments")
     bigquery_group.add_argument(
         "--google-credentials-file",
@@ -334,7 +374,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         and not command_args.create_folders
         and not command_args.import_vocabularies
         and not command_args.cleanup
-        and not command_args.data_quality,
+        and not command_args.data_quality
+        and not command_args.data_quality_dashboard,
         metavar="BIGQUERY_DATASET_ID_RAW",
     )
     bigquery_group.add_argument(
@@ -345,7 +386,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         required=args.db_engine == "BigQuery"
         and not command_args.create_db
         and not command_args.create_folders
-        and not command_args.data_quality,
+        and not command_args.data_quality
+        and not command_args.data_quality_dashboard,
         metavar="BIGQUERY_DATASET_ID_WORK",
     )
     bigquery_group.add_argument(
@@ -364,7 +406,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         (the uri has format 'gs://{bucket_name}/{bucket_path}')""",
         required=args.db_engine == "BigQuery"
         and not command_args.create_db
-        and not command_args.create_folders,
+        and not command_args.create_folders
+        and not command_args.data_quality_dashboard,
         metavar="GOOGLE_CLOUD_STORAGE_BUCKET_URI",
     )
 

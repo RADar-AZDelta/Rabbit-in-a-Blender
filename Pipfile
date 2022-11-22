@@ -24,6 +24,9 @@ pandas = "*"
 humanfriendly = "*"
 jpype1 = "*"
 shiny = "*"
+dash = "*"
+dash-table = "*"
+dash-bootstrap-components = "*"
 
 [requires]
 python_version = "3.10"

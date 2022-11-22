@@ -1,0 +1,22 @@
+.center {
+    text-align: center;
+}
+
+.right {
+    text-align: right;
+}
+
+.no_border {
+    border-style: none;
+    border-width: 0 0 0 0;
+}
+
+td.total_percentage {
+    font-size: larger;
+    font-weight: bold;
+}
+
+td.fail {
+    color: #C00;
+    font-weight: bold;
+}

@@ -16,7 +16,9 @@ class EtlBase(ABC):
 
     _CUSTOM_CONCEPT_IDS_START = 2_000_000_000  # Concepts reserved for site-specific codes and mappings start from 2 billion
 
-    def __init__(self, cdm_folder_path: str, omop_cdm_version: str = "v5.4"):
+    def __init__(
+        self, cdm_folder_path: str | None = None, omop_cdm_version: str = "v5.4"
+    ):
         """Constructor
         Base class constructor for the ETL commands
 

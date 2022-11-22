@@ -23,20 +23,22 @@ from .etl_base import EtlBase
 
 class DataQuality(EtlBase, ABC):
     """
-    Class that creates the CDM folder structure that holds the raw queries, Usagi CSV's and custom concept CSV's.
+    Class that runs the data quality checks
     """
 
     def __init__(
         self,
         target_dialect: str,
         data_quality_dashboard_version: str = "1.4.1",
+        json_path: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
         self.data_quality_dashboard_version = data_quality_dashboard_version
-
         self.target_dialect = target_dialect
+        self.json_path = json_path
+
         self.path_to_replacement_patterns = str(
             Path(__file__).parent.parent.resolve()
             / "libs"
@@ -176,20 +178,21 @@ class DataQuality(EtlBase, ABC):
         dqd_results = dqd_results.drop(columns=["_row"])
         self._store_dqd_result(dqd_results)
 
-        # uppercase columns names
-        check_results.columns = [
-            column.upper() if column not in ["checkId", "_row"] else column
-            for column in check_results.columns
-        ]
-        check_summary["CheckResults"] = [
-            row.dropna().to_dict() for index, row in check_results.iterrows()
-        ]
-        with open(
-            f"{metadata[0]['CDM_SOURCE_ABBREVIATION'] if len(metadata) else 'cdm'}-{datetime.fromtimestamp(end)}.json",
-            "w",
-            encoding="utf-8",
-        ) as f:  # outputFile <- sprintf("%s-%s.json", tolower(metadata$CDM_SOURCE_ABBREVIATION),endTimestamp)
-            json.dump(check_summary, f, indent=4, sort_keys=True, default=str)
+        if self.json_path:
+            # uppercase columns names
+            check_results.columns = [
+                column.upper() if column not in ["checkId", "_row"] else column
+                for column in check_results.columns
+            ]
+            check_summary["CheckResults"] = [
+                row.dropna().to_dict() for index, row in check_results.iterrows()
+            ]
+            with open(
+                self.json_path,
+                "w",
+                encoding="utf-8",
+            ) as f:  # outputFile <- sprintf("%s-%s.json", tolower(metadata$CDM_SOURCE_ABBREVIATION),endTimestamp)
+                json.dump(check_summary, f, indent=4, sort_keys=True, default=str)
 
     def _capture_check_metadata(self):
         cdm_soures = self._get_cdm_sources()
@@ -349,7 +352,7 @@ class DataQuality(EtlBase, ABC):
         sql: Optional[str],
         result: Optional[Any],
         execution_time: Optional[float],
-        exception: Optional[Exception],
+        exception: Optional[str],
     ) -> Any:
         check_result = {
             "num_violated_rows": result["num_violated_rows"] if result else None,
