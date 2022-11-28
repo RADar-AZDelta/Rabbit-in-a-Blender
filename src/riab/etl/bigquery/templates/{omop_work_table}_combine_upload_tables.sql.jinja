@@ -7,6 +7,13 @@ FROM (
         {%- if not loop.first %}
     UNION ALL
         {%- endif %}
-    SELECT * FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__upload__{{sql_file}}
+    SELECT 
+    {%- for column in columns -%}
+        {%- if not loop.first -%}
+            {{ ',' }}
+        {%- endif %}
+        {{ column }} 
+    {%- endfor %}
+    FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__upload__{{sql_file}}
     {%- endfor %}
 ) t

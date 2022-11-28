@@ -1,6 +1,6 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.14"
+version = "0.0.17"
 authors = [
   { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
   { name="Dupulthys Stijn", email="stijn.dupulthys@azdelta.be" },
@@ -48,7 +48,8 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-riab = ["*.json", "*.sql", "*.jinja", "*.csv"]
+riab = ["*.json"]
+"riab.etl.bigquery.templates" = ["*"]
 "riab.libs.SqlRender.inst.csv" = ["*.csv"]
 "riab.libs.SqlRender.inst.java" = ["*.jar"]
 "riab.libs.DataQualityDashboard.inst.csv" = ["*.csv"]

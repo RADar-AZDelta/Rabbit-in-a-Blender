@@ -271,7 +271,9 @@ class Etl(EtlBase):
 
         # usefull to combine all upload results into one large table
         self._combine_upload_tables(
-            omop_table, [Path(Path(sql_file).stem).stem for sql_file in sql_files]
+            omop_table,
+            [Path(Path(sql_file).stem).stem for sql_file in sql_files],
+            columns=columns,
         )
 
         # merge everything in the destination OMOP work table
@@ -320,7 +322,12 @@ class Etl(EtlBase):
         self._query_into_upload_table(upload_table, select_query)
 
     @abstractmethod
-    def _combine_upload_tables(self, omop_table: str, sql_files: List[str]):
+    def _combine_upload_tables(
+        self,
+        omop_table: str,
+        sql_files: List[str],
+        columns: List[str],
+    ):
         """_summary_
 
         Args:

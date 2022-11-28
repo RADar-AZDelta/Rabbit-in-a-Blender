@@ -135,71 +135,72 @@ CLI Examples
 Create the OMOP CDM database:
 ```bash
 riab --create-db \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop"
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop
 ```
 
 Import your downloaded vocabularies (from [Athena](https://athena.ohdsi.org/vocabulary/list)) zip file:
 ```bash
-riab --import-vocabularies "./vocabulary-2022-07-28.zip" \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/upload"
+riab --import-vocabularies ./vocabulary-2022-07-28.zip \
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+    --bigquery-dataset-id-work omop_work \
+    --google-cloud-storage-bucket-uri gs://omop/upload
 ```
 
 Create the ETL folder structure:
 ```bash
-riab --create-folders "./OMOP_CDM" \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop"
+riab --create-folders ./OMOP_CDM \
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop
 ```     
 
 Run full ETL:
 ```bash
-riab --run-etl "./OMOP-CDM" \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/upload" \
-  --bigquery-dataset-id-raw "emr"
+riab --run-etl ./OMOP-CDM \
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+    --bigquery-dataset-id-work omop_work \
+    --bigquery-dataset-id-raw emr \
+    --google-cloud-storage-bucket-uri gs://omop/upload
 ```
 
 Run ETL on one table:
 ```bash
-riab --run-etl "./OMOP-CDM" \
-  --table "provider" \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/upload" \
-  --bigquery-dataset-id-raw "emr"
+riab --run-etl ./OMOP-CDM \
+  --table provider \
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+    --bigquery-dataset-id-work omop_work \
+    --bigquery-dataset-id-raw emr \
+    --google-cloud-storage-bucket-uri gs://omop/upload
+
 ```
 
 Run ETL withour re-upload of Usagi CSV's and custom concept CSV's:
 ```bash
-riab --run-etl "./OMOP-CDM" \
+riab --run-etl ./OMOP-CDM \
   --skip-usagi-and-custom-concept-upload \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/upload" \
-  --bigquery-dataset-id-raw "emr"
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+    --bigquery-dataset-id-work omop_work \
+    --bigquery-dataset-id-raw emr \
+    --google-cloud-storage-bucket-uri gs://omop/upload
 ```
 
 Cleanup all tables:
 ```bash
 riab --cleanup \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/upload"
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+    --bigquery-dataset-id-work omop_work \
+    --google-cloud-storage-bucket-uri gs://omop/upload
 ```
 
 Cleanup one table (example provider table):
 ```bash
-riab --cleanup "provider" \
-  --db-engine "BigQuery" \
+riab --cleanup provider \
+  --db-engine BigQuery \
   --bigquery-dataset-id-omop "omop" \
   --bigquery-dataset-id-work "omop_work" \
   --google-cloud-storage-bucket-uri "gs://omop/upload"

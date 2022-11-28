@@ -467,7 +467,12 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         )
         self._gcp.run_query_job(sql)
 
-    def _combine_upload_tables(self, omop_table: str, sql_files: List[str]):
+    def _combine_upload_tables(
+        self,
+        omop_table: str,
+        sql_files: List[str],
+        columns: List[str],
+    ):
         """_summary_
 
         Args:
@@ -482,6 +487,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             dataset_id_work=self._dataset_id_work,
             omop_table=omop_table,
             sql_files=sql_files,
+            columns=columns,
         )
         self._gcp.run_query_job(sql)
 
