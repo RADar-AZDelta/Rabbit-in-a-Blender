@@ -3,9 +3,7 @@
         "metadata",
         "cdm_source",
         "vocabulary",
-        "location",
-        "fact_relationship",
-        "cost"
+        "location"
     ],
     "dependent": {
         "tables": [
@@ -46,7 +44,13 @@
                                 "tables": [
                                     "note_nlp",
                                     "observation_period"
-                                ]
+                                ],
+                                "dependent": {
+                                    "tables": [
+                                        "fact_relationship",
+                                        "cost"
+                                    ]
+                                }
                             }
                         }
                     }
