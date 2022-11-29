@@ -97,32 +97,40 @@ ORDER BY ordinal_position"""
         Returns:
             RowIterator: row iterator
         """  # noqa: E501 # pylint: disable=line-too-long
-        job_config = bq.QueryJobConfig(
-            query_parameters=query_parameters or [],
-        )
-        logging.debug("Running query: %s", query)
-        start = time.time()
-        query_job = self._bq_client.query(
-            query, job_config=job_config, location=self._location
-        )
-        result = query_job.result()
-        end = time.time()
-        # cost berekening $6.00 per TB (afgerond op 10 MB naar boven)
-        cost_per_10_mb = 6 / 1024 / 1024 * 10
-        total_10_mbs_billed = math.ceil(
-            (query_job.total_bytes_billed or 0) / (Gcp._MEGA * 10)
-        )
-        cost = total_10_mbs_billed * cost_per_10_mb
-        logging.debug(
-            "Query processed %.2f MB (%.2f MB billed) in %.2f seconds"
-            " (%.2f seconds slot time): %.8f $ billed",
-            (query_job.total_bytes_processed or 0) / Gcp._MEGA,
-            (query_job.total_bytes_billed or 0) / Gcp._MEGA,
-            end - start,
-            (query_job.slot_millis or 0) / 1000,
-            cost,
-        )
-        return result
+        try:
+            job_config = bq.QueryJobConfig(
+                query_parameters=query_parameters or [],
+            )
+            logging.debug(
+                "Running query: %s\nWith parameters: %s", query, str(query_parameters)
+            )
+            start = time.time()
+            query_job = self._bq_client.query(
+                query, job_config=job_config, location=self._location
+            )
+            result = query_job.result()
+            end = time.time()
+            # cost berekening $6.00 per TB (afgerond op 10 MB naar boven)
+            cost_per_10_mb = 6 / 1024 / 1024 * 10
+            total_10_mbs_billed = math.ceil(
+                (query_job.total_bytes_billed or 0) / (Gcp._MEGA * 10)
+            )
+            cost = total_10_mbs_billed * cost_per_10_mb
+            logging.debug(
+                "Query processed %.2f MB (%.2f MB billed) in %.2f seconds"
+                " (%.2f seconds slot time): %.8f $ billed",
+                (query_job.total_bytes_processed or 0) / Gcp._MEGA,
+                (query_job.total_bytes_billed or 0) / Gcp._MEGA,
+                end - start,
+                (query_job.slot_millis or 0) / 1000,
+                cost,
+            )
+            return result
+        except Exception as ex:
+            logging.debug(
+                "FAILED QUERY: %s\nWith parameters: %s", query, str(query_parameters)
+            )
+            raise ex
 
     def set_clustering_fields_on_table(
         self,
