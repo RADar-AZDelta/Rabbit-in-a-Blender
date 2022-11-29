@@ -131,7 +131,4 @@ as (
             {%- set ns.fk_counter = ns.fk_counter + 1 -%}
         {%- endfor %}
     {%- endfor %}
-    {%- if primary_key_column and events.keys()|length == 1 %}
-    QUALIFY COUNT(DISTINCT {{''.join(events.keys())}}) OVER (PARTITION BY {{primary_key_column}}) = 1 OR {{''.join(events.keys())}} <> 0
-    {%- endif -%}
 )
