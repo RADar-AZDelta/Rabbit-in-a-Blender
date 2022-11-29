@@ -34,10 +34,12 @@ from .etl.bigquery import (
 def cli() -> None:
     """Main entry point of application"""
 
-    with init_logging():
+    with init_logging() as logger_file_handle:
         try:
             parser = _contstruct_argument_parser()
             args = parser.parse_args()
+
+            logging.warning("Logs are written to %s", logger_file_handle.name)
 
             if __debug__:
                 print(args)
@@ -421,25 +423,24 @@ def init_logging() -> _TemporaryFileWrapper:
     main_logger.setLevel(logging.INFO)
 
     # formatters
-    default_formatter = logging.Formatter(
+    console_formatter = ColoredFormatter(
         "%(asctime)s: %(name)s: #%(lineno)d: %(levelname)s - %(message)s"
     )
-    detailed_formatter = logging.Formatter(
+    file_formatter = logging.Formatter(
         "%(asctime)s %(levelname)s %(pathname)s#%(lineno)d %(message)s"
     )
 
     # console handler
     console_handler = logging.StreamHandler()
-    console_handler.setFormatter(default_formatter)
+    console_handler.setFormatter(console_formatter)
     main_logger.addHandler(console_handler)
 
     # file handler
     tmp_file_handle = NamedTemporaryFile(
         delete=False, prefix="omop_etl_", suffix=".log"
     )
-    print(f"Logs are written to {tmp_file_handle.name}")
     file_handler = logging.FileHandler(tmp_file_handle.name)
-    file_handler.setFormatter(detailed_formatter)
+    file_handler.setFormatter(file_formatter)
     main_logger.addHandler(file_handler)
 
     return tmp_file_handle
@@ -458,3 +459,30 @@ class MyParser(ArgumentParser):
         self.print_help()
         sys.stderr.write(f"error: {message}{os.linesep}")
         sys.exit(2)
+
+
+class ColoredFormatter(logging.Formatter):
+    """Logging colored formatter, adapted from https://stackoverflow.com/a/56944256/3638629"""
+
+    grey = "\x1b[38;21m"
+    blue = "\x1b[38;5;39m"
+    yellow = "\x1b[38;5;226m"
+    red = "\x1b[38;5;196m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+
+    def __init__(self, fmt):
+        super().__init__()
+        self.fmt = fmt
+        self.FORMATS = {
+            logging.DEBUG: self.grey + self.fmt + self.reset,
+            logging.INFO: self.blue + self.fmt + self.reset,
+            logging.WARNING: self.yellow + self.fmt + self.reset,
+            logging.ERROR: self.red + self.fmt + self.reset,
+            logging.CRITICAL: self.bold_red + self.fmt + self.reset,
+        }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
