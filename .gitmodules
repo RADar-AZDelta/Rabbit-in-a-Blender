@@ -6,3 +6,7 @@
 	path = src/riab/libs/SqlRender
 	url = ssh://git@github.com/OHDSI/SqlRender.git
 	branch = main
+[submodule "Achilles"]
+	path = src/riab/libs/Achilles
+	url = ssh://git@github.com/OHDSI/Achilles.git
+	branch = main
