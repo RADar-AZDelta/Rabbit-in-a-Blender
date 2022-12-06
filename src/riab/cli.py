@@ -114,6 +114,7 @@ def cli() -> None:
                     case "BigQuery":
                         cleanup = BigQueryCleanup(
                             cdm_folder_path=args.run_etl or args.create_folders,
+                            clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
                             **bigquery_kwargs,
                         )
                         cleanup.run(args.cleanup)
@@ -321,6 +322,13 @@ def _contstruct_argument_parser() -> ArgumentParser:
         type=str,
         help="""Do only ETL on this specific OMOP CDM table""",
         metavar="TABLE",
+    )
+
+    cleanup_group = parser.add_argument_group("Cleanup specific arguments")
+    cleanup_group.add_argument(
+        "--clear-auto-generated-custom-concept-ids",
+        help="""Cleanup the auto generated custom concept ID's (above 2 million). Without this argument, the cleanup command will not clear the mapping table (that maps the custom concept with the auto generated id above 2 million), so that you can use those above 2 million concept id's in your cohort builder, without the fear that those id's will change.""",
+        action="store_true",
     )
 
     data_quality_group = parser.add_argument_group("Data quality specific arguments")

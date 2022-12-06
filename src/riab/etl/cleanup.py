@@ -16,9 +16,14 @@ class Cleanup(EtlBase, ABC):
 
     def __init__(
         self,
+        clear_auto_generated_custom_concept_ids: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
+
+        self.clear_auto_generated_custom_concept_ids = (
+            clear_auto_generated_custom_concept_ids
+        )
 
     def run(self, cleanup_table: str = "all"):
         """
@@ -107,6 +112,11 @@ class Cleanup(EtlBase, ABC):
                 if cleanup_table == "all"
                 or (table_name.startswith(cleanup_table) and table_name != "vocabulary")
             ]
+            if (
+                not self.clear_auto_generated_custom_concept_ids
+                and "concept_id_swap" in tables_to_delete
+            ):
+                tables_to_delete.remove("concept_id_swap")
             futures = [
                 executor.submit(
                     self._delete_work_table,
