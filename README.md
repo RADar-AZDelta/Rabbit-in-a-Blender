@@ -201,17 +201,36 @@ Cleanup one table (example provider table):
 ```bash
 riab --cleanup provider \
   --db-engine BigQuery \
-  --bigquery-dataset-id-omop "omop" \
-  --bigquery-dataset-id-work "omop_work" \
-  --google-cloud-storage-bucket-uri "gs://omop/upload"
+    --bigquery-dataset-id-omop omop \
+    --bigquery-dataset-id-work omop_work \
+    --google-cloud-storage-bucket-uri gs://omop/upload
 ```
 
 Data quality check:
 ```bash
 riab --data-quality \
-  --db-engine "BigQuery" \
-  --bigquery-dataset-id-omop "omop" \
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+    --google-cloud-storage-bucket-uri gs://omop/upload
 ```
+
+Data quality check (export result to JSON):
+```bash
+riab --data-quality \
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+    --google-cloud-storage-bucket-uri gs://omop/upload \
+  --json dqd_result.json
+```
+
+Data quality dashboard (default port = 8050):
+```bash
+riab --data-quality \
+  --db-engine BigQuery \
+    --bigquery-dataset-id-omop omop \
+  --port 8888
+```
+
 
 BigQuery
 ========
