@@ -12,6 +12,7 @@ from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Optional
 
 from .etl import (
+    Achilles,
     Cleanup,
     CreateEtlFolders,
     CreateOmopDb,
@@ -21,6 +22,7 @@ from .etl import (
     ImportVocabularies,
 )
 from .etl.bigquery import (
+    BigQueryAchilles,
     BigQueryCleanup,
     BigQueryCreateEtlFolders,
     BigQueryCreateOmopDb,
@@ -143,6 +145,20 @@ def cli() -> None:
                         data_quality_dashboard.run()
                     case _:
                         raise ValueError("Not a supported database engine")
+            elif args.achilles:  # run descriptive statistics
+                achilles: Optional[Achilles] = None
+                match args.db_engine:
+                    case "BigQuery":
+                        achilles = BigQueryAchilles(
+                            scratch_database_schema=args.bigquery_dataset_id_work,
+                            results_database_schema=args.bigquery_dataset_id_omop,
+                            cdm_database_schema=args.bigquery_dataset_id_omop,
+                            temp_emulation_schema=args.bigquery_dataset_id_work,
+                            **bigquery_kwargs,
+                        )
+                        achilles.run()
+                    case _:
+                        raise ValueError("Not a supported database engine")
             else:
                 raise Exception("Unknown ETL command!")
 
@@ -150,6 +166,8 @@ def cli() -> None:
             logging.error(traceback.format_exc())
             if __debug__:
                 breakpoint()
+        finally:
+            logging.warning("Logs were written to %s", logger_file_handle.name)
 
 
 def _contstruct_argument_parser() -> ArgumentParser:
@@ -265,6 +283,12 @@ def _contstruct_argument_parser() -> ArgumentParser:
         "-dqd",
         "--data-quality-dashboard",
         help="View the data quality results.",
+        action="store_true",
+    )
+    commands_group.add_argument(
+        "-ach",
+        "--achilles",
+        help="Generate the descriptive statistics.",
         action="store_true",
     )
 
@@ -385,7 +409,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         and not command_args.import_vocabularies
         and not command_args.cleanup
         and not command_args.data_quality
-        and not command_args.data_quality_dashboard,
+        and not command_args.data_quality_dashboard
+        and not command_args.achilles,
         metavar="BIGQUERY_DATASET_ID_RAW",
     )
     bigquery_group.add_argument(
@@ -397,7 +422,8 @@ def _contstruct_argument_parser() -> ArgumentParser:
         and not command_args.create_db
         and not command_args.create_folders
         and not command_args.data_quality
-        and not command_args.data_quality_dashboard,
+        and not command_args.data_quality_dashboard
+        and not command_args.achilles,
         metavar="BIGQUERY_DATASET_ID_WORK",
     )
     bigquery_group.add_argument(

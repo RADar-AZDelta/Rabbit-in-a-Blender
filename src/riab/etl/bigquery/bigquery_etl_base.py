@@ -4,14 +4,19 @@
 # pylint: disable=unsubscriptable-object
 """Holds the BigQuery ETL base class"""
 import json
+import logging
 import re
 from abc import ABC
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from threading import Lock
 from typing import Dict, List, Optional, cast
 
 import google.auth
+import google.cloud.bigquery as bq
 import jinja2 as jj
+import pyarrow as pa
+import pyarrow.parquet as pq
 from jinja2.utils import select_autoescape
 from simple_ddl_parser import DDLParser
 
@@ -159,3 +164,21 @@ class BigQueryEtlBase(EtlBase, ABC):
         return [
             column["column_name"] for column in columns if column["is_nullable"] == "NO"
         ]
+
+    def _upload_arrow_table(self, table: pa.Table, table_name: str):
+        with TemporaryDirectory(prefix="riab_") as tmp_dir:
+            logging.debug("Writing DQD results to parquet")
+            tmp_file = str(Path(tmp_dir) / f"{table_name}.parquet")
+            pq.write_table(table, where=tmp_file)
+
+            logging.debug("Loading DQD results parquet into BigQuery table")
+            # upload the Parquet file to the Cloud Storage Bucket
+            uri = self._gcp.upload_file_to_bucket(tmp_file, self._bucket_uri)
+            # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table
+            self._gcp.batch_load_from_bucket_into_bigquery_table(
+                uri,
+                self._project_id,
+                self._dataset_id_omop,
+                table_name,
+                write_disposition=bq.WriteDisposition.WRITE_APPEND,
+            )

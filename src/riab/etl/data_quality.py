@@ -12,23 +12,21 @@ from pathlib import Path
 from time import time
 from typing import Any, List, Optional, cast
 
-import jpype
-import jpype.imports
 import pandas as pd
-import polars as pl
 from humanfriendly import format_timespan
 
 from .etl_base import EtlBase
+from .sql_render_base import SqlRenderBase
+from .utils import StringConverter
 
 
-class DataQuality(EtlBase, ABC):
+class DataQuality(SqlRenderBase, EtlBase, ABC):
     """
     Class that runs the data quality checks
     """
 
     def __init__(
         self,
-        target_dialect: str,
         data_quality_dashboard_version: str = "1.4.1",
         json_path: str | None = None,
         **kwargs,
@@ -36,28 +34,7 @@ class DataQuality(EtlBase, ABC):
         super().__init__(**kwargs)
 
         self.data_quality_dashboard_version = data_quality_dashboard_version
-        self.target_dialect = target_dialect
         self.json_path = json_path
-
-        self.path_to_replacement_patterns = str(
-            Path(__file__).parent.parent.resolve()
-            / "libs"
-            / "SqlRender"
-            / "inst"
-            / "csv"
-            / "replacementPatterns.csv"
-        )
-
-        # launch the JVM
-        sqlrender_path = str(
-            Path(__file__).parent.parent.resolve()
-            / "libs"
-            / "SqlRender"
-            / "inst"
-            / "java"
-            / "SqlRender.jar"
-        )
-        jpype.startJVM(classpath=[sqlrender_path])
 
     def run(
         self,
@@ -83,7 +60,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self.omop_cdm_version}_Check_Descriptions.csv"
+                / f"OMOP_CDM{self._omop_cdm_version}_Check_Descriptions.csv"
             ),
             converters=StringConverter(),
         )
@@ -96,7 +73,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self.omop_cdm_version}_Table_Level.csv"
+                / f"OMOP_CDM{self._omop_cdm_version}_Table_Level.csv"
             ),
             converters=StringConverter(),
         )
@@ -107,7 +84,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self.omop_cdm_version}_Field_Level.csv"
+                / f"OMOP_CDM{self._omop_cdm_version}_Field_Level.csv"
             ),
             converters=StringConverter(),
         )
@@ -118,7 +95,7 @@ class DataQuality(EtlBase, ABC):
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self.omop_cdm_version}_Concept_Level.csv"
+                / f"OMOP_CDM{self._omop_cdm_version}_Concept_Level.csv"
             ),
             converters=StringConverter(),
         )
@@ -226,7 +203,7 @@ class DataQuality(EtlBase, ABC):
         df = pd.DataFrame(df[df.eval(check.evaluationFilter)])
 
         check_results = []
-        with ThreadPoolExecutor(max_workers=16) as executor:  # 16 threads
+        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = [
                 executor.submit(
                     self._run_check_query,
@@ -426,28 +403,9 @@ class DataQuality(EtlBase, ABC):
         ) as f:
             sql = f.read()
 
-        # import the Java module
-        from org.ohdsi.sql import SqlRender, SqlTranslate
-
-        sql = str(SqlRender.renderSql(sql, parameters, values))
+        sql = self._render_sql(sql, parameters, values)
 
         sql = re.sub(r"domain_concept_id_", r"field_concept_id_", sql)
         sql = re.sub(r"cost_domain_id", r"cost_field_concept_id", sql)
 
-        sql = str(
-            SqlTranslate.translateSqlWithPath(
-                sql, self.target_dialect, None, None, self.path_to_replacement_patterns
-            )
-        )
         return sql
-
-
-class StringConverter(dict):
-    def __contains__(self, item):
-        return True
-
-    def __getitem__(self, item):
-        return str
-
-    def get(self, default=None):
-        return str

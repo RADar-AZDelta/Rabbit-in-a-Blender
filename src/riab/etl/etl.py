@@ -239,7 +239,7 @@ class Etl(EtlBase):
             )
         pk_swap_table_name = getattr(omop_table_props, "pk", None)
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             # upload an apply the custom concept CSV's
             futures = [
                 executor.submit(

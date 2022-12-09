@@ -86,7 +86,27 @@ ORDER BY ordinal_position"""
         self,
         query: str,
         query_parameters: Union[List[bq.ScalarQueryParameter], None] = None,
-    ) -> (Union[RowIterator, _EmptyRowIterator]):
+    ) -> Union[RowIterator, _EmptyRowIterator]:
+        """Runs a query with or without parameters on Big Query
+        Calculates and logs the billed cost of the query
+
+        Args:
+            query (str): the sql query
+            query_parameters (List[bigquery.ScalarQueryParameter], optional): the query parameters
+
+        Returns:
+            RowIterator: row iterator
+        """  # noqa: E501 # pylint: disable=line-too-long
+        result, execution_time = self.run_query_job_with_benchmark(
+            query, query_parameters
+        )
+        return result
+
+    def run_query_job_with_benchmark(
+        self,
+        query: str,
+        query_parameters: Union[List[bq.ScalarQueryParameter], None] = None,
+    ) -> Tuple[Union[RowIterator, _EmptyRowIterator], float]:
         """Runs a query with or without parameters on Big Query
         Calculates and logs the billed cost of the query
 
@@ -116,16 +136,23 @@ ORDER BY ordinal_position"""
                 (query_job.total_bytes_billed or 0) / (Gcp._MEGA * 10)
             )
             cost = total_10_mbs_billed * cost_per_10_mb
+            execution_time = end - start
             logging.debug(
                 "Query processed %.2f MB (%.2f MB billed) in %.2f seconds"
                 " (%.2f seconds slot time): %.8f $ billed",
                 (query_job.total_bytes_processed or 0) / Gcp._MEGA,
                 (query_job.total_bytes_billed or 0) / Gcp._MEGA,
-                end - start,
+                execution_time,
                 (query_job.slot_millis or 0) / 1000,
                 cost,
             )
-            return result
+            if execution_time > 60:
+                logging.warning(
+                    "Long query time (%.2f seconds) for query: %s",
+                    execution_time,
+                    query,
+                )
+            return result, execution_time
         except Exception as ex:
             logging.debug(
                 "FAILED QUERY: %s\nWith parameters: %s", query, str(query_parameters)

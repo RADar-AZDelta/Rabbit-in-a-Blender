@@ -35,7 +35,7 @@ class ImportVocabularies(EtlBase, ABC):
                 )
                 zip_ref.extractall(temp_dir_path)
 
-                with ThreadPoolExecutor(max_workers=8) as executor:
+                with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
                     vocabulary_tables = [
                         "concept",
                         "concept_ancestor",

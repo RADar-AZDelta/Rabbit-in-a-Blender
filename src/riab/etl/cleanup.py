@@ -35,7 +35,7 @@ class Cleanup(EtlBase, ABC):
         All local vocabularies are removed from the 'vocabulary' table in the omop dataset.\n
         """  # noqa: E501 # pylint: disable=line-too-long
         work_tables = self._get_work_tables()
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             # custom cleanup
             if cleanup_table == "all":
                 logging.info("Truncate omop table 'source_to_concept_map'")

@@ -23,7 +23,7 @@
           //,"--skip-usagi-and-custom-concept-upload"
           //,"--table", "measurement"
 
-        "--cleanup", "all", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
+        //"--cleanup", "all", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
           //,"--clear-auto-generated-custom-concept-ids"
 
         //"--data-quality", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
@@ -31,6 +31,8 @@
 
         //"--data-quality-dashboard", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder"
           //,"--port", "8888"
+
+        "--achilles", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
       ],
       "console": "integratedTerminal",
       "justMyCode": false,
