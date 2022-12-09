@@ -1,22 +1,15 @@
 # Copyright 2022 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
-import json
 import logging
-import os
 import re
-import uuid
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 from pathlib import Path
 from time import time
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, Tuple, Union
 
-import pandas as pd
 import polars as pl
-import pyarrow as pa
-import pyarrow.csv as pcsv
 from humanfriendly import format_timespan
 
 from .etl_base import EtlBase
@@ -615,7 +608,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "detailType": results_table["detail_type"],
             "detailSqls": " \nunion all\n ".join(detail_sqls),
             "fieldNames": ", ".join(iter(results_table["schema"][["FIELD_NAME"][0]])),
-            "smallCellCount": self._small_cell_count,
+            "smallCellCount": str(self._small_cell_count),
         }
         rendered_sql = self._render_sql(
             sql,
