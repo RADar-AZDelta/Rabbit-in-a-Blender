@@ -45,6 +45,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         update_given_analyses_only: bool = False,
         create_table: bool = True,
         create_indices: bool = True,
+        drop_scratch_tables=True,
         output_folder: str = "output",
         **kwargs,
     ):
@@ -66,6 +67,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         self._create_table = create_table
         self._create_indices = create_indices
         self._output_folder = output_folder
+        self._drop_scratch_tables = drop_scratch_tables
 
     def run(
         self,
@@ -228,7 +230,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 result.result()
 
         # Clean up scratch tables -----------------------------------------------
-        if not self._supports_temp_tables and self._drop_scratch_table:
+        if not self._supports_temp_tables and self._drop_scratch_tables:
             self._drop_all_scratch_tables()
 
         # Create indices -----------------------------------------------------------------
