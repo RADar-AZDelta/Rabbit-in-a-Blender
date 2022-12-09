@@ -612,10 +612,10 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "createTable": "TRUE",
             "resultsDatabaseSchema": self._results_database_schema,
             "tempEmulationSchema": self._temp_emulation_schema,
-            "detailType": "",
+            "detailType": results_table["detail_type"],
             "detailSqls": " \nunion all\n ".join(detail_sqls),
-            "fieldNames": "",
-            "smallCellCount": "",
+            "fieldNames": ", ".join(iter(results_table["schema"][["FIELD_NAME"][0]])),
+            "smallCellCount": self._small_cell_count,
         }
         rendered_sql = self._render_sql(
             sql,
@@ -658,7 +658,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         parameters = {
             "resultsDatabaseSchema": self._results_database_schema,
             "vocabDatabaseSchema": self._results_database_schema,
-            "fieldNames": ", ".join(list(df_results_concept_count_table["FIELD_NAME"])),
+            "fieldNames": ", ".join(iter(df_results_concept_count_table["FIELD_NAME"])),
         }
         rendered_sql = self._render_sql(
             sql,
