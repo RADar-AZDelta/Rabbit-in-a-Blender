@@ -228,7 +228,7 @@ def _contstruct_argument_parser() -> ArgumentParser:
     commands_group.add_argument(
         "-r",
         "--run-etl",
-        help="Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.",
+        help="Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.",  # noqa: E501 # pylint: disable=line-too-long
         nargs="?",
         type=str,
         metavar="PATH",
@@ -351,7 +351,7 @@ def _contstruct_argument_parser() -> ArgumentParser:
     cleanup_group = parser.add_argument_group("Cleanup specific arguments")
     cleanup_group.add_argument(
         "--clear-auto-generated-custom-concept-ids",
-        help="""Cleanup the auto generated custom concept ID's (above 2 million). Without this argument, the cleanup command will not clear the mapping table (that maps the custom concept with the auto generated id above 2 million), so that you can use those above 2 million concept id's in your cohort builder, without the fear that those id's will change.""",
+        help="""Cleanup the auto generated custom concept ID's (above 2 million). Without this argument, the cleanup command will not clear the mapping table (that maps the custom concept with the auto generated id above 2 million), so that you can use those above 2 million concept id's in your cohort builder, without the fear that those id's will change.""",  # noqa: E501 # pylint: disable=line-too-long
         action="store_true",
     )
 

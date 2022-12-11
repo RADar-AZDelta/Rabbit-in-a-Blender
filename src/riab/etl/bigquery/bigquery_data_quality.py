@@ -3,15 +3,11 @@
 
 import logging
 import traceback
-from pathlib import Path
-from tempfile import NamedTemporaryFile, TemporaryDirectory
 from time import time
 from typing import Any, List
 
-import google.cloud.bigquery as bq
 import pandas as pd
 import pyarrow as pa
-import pyarrow.parquet as pq
 
 from ..data_quality import DataQuality
 from .bigquery_etl_base import BigQueryEtlBase
@@ -30,7 +26,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         exception: str | None = None
         execution_time = -1
         try:
-            parameters = item.to_dict()
+            parameters: dict = item.to_dict()
 
             parameters["cohort"] = (
                 "TRUE" if hasattr(parameters, "cohortDefinitionId") else "FALSE"
@@ -42,11 +38,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
                 "vocabDatabaseSchema"
             ] = f"{self._project_id}.{self._dataset_id_omop}"
 
-            sql = self._render_sqlfile(
-                check.sqlFile,
-                list(parameters.keys()),
-                list(parameters.values()),
-            )
+            sql = self._render_sqlfile(check.sqlFile, parameters)
 
             start = time()
             rows = self._gcp.run_query_job(sql)

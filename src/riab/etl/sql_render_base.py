@@ -1,10 +1,8 @@
 # Copyright 2022 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
-
-from abc import ABC, abstractmethod
+from abc import ABC
 from pathlib import Path
-from typing import List
 
 import jpype
 import jpype.imports
@@ -41,13 +39,28 @@ class SqlRenderBase(ABC):
             / "java"
             / "SqlRender.jar"
         )
-        jpype.startJVM(classpath=[sqlrender_path])
+        jpype.startJVM(classpath=[sqlrender_path])  # type: ignore
 
-    def _render_sql(self, sql: str, parameters: List[str], values: List[str]):
+    def _render_sql(self, sql: str, parameters: dict) -> str:
+        """_summary_
+
+        Args:
+            sql (str): Original SQL
+            parameters (List[str]): Query parameter names
+            values (List[str]): Query parameter
+
+        Returns:
+            str: The rendered SQL
+        """
         # import the Java module
-        from org.ohdsi.sql import SqlRender, SqlTranslate
+        from org.ohdsi.sql import (  # type: ignore # pylint: disable=import-outside-toplevel,import-error
+            SqlRender,
+            SqlTranslate,
+        )
 
-        sql = str(SqlRender.renderSql(sql, parameters, values))
+        sql = str(
+            SqlRender.renderSql(sql, list(parameters.keys()), list(parameters.values()))
+        )
 
         sql = str(
             SqlTranslate.translateSqlWithPath(

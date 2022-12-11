@@ -36,19 +36,19 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         self.data_quality_dashboard_version = data_quality_dashboard_version
         self.json_path = json_path
 
-    def run(
-        self,
-        tablesToExclude: list[str] = [
-            "CONCEPT",
-            "VOCABULARY",
-            "CONCEPT_ANCESTOR",
-            "CONCEPT_RELATIONSHIP",
-            "CONCEPT_CLASS",
-            "CONCEPT_SYNONYM",
-            "RELATIONSHIP",
-            "DOMAIN",
-        ],
-    ):
+    def run(self, tables_to_exclude: list[str] | None = None):
+        if not tables_to_exclude:
+            tables_to_exclude = [
+                "CONCEPT",
+                "VOCABULARY",
+                "CONCEPT_ANCESTOR",
+                "CONCEPT_RELATIONSHIP",
+                "CONCEPT_CLASS",
+                "CONCEPT_SYNONYM",
+                "RELATIONSHIP",
+                "DOMAIN",
+            ]
+
         logging.info("Checking data quality")
 
         start = time()
@@ -102,13 +102,13 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
 
         # ensure we use only checks that are intended to be run
         df_table_level = df_table_level[
-            ~df_table_level["cdmTableName"].isin(tablesToExclude)
+            ~df_table_level["cdmTableName"].isin(tables_to_exclude)
         ]
         df_field_level = df_field_level[
-            ~df_field_level["cdmTableName"].isin(tablesToExclude)
+            ~df_field_level["cdmTableName"].isin(tables_to_exclude)
         ]
         df_concept_level = df_concept_level[
-            ~df_concept_level["cdmTableName"].isin(tablesToExclude)
+            ~df_concept_level["cdmTableName"].isin(tables_to_exclude)
         ]
 
         # remove offset from being checked
@@ -116,7 +116,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
 
         metadata = self._capture_check_metadata()
 
-        check_results = pd.DataFrame()
+        check_results = pd.DataFrame([])
         for index, check in df_check_descriptions.iterrows():
             check_results = pd.concat(
                 [
@@ -168,8 +168,8 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                 self.json_path,
                 "w",
                 encoding="utf-8",
-            ) as f:  # outputFile <- sprintf("%s-%s.json", tolower(metadata$CDM_SOURCE_ABBREVIATION),endTimestamp)
-                json.dump(check_summary, f, indent=4, sort_keys=True, default=str)
+            ) as file:  # outputFile <- sprintf("%s-%s.json", tolower(metadata$CDM_SOURCE_ABBREVIATION),endTimestamp)
+                json.dump(check_summary, file, indent=4, sort_keys=True, default=str)
 
     def _capture_check_metadata(self):
         cdm_soures = self._get_cdm_sources()
@@ -189,18 +189,18 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         df_field_level: pd.DataFrame,
         df_concept_level: pd.DataFrame,
     ) -> pd.DataFrame:
-        df = None
+        data_frame = None
         match check.checkLevel:
             case "TABLE":
-                df = df_table_level
+                data_frame = df_table_level
             case "FIELD":
-                df = df_field_level
+                data_frame = df_field_level
             case "CONCEPT":
-                df = df_concept_level
+                data_frame = df_concept_level
             case _:
                 raise Exception(f"Unknown check level: {check.checkLevel}")
 
-        df = pd.DataFrame(df[df.eval(check.evaluationFilter)])
+        data_frame = pd.DataFrame(data_frame[data_frame.eval(check.evaluationFilter)])
 
         check_results = []
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
@@ -211,7 +211,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                     f"{int(row) + 1}.{cast(int, index) + 1}",
                     item,
                 )
-                for index, item in df.iterrows()
+                for index, item in data_frame.iterrows()
             ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
@@ -301,7 +301,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
     ) -> Any:
         threshold_field = f"{check.checkName}Threshold"
         notes_field = f"{check.checkName}Notes"
-        check_threshold = {"failed": 0}
+        check_threshold: dict[str, Any] = {"failed": 0}
 
         if hasattr(item, threshold_field):
             try:
@@ -389,7 +389,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
     def _store_dqd_result(self, dqd_result: pd.DataFrame):
         pass
 
-    def _render_sqlfile(self, sql_file: str, parameters: List[str], values: List[str]):
+    def _render_sqlfile(self, sql_file: str, parameters: dict):
         with open(
             Path(__file__).parent.parent.resolve()
             / "libs"
@@ -400,10 +400,10 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             / sql_file,
             "r",
             encoding="utf-8",
-        ) as f:
-            sql = f.read()
+        ) as file:
+            sql = file.read()
 
-        sql = self._render_sql(sql, parameters, values)
+        sql = self._render_sql(sql, parameters)
 
         sql = re.sub(r"domain_concept_id_", r"field_concept_id_", sql)
         sql = re.sub(r"cost_domain_id", r"cost_field_concept_id", sql)

@@ -109,12 +109,13 @@ class Etl(EtlBase):
 
             self._do_parallel_work_to_omop()
 
-            # cleanup old source to concept maps by setting the invalid_reason to deleted (we only do this when running a full ETL = all OMOP tables)
+            # cleanup old source to concept maps by setting the invalid_reason to deleted
+            # (we only do this when running a full ETL = all OMOP tables)
             self._source_to_concept_map_update_invalid_reason(etl_start)
             self._source_id_to_omop_id_map_update_invalid_reason(etl_start)
 
     def _do_parallel_work_to_omop(self):
-        """Parallelize the mapping of the event columns to the correct foreign keys and fills up the final OMOP tables"""
+        """Parallelize the mapping of the event columns to the correct foreign keys and fills up the final OMOP tables"""  # noqa: E501 # pylint: disable=line-too-long
         with ThreadPoolExecutor(max_workers=len(vars(self._omop_tables))) as executor:
             futures = [
                 executor.submit(
@@ -512,7 +513,7 @@ class Etl(EtlBase):
                 )
             ) != len(ar_table):
                 logging.warning(
-                    "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV's for concept column '%s' of OMOP table '%s'!",
+                    "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV's for concept column '%s' of OMOP table '%s'!",  # noqa: E501 # pylint: disable=line-too-long
                     concept_id_column,
                     omop_table,
                 )
@@ -525,7 +526,7 @@ class Etl(EtlBase):
         )
         if len(concept_csv_files):
             logging.info(
-                "Updating the custom concepts from code to assigned id in the usagi table for column '%s' of table '%s'",
+                "Updating the custom concepts from code to assigned id in the usagi table for column '%s' of table '%s'",  # noqa: E501 # pylint: disable=line-too-long
                 concept_id_column,
                 omop_table,
             )
@@ -820,7 +821,8 @@ class Etl(EtlBase):
     def _give_custom_concepts_an_unique_id_above_2bilj(
         self, omop_table: str, concept_id_column: str
     ) -> None:
-        """Give the custom concepts an unique id (above 2.000.000.000) and store those id's in the concept id swap table.
+        """Give the custom concepts an unique id (above 2.000.000.000) and store those id's
+        in the concept id swap table.
 
         Args:
             omop_table (str): The omop table

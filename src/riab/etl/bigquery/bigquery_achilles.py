@@ -3,38 +3,37 @@
 
 import logging
 import traceback
-from pathlib import Path
-from tempfile import NamedTemporaryFile, TemporaryDirectory
-from time import time
-from typing import Any, List, Tuple, Union
+from typing import Tuple, cast
 
-import google.cloud.bigquery as bq
-import pandas as pd
 import polars as pl
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 from ..achilles import Achilles
 from .bigquery_etl_base import BigQueryEtlBase
 
 
 class BigQueryAchilles(Achilles, BigQueryEtlBase):
+    """
+    BigQuery implementation that runs the descriptive statistics
+    """
+
     def __init__(
         self,
         **kwargs,
     ):
+        """Constructor"""
         super().__init__(target_dialect="bigquery", **kwargs)
 
-    def _run_query(self, sql) -> Tuple[Union[pl.DataFrame, pl.Series] | None, float]:
+    def _run_query(self, sql) -> Tuple[pl.DataFrame, float]:
         try:
             result, execution_time = self._gcp.run_query_job_with_benchmark(sql)
-            return pl.from_arrow(result.to_arrow()), execution_time
-        except Exception as ex:
-            logging.warn(traceback.format_exc())
-            return (None, -1)
+            data_frame = pl.from_arrow(result.to_arrow())
+            return cast(pl.DataFrame, data_frame), execution_time
+        except Exception:
+            logging.warning(traceback.format_exc())
+            return (pl.DataFrame([]), -1)
 
-    def _store_analysis_details(self, df: pl.DataFrame):
-        table = df.to_arrow()
+    def _store_analysis_details(self, data_frame: pl.DataFrame):
+        table = data_frame.to_arrow()
         self._upload_arrow_table(table, "achilles_analysis")
 
     @property
@@ -51,7 +50,7 @@ class BigQueryAchilles(Achilles, BigQueryEtlBase):
     def _post_prep_query(self, sql: str) -> str:
         return sql.replace("CREATE TABLE", "CREATE OR REPLACE TABLE")
 
-    def _get_indices_sqls(
-        self, achilles_tables: list[str] = ["achilles_results", "achilles_results_dist"]
-    ) -> list[str]:
+    def _get_indices_sqls(self, achilles_tables: list[str] | None = None) -> list[str]:
+        if not achilles_tables:
+            achilles_tables = ["achilles_results", "achilles_results_dist"]
         return ["/* INDEX CREATION SKIPPED, INDICES NOT SUPPORTED IN BIGQUERY */"]

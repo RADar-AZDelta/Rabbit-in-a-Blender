@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from time import time
-from typing import Any, Tuple, Union
+from typing import Any, Tuple, cast
 
 import polars as pl
 from humanfriendly import format_timespan
@@ -81,7 +81,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         if self._analysis_ids:
             # If specific analysis_ids are given, run only those
             df_analysis_details = df_analysis_details.filter(
-                pl.col("ANALYSIS_ID").apply(lambda s: s in self._analysis_ids)
+                pl.col("ANALYSIS_ID").apply(lambda s: s in (self._analysis_ids or []))
             )
         elif self._default_analyses_only:
             # If specific analyses are not given, determine whether or not to run only default analyses
@@ -91,7 +91,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         if self._exclude_analysis_ids:
             df_analysis_details = df_analysis_details.filter(
                 pl.col("ANALYSIS_ID").apply(
-                    lambda s: s not in self._exclude_analysis_ids
+                    lambda s: s not in (self._exclude_analysis_ids or [])
                 )
             )
 
@@ -164,16 +164,16 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         elif not self._create_table and preserve_results:
             self._delete_given_analysis(self._analysis_ids)
 
-        ###### Create and populate the achilles_analysis table (assumes inst/csv/achilles_analysis_details.csv exists)
+        # Create and populate the achilles_analysis table (assumes inst/csv/achilles_analysis_details.csv exists)
         if self._create_table:
             self._create_and_populate_analysis_table(df_analysis_details)
 
         # Clean up existing scratch tables -----------------------------------------------
         if not self._supports_temp_tables:
-            self._drop_all_scratch_tables()
+            self._drop_all_scratch_tables(results_tables)
 
         # Generate Main Analyses
-        # ----------------------------------------------------------------------------------------------------------------
+        # -------------------------------------------------------------------------------------------
         main_analysis_ids = list(df_analysis_details["ANALYSIS_ID"])
 
         main_sqls = []
@@ -196,9 +196,22 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 for main_sql in main_sqls
             ]
             for result in as_completed(futures):
-                (analysis_id, execution_time) = result.result()
+                (
+                    analysis_id,
+                    _,
+                    execution_time,
+                ) = result.result()
                 benchmark.append((analysis_id, execution_time))
+
         df_benchmark = pl.DataFrame(benchmark, columns=["ANALYSIS_ID", "RUN_TIME"])
+        failed_analysis_ids = list(
+            df_benchmark.filter(pl.col("RUN_TIME") == -1)["ANALYSIS_ID"]
+        )
+
+        for table in results_tables:
+            for analysis_id in failed_analysis_ids:
+                if analysis_id in table["analysis_ids"]:
+                    table["analysis_ids"].remove(analysis_id)
 
         # Merge scratch tables into final analysis tables
         # -------------------------------------------------------------------------------------------
@@ -210,7 +223,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         merge_sqls = [
             self._merge_achilles_scratch_tables(
-                results_table, df_benchmark, main_analysis_ids
+                results_table, df_benchmark  # , main_analysis_ids
             )
             for results_table in results_tables_to_merge
         ]
@@ -224,7 +237,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         # Clean up scratch tables -----------------------------------------------
         if not self._supports_temp_tables and self._drop_scratch_tables:
-            self._drop_all_scratch_tables()
+            self._drop_all_scratch_tables(results_tables)
 
         # Create indices -----------------------------------------------------------------
         indices_sql = ["/* INDEX CREATION SKIPPED PER USER REQUEST */"]
@@ -247,12 +260,16 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             optimize_atlas_cache_sql = self._get_optimize_atlas_cache_sql()
             achilles_sql.extend([optimize_atlas_cache_sql])
 
-        with open("achilles.sql", "w") as f:
-            f.write("\n\n".join(achilles_sql))
+        with open("achilles.sql", "w", encoding="UTF8") as file:
+            file.write("\n\n".join(achilles_sql))
 
         end = time()
         execution_time = end - start
 
+        if len(failed_analysis_ids):
+            logging.warning(
+                "Failed analysis %s", ",".join([str(id) for id in failed_analysis_ids])
+            )
         logging.info("Achilles took %s to run", format_timespan(execution_time))
 
     def _get_analysis_details(self):
@@ -269,22 +286,20 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         )
         return df_analysis_details
 
-    def _delete_given_analysis(self, analysis_ids: list[int]):
+    def _delete_given_analysis(self, analysis_ids: list[int] | None):
         parameters = {
             "resultsDatabaseSchema": self._results_database_schema,
-            "analysisIds": ",".join([str(id) for id in analysis_ids]),
+            "analysisIds": ",".join([str(id) for id in (analysis_ids or [])]),
         }
         sql = self._render_sql(
             "delete from @resultsDatabaseSchema.achilles_results where analysis_id in (@analysisIds);",
-            list(parameters.keys()),
-            list(parameters.values()),
+            parameters,
         )
         self._run_query(sql)
 
         sql = self._render_sql(
             "delete from @resultsDatabaseSchema.achilles_results_dist where analysis_id in (@analysisIds);",
-            list(parameters.keys()),
-            list(parameters.values()),
+            parameters,
         )
         self._run_query(sql)
 
@@ -303,8 +318,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             }
             sql = self._render_sql(
                 "delete from @resultsDatabaseSchema.achilles_results where analysis_id in (@analysisIds);",
-                list(parameters.keys()),
-                list(parameters.values()),
+                parameters,
             )
             self._run_query(sql)
 
@@ -315,8 +329,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             }
             sql = self._render_sql(
                 "delete from @resultsDatabaseSchema.achilles_results where analysis_id in (@analysisIds);",
-                list(parameters.keys()),
-                list(parameters.values()),
+                parameters,
             )
             self._run_query(sql)
 
@@ -333,27 +346,23 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             / "achilles_analysis_ddl.sql",
             "r",
             encoding="utf-8",
-        ) as f:
-            sql = f.read()
+        ) as file:
+            sql = file.read()
 
         parameters = {"resultsDatabaseSchema": self._results_database_schema}
 
-        sql = self._render_sql(
-            sql,
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        sql = self._render_sql(sql, parameters)
         self._run_query(sql)
 
-        df = df_analysis_details.drop(["DISTRIBUTION", "DISTRIBUTED_FIELD"])
-        self._store_analysis_details(df)
+        data_frame = df_analysis_details.drop(["DISTRIBUTION", "DISTRIBUTED_FIELD"])
+        self._store_analysis_details(data_frame)
 
     @abstractmethod
-    def _store_analysis_details(self, df: pl.DataFrame):
+    def _store_analysis_details(self, data_frame: pl.DataFrame):
         pass
 
     @abstractmethod
-    def _run_query(self, sql) -> Tuple[Union[pl.DataFrame, pl.Series], float]:
+    def _run_query(self, sql) -> Tuple[pl.DataFrame, float]:
         pass
 
     @property
@@ -372,37 +381,47 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
     def _post_prep_query(self, sql: str) -> str:
         return sql
 
-    def _drop_all_scratch_tables(self, tableTypes=["achilles"]):
-        if "achilles" not in tableTypes:
+    def _drop_all_scratch_tables(
+        self, results_tables: list[Any], table_types: list[str] | None = None
+    ):
+        if not table_types:
+            table_types = ["achilles"]
+        if "achilles" not in table_types:
             return
 
-        df_analysis_details = self._get_analysis_details()
+        # df_analysis_details = self._get_analysis_details()
 
-        if self._default_analyses_only:
-            df_results_tables = df_analysis_details.filter(
-                (pl.col("DISTRIBUTION") <= 0) & (pl.col("IS_DEFAULT") == 1)
-            ).with_column(
-                pl.col("ANALYSIS_ID")
-                .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
-                .alias("TABLE")
-            )
-        else:
-            df_results_tables = df_analysis_details.filter(
-                (pl.col("DISTRIBUTION") <= 0)
-            ).with_column(
-                pl.col("ANALYSIS_ID")
-                .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
-                .alias("TABLE")
-            )
+        # if self._default_analyses_only:
+        #     df_results_tables = df_analysis_details.filter(
+        #         (pl.col("DISTRIBUTION") <= 0) & (pl.col("IS_DEFAULT") == 1)
+        #     ).with_column(
+        #         pl.col("ANALYSIS_ID")
+        #         .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
+        #         .alias("TABLE")
+        #     )
+        # else:
+        #     df_results_tables = df_analysis_details.filter(
+        #         (pl.col("DISTRIBUTION") <= 0)
+        #     ).with_column(
+        #         pl.col("ANALYSIS_ID")
+        #         .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
+        #         .alias("TABLE")
+        #     )
 
-        df_results_dist_tables = df_analysis_details.filter(
-            (pl.col("DISTRIBUTION") == 1)
-        ).with_column(
-            pl.col("ANALYSIS_ID")
-            .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
-            .alias("TABLE")
-        )
-        df_tables = pl.concat([df_results_tables, df_results_dist_tables])
+        # df_results_dist_tables = df_analysis_details.filter(
+        #     (pl.col("DISTRIBUTION") == 1)
+        # ).with_column(
+        #     pl.col("ANALYSIS_ID")
+        #     .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
+        #     .alias("TABLE")
+        # )
+        # df_tables = pl.concat([df_results_tables, df_results_dist_tables])
+
+        tables = [
+            f"{results_table['table_prefix']}_{id}"
+            for results_table in results_tables
+            for id in results_table["analysis_ids"]
+        ]
 
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = [
@@ -410,24 +429,20 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                     self._drop_scratch_table,
                     table,
                 )
-                for table in df_tables["TABLE"]
+                for table in tables
             ]
             for result in as_completed(futures):
                 result.result()
 
     def _drop_scratch_table(self, table: str):
         logging.info("Dropping table %s", table)
-        sql = "IF OBJECT_ID('@scratchDatabaseSchema@schemaDelim@scratchTable', 'U') IS NOT NULL DROP TABLE @scratchDatabaseSchema@schemaDelim@scratchTable;"
+        sql = "IF OBJECT_ID('@scratchDatabaseSchema@schemaDelim@scratchTable', 'U') IS NOT NULL DROP TABLE @scratchDatabaseSchema@schemaDelim@scratchTable;"  # noqa: E501 # pylint: disable=line-too-long
         parameters = {
             "scratchDatabaseSchema": self._scratch_database_schema,
             "schemaDelim": self._schema_delim,
             "scratchTable": table,
         }
-        rendered_sql = self._render_sql(
-            sql,
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        rendered_sql = self._render_sql(sql, parameters)
         self._run_query(rendered_sql)
 
     def _get_source_name(self) -> str:
@@ -435,13 +450,11 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         parameters = {
             "cdmDatabaseSchema": self._cdm_database_schema,
         }
-        rendered_sql = self._render_sql(
-            sql,
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        rendered_sql = self._render_sql(sql, parameters)
         df_result, execution_time = self._run_query(rendered_sql)
-        return df_result["cdm_source_name"][0]
+        if execution_time == -1 or df_result.is_empty():
+            raise Exception("Could not retrieve cdm_source_name from CDM database!")
+        return next(iter(cast(pl.DataFrame, df_result).select("cdm_source_name")))[0]
 
     def _get_analysis_sql(self, analysis_id: int) -> Tuple[int, str]:
         with open(
@@ -455,8 +468,8 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             / f"{analysis_id}.sql",
             "r",
             encoding="utf-8",
-        ) as f:
-            sql = f.read()
+        ) as file:
+            sql = file.read()
 
         sql = self._pre_prep_query(sql)
 
@@ -482,26 +495,20 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "achilles_version": self._achilles_version.lstrip("v"),
             "cdmVersion": self._omop_cdm_version.lstrip("v"),
         }
-        rendered_sql = self._render_sql(
-            sql,
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        rendered_sql = self._render_sql(sql, parameters)
         rendered_sql = self._post_prep_query(rendered_sql)
         return analysis_id, rendered_sql
 
-    def _execute_analysis(self, sql: str, analysis_id: int) -> Tuple[int, float]:
-        df_result, execution_time = self._run_query(sql)
-        return analysis_id, execution_time
+    def _execute_analysis(
+        self, sql: str, analysis_id: int
+    ) -> Tuple[int, pl.DataFrame, float]:
+        data_frame, execution_time = self._run_query(sql)
+        return analysis_id, data_frame, execution_time
 
     def _render_casted_names(self, row):
         sql = "cast(@fieldName as @fieldType) as @fieldName"
         parameters = {"fieldName": row[0], "fieldType": row[1]}
-        rendered_sql = self._render_sql(
-            sql,
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        rendered_sql = self._render_sql(sql, parameters)
         return rendered_sql
 
     def _get_benchmark_offset(self):
@@ -529,13 +536,12 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "scratchDatabaseSchema": self._scratch_database_schema,
             "schemaDelim": self._schema_delim,
             "castedNames": casted_names,
-            "tablePrefix": self._temp_achilles_prefix,
+            "tablePrefix": results_table["table_prefix"],
             "analysisId": str(analysis_id),
         }
         analysis_sql = self._render_sql(
             "select @castedNames from @scratchDatabaseSchema@schemaDelim@tablePrefix_@analysisId",
-            list(parameters.keys()),
-            list(parameters.values()),
+            parameters,
         )
 
         df_benchmark_selects = results_table["schema"][["FIELD_NAME"]].apply(
@@ -546,11 +552,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         benchmark_selects = ", ".join(iter(df_benchmark_selects["apply"]))
 
         parameters = {"benchmarkSelect": benchmark_selects}
-        benchmark_sql = self._render_sql(
-            "select @benchmarkSelect",
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        benchmark_sql = self._render_sql("select @benchmarkSelect", parameters)
 
         analysis_sql = " union all ".join([analysis_sql, benchmark_sql])
         return analysis_sql
@@ -559,7 +561,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         self,
         results_table: Any,
         df_benchmark: pl.DataFrame,
-        analysis_ids: list[int],
+        # analysis_ids: list[int],
     ):
         logging.info("Merging achilles scratch tables")
 
@@ -571,13 +573,13 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         detail_sqls = []
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = []
-            for id in analysis_ids:
-                benchmark = df_benchmark.filter((pl.col("ANALYSIS_ID") == id))
+            for analysis_id in results_table["analysis_ids"]:
+                benchmark = df_benchmark.filter((pl.col("ANALYSIS_ID") == analysis_id))
                 run_time = -1 if benchmark.is_empty() else benchmark["RUN_TIME"][0]
                 futures.append(
                     executor.submit(
                         self._render_analysis_sql,
-                        id,
+                        analysis_id,
                         casted_names,
                         run_time,
                         results_table,
@@ -598,8 +600,8 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             / "merge_achilles_tables.sql",
             "r",
             encoding="utf-8",
-        ) as f:
-            sql = f.read()
+        ) as file:
+            sql = file.read()
 
         parameters = {
             "createTable": "TRUE",
@@ -610,17 +612,11 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "fieldNames": ", ".join(iter(results_table["schema"][["FIELD_NAME"][0]])),
             "smallCellCount": str(self._small_cell_count),
         }
-        rendered_sql = self._render_sql(
-            sql,
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        rendered_sql = self._render_sql(sql, parameters)
         return rendered_sql
 
     @abstractmethod
-    def _get_indices_sqls(
-        self, achilles_tables: list[str] = ["achilles_results", "achilles_results_dist"]
-    ) -> list[str]:
+    def _get_indices_sqls(self, achilles_tables: list[str] | None = None) -> list[str]:
         pass
 
     def _get_optimize_atlas_cache_sql(self) -> str:
@@ -646,17 +642,13 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             / "create_result_concept_table.sql",
             "r",
             encoding="utf-8",
-        ) as f:
-            sql = f.read()
+        ) as file:
+            sql = file.read()
         parameters = {
             "resultsDatabaseSchema": self._results_database_schema,
             "vocabDatabaseSchema": self._results_database_schema,
             "fieldNames": ", ".join(iter(df_results_concept_count_table["FIELD_NAME"])),
         }
-        rendered_sql = self._render_sql(
-            sql,
-            list(parameters.keys()),
-            list(parameters.values()),
-        )
+        rendered_sql = self._render_sql(sql, parameters)
         self._run_query(rendered_sql)
         return rendered_sql

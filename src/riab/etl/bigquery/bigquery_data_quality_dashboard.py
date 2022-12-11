@@ -1,8 +1,7 @@
 # Copyright 2022 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
-from ctypes import cast
-from typing import Any, List
+from typing import Any, List, cast
 
 import google.cloud.bigquery as bq
 import polars as pl
@@ -68,4 +67,5 @@ where run_id = @id
             sql,
             query_parameters=[bq.ScalarQueryParameter("id", "STRING", run_id)],
         )
-        return pl.from_arrow(rows.to_arrow())
+        data_frame = pl.from_arrow(rows.to_arrow())
+        return cast(pl.DataFrame, data_frame)
