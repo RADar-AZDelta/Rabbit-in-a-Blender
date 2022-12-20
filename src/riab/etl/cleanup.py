@@ -109,8 +109,7 @@ class Cleanup(EtlBase, ABC):
             tables_to_delete = [
                 table_name
                 for table_name in work_tables
-                if cleanup_table == "all"
-                or (table_name.startswith(cleanup_table) and table_name != "vocabulary")
+                if cleanup_table == "all" or table_name.startswith(cleanup_table)
             ]
             if (
                 not self.clear_auto_generated_custom_concept_ids

@@ -608,6 +608,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 events=events,
                 event_tables=event_tables,
                 cluster_fields=cluster_fields,
+                min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
             )
             self._gcp.run_query_job(sql)
         except NotFound:

@@ -131,4 +131,10 @@ as (
             {%- set ns.fk_counter = ns.fk_counter + 1 -%}
         {%- endfor %}
     {%- endfor %}
+    {%- if omop_table == "vocabulary" %}
+    UNION ALL
+    SELECT *
+    FROM {{project_id}}.{{dataset_id_omop}}.vocabulary
+    where vocabulary_concept_id < {{min_custom_concept_id}}
+    {%- endif %}
 )
