@@ -97,7 +97,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         results_tables = [
             {
-                "detail_type": "result",
+                "detail_type": "results",
                 "table_prefix": self._temp_achilles_prefix,
                 "schema": pl.read_csv(
                     str(
