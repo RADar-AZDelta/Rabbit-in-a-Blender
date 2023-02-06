@@ -264,6 +264,7 @@ TODO
 
 * improve documentation
 * fix visits and observation period to be data driven (based on other clinical tables in OMOP)
+* add concept_relationship and concept_ancestor tables for custom concepts to framework
 * generate ERA tables (drug_era, dose_era and condition_era)
 * support multiple GCS projects to split up raw, work and omop data
 
