@@ -1,5 +1,5 @@
 # install required packages
-#python3 -m pip install --upgrade pip twine
+#python3 -m pip install --upgrade pip twine build
 
 # build and publish
 rm -fr ./dist && python -m build # cleanup and build
