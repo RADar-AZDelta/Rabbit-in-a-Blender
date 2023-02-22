@@ -267,6 +267,7 @@ TODO
 * add concept_relationship and concept_ancestor tables for custom concepts to framework
 * generate ERA tables (drug_era, dose_era and condition_era)
 * support multiple GCS projects to split up raw, work and omop data
+* improve error logging: check for duplicate concept codes in custom concept files
 
 Authors
 ========
