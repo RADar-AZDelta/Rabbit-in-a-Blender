@@ -66,6 +66,9 @@ class BigQueryEtlBase(EtlBase, ABC):
 
         self._lock_ddl = Lock()
 
+    def __del__(self):
+        logging.info("Total BigQuery cost: %s€", self._gcp.total_cost)
+
     @property
     def _ddl(self):
         with open(

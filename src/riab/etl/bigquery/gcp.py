@@ -9,6 +9,7 @@ import math
 import time
 from copy import deepcopy
 from pathlib import Path
+from threading import Lock
 from typing import Any, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
@@ -22,7 +23,6 @@ from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import RowIterator, _EmptyRowIterator
 from google.cloud.exceptions import NotFound
 
-
 class Gcp:
     """
     Google Cloud Provider class with usefull methods for ETL
@@ -31,6 +31,7 @@ class Gcp:
 
     _MEGA = 1024**2
     _GIGA = 1024**3
+    _COST_PER_10_MB = 6 / 1024 / 1024 * 10
 
     def __init__(self, credentials: Credentials, location: str = "EU"):
         """Constructor
@@ -42,6 +43,17 @@ class Gcp:
         self._cs_client = cs.Client(credentials=credentials)
         self._bq_client = bq.Client(credentials=credentials)
         self._location = location
+        self._total_cost = 0
+        self._lock_total_cost = Lock()
+
+    @property
+    def total_cost(self):
+        """Gets the total BigQuery cost
+
+        Returns:
+            float: total cost in €
+        """
+        return self._total_cost
 
     def get_table_names(self, project_id: str, dataset_id: str) -> List[str]:
         """Get all table names from a specific dataset in Big Query
