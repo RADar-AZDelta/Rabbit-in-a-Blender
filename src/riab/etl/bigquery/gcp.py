@@ -23,6 +23,7 @@ from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import RowIterator, _EmptyRowIterator
 from google.cloud.exceptions import NotFound
 
+
 class Gcp:
     """
     Google Cloud Provider class with usefull methods for ETL
@@ -149,6 +150,11 @@ ORDER BY ordinal_position"""
             )
             cost = total_10_mbs_billed * cost_per_10_mb
             execution_time = end - start
+
+            self._lock_total_cost.acquire()
+            self._total_cost += cost
+            self._lock_total_cost.release()
+
             logging.debug(
                 "Query processed %.2f MB (%.2f MB billed) in %.2f seconds"
                 " (%.2f seconds slot time): %.8f $ billed",
