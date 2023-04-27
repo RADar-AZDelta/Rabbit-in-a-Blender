@@ -6,7 +6,7 @@ USING (
         SELECT IFNULL(MAX(y), {{min_custom_concept_id}}) as y
         FROM {{project_id}}.{{dataset_id_work}}.concept_id_swap
     )
-    SELECT concat('{{concept_id_column}}__', t.concept_code) as x, ROW_NUMBER() OVER() + cte_max.y as y
+    SELECT distinct concat('{{concept_id_column}}__', t.concept_code) as x, RANK() OVER(ORDER BY t.concept_code) + cte_max.y as y
     FROM {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept t
     INNER JOIN cte_max on 1=1
     LEFT OUTER JOIN {{project_id}}.{{dataset_id_work}}.concept_id_swap swap
