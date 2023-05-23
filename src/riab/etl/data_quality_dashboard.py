@@ -420,16 +420,16 @@ class DataQualityDashboard(EtlBase, ABC):
         # run = self._get_run(run_id)
         df = self._get_results(run_id)
         df = (
-            df.with_column(
+            df.with_columns(
                 pl.when((pl.col("failed") == 1))
                 .then("FAILED")
                 .otherwise("PASS")
                 .alias("status")
             )
-            .with_column(pl.col("pct_violated_rows") * 100)
+            .with_columns(pl.col("pct_violated_rows") * 100)
             .sort(
                 ["status", "pct_violated_rows"],
-                reverse=[False, True],
+                descending=[False, True],
             )
         )
 
