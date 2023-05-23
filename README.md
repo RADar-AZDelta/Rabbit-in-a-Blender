@@ -225,7 +225,7 @@ riab --data-quality \
 
 Data quality dashboard (default port = 8050):
 ```bash
-riab --data-quality \
+riab --data-quality-dashboard \
   --db-engine BigQuery \
     --bigquery-dataset-id-omop omop \
   --port 8888
