@@ -22,6 +22,7 @@ from google.auth.credentials import Credentials
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import RowIterator, _EmptyRowIterator
 from google.cloud.exceptions import NotFound
+from requests.adapters import HTTPAdapter
 
 
 class Gcp:
@@ -46,6 +47,13 @@ class Gcp:
         self._location = location
         self._total_cost = 0
         self._lock_total_cost = Lock()
+
+        # increase connection pool size
+        adapter = HTTPAdapter(pool_connections=128, pool_maxsize=128, max_retries=3)
+        self._cs_client._http.mount("https://", adapter)
+        self._cs_client._http._auth_request.session.mount("https://", adapter)
+        self._bq_client._http.mount("https://", adapter)
+        self._bq_client._http._auth_request.session.mount("https://", adapter)
 
     @property
     def total_cost(self):
