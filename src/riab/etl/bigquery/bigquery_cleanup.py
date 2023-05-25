@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
+from threading import Lock
 from typing import List
 
 from google.cloud.exceptions import NotFound
@@ -17,6 +18,8 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         **kwargs,
     ):
         super().__init__(**kwargs)
+
+        self._lock_source_to_concept_map_cleanup = Lock()
 
     def _get_work_tables(self) -> List[str]:
         """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
@@ -242,7 +245,12 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
+
+        self._lock_source_to_concept_map_cleanup.acquire()
+
         self._gcp.run_query_job(sql)
+
+        self._lock_source_to_concept_map_cleanup.release()
 
     def _delete_work_table(self, work_table: str) -> None:
         """Remove  work table
