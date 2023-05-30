@@ -349,7 +349,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         ar_table = rows.to_arrow()
         if len(ar_table):
             raise Exception(
-                f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck usagi CSV's for column '{concept_id_column}' of table '{omop_table}'\n{ar_table.to_string()}"
+                f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck usagi CSV's for column '{concept_id_column}' of table '{omop_table}'\n{ar_table.to_pylist()}"
             )
 
         template = self._template_env.get_template(

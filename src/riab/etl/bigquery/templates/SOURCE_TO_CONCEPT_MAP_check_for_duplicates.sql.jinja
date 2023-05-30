@@ -1,4 +1,4 @@
-select source_code, target_concept_id, count(*)
+select source_code, target_concept_id, count(*) as nbr_of_rows
 from (
     SELECT DISTINCT
         t.sourceCode as source_code
