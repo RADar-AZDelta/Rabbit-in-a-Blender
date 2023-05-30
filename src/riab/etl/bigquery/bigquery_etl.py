@@ -336,6 +336,23 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_column (str): The conept id column
         """
         template = self._template_env.get_template(
+            "SOURCE_TO_CONCEPT_MAP_check_for_duplicates.sql.jinja"
+        )
+        sql_doubles = template.render(
+            project_id=self._project_id,
+            dataset_id_work=self._dataset_id_work,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+            dataset_id_omop=self._dataset_id_omop,
+        )
+        rows = self._gcp.run_query_job(sql_doubles)
+        ar_table = rows.to_arrow()
+        if len(ar_table):
+            raise Exception(
+                f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck usagi CSV's for column '{concept_id_column}' of table '{omop_table}'\n{ar_table.to_string()}"
+            )
+
+        template = self._template_env.get_template(
             "SOURCE_TO_CONCEPT_MAP_merge.sql.jinja"
         )
         sql = template.render(
@@ -519,7 +536,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
-            "{omop_work_table}_merge._check_for_duplicate_rows.sql.jinja"
+            "{omop_work_table}_merge_check_for_duplicate_rows.sql.jinja"
         )
         sql_doubles = template.render(
             project_id=self._project_id,
