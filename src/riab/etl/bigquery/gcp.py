@@ -160,8 +160,10 @@ ORDER BY ordinal_position"""
             execution_time = end - start
 
             self._lock_total_cost.acquire()
-            self._total_cost += cost
-            self._lock_total_cost.release()
+            try:
+                self._total_cost += cost
+            finally:
+                self._lock_total_cost.release()
 
             logging.debug(
                 "Query processed %.2f MB (%.2f MB billed) in %.2f seconds"

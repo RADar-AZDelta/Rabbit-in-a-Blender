@@ -411,23 +411,25 @@ class Etl(EtlBase):
         )
 
         self._lock_custom_concepts.acquire()
+        try:
+            # give the custom concepts an unique id (above 2.000.000.000) and store those id's in the swap table
+            self._give_custom_concepts_an_unique_id_above_2bilj(
+                omop_table, concept_id_column
+            )
 
-        # give the custom concepts an unique id (above 2.000.000.000) and store those id's in the swap table
-        self._give_custom_concepts_an_unique_id_above_2bilj(
-            omop_table, concept_id_column
-        )
-
-        logging.info(
-            "Merging custom concept into CONCEPT table for column '%s' of table '%s'",
-            concept_id_column,
-            omop_table,
-        )
-        # merge the custom concepts with their uniquely created id's in the OMOP concept table
-        self._merge_custom_concepts_with_the_omop_concepts(
-            omop_table, concept_id_column
-        )
-
-        self._lock_custom_concepts.release()
+            logging.info(
+                "Merging custom concept into CONCEPT table for column '%s' of table '%s'",
+                concept_id_column,
+                omop_table,
+            )
+            # merge the custom concepts with their uniquely created id's in the OMOP concept table
+            self._merge_custom_concepts_with_the_omop_concepts(
+                omop_table, concept_id_column
+            )
+        except Exception as ex:
+            raise ex
+        finally:
+            self._lock_custom_concepts.release()
 
     def _apply_usagi_mapping(self, omop_table: str, concept_id_column: str):
         """Processes all the Usagi CSV files (ending with _usagi.csv) under the '{concept_id_column}' folder.
@@ -556,10 +558,14 @@ class Etl(EtlBase):
         )
         # fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the Usagi CSV's
         self._lock_source_value_to_concept_id_mapping.acquire()
-        self._store_usagi_source_value_to_concept_id_mapping(
-            omop_table, concept_id_column
-        )
-        self._lock_source_value_to_concept_id_mapping.release()
+        try:
+            self._store_usagi_source_value_to_concept_id_mapping(
+                omop_table, concept_id_column
+            )
+        except Exception as ex:
+            raise ex
+        finally:
+            self._lock_source_value_to_concept_id_mapping.release()
 
     def _process_work_to_omop(self, omop_table_name: str, omop_table_props: Any):
         """Maps the event columns to the correct foreign keys and fills up the final OMOP tables

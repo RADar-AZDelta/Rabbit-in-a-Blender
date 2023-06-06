@@ -112,10 +112,14 @@ class BigQueryEtlBase(EtlBase, ABC):
         Returns:
             List[Dict]: the parsed DDL
         """
-        self._lock_ddl.acquire()
         if not self.__parsed_ddl:
-            self.__parsed_ddl = DDLParser(self._ddl).run(output_mode="sql")
-        self._lock_ddl.release()
+            self._lock_ddl.acquire()
+            try:
+                self.__parsed_ddl = DDLParser(self._ddl).run(output_mode="sql")
+            except Exception as ex:
+                raise ex
+            finally:
+                self._lock_ddl.release()
         return self.__parsed_ddl
 
     @property

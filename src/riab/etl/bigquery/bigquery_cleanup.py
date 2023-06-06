@@ -247,10 +247,12 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         )
 
         self._lock_source_to_concept_map_cleanup.acquire()
-
-        self._gcp.run_query_job(sql)
-
-        self._lock_source_to_concept_map_cleanup.release()
+        try:
+            self._gcp.run_query_job(sql)
+        except Exception as ex:
+            raise ex
+        finally:
+            self._lock_source_to_concept_map_cleanup.release()
 
     def _delete_work_table(self, work_table: str) -> None:
         """Remove  work table
