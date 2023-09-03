@@ -203,7 +203,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 ) = result.result()
                 benchmark.append((analysis_id, execution_time))
 
-        df_benchmark = pl.DataFrame(benchmark, columns=["ANALYSIS_ID", "RUN_TIME"])
+        df_benchmark = pl.DataFrame(benchmark, schema=["ANALYSIS_ID", "RUN_TIME"])
         failed_analysis_ids = list(
             df_benchmark.filter(pl.col("RUN_TIME") == -1)["ANALYSIS_ID"]
         )
@@ -549,7 +549,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 analysis_id, x[0].lower(), run_time
             )
         )
-        benchmark_selects = ", ".join(iter(df_benchmark_selects["apply"]))
+        benchmark_selects = ", ".join(iter(df_benchmark_selects["map"]))
 
         parameters = {"benchmarkSelect": benchmark_selects}
         benchmark_sql = self._render_sql("select @benchmarkSelect", parameters)
@@ -568,7 +568,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         df_casted_names = results_table["schema"][["FIELD_NAME", "FIELD_TYPE"]].apply(
             self._render_casted_names
         )
-        casted_names = ", ".join(iter(df_casted_names["apply"]))
+        casted_names = ", ".join(iter(df_casted_names["map"]))
 
         detail_sqls = []
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
