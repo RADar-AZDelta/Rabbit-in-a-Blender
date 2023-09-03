@@ -123,7 +123,7 @@ CLI Usage
     |---|---
     | --google-credentials-file [GOOGLE_CREDENTIALS_FILE] | Loads Google credentials from a file.
     | --google-project-id [GOOGLE_PROJECT_ID] | The Google GCP project id
-    | --google-location [GOOGLE_LOCATION] | The google locations to store the data (see https://cloud.google.com/about/locations)
+    | --google-location [GOOGLE_LOCATION] | The google locations to store the data (see https://cloud.google.com/about/locations) (default EU)
     | --bigquery-dataset-id-raw [BIGQUERY_DATASET_ID_RAW] | BigQuery dataset that holds the raw EMR data
     | --bigquery-dataset-id-work [BIGQUERY_DATASET_ID_WORK] | BigQuery dataset that will hold ETL housekeeping tables (ex: swap tablet, etc...)
     | --bigquery-dataset-id-omop [BIGQUERY_DATASET_ID_OMOP] | BigQuery dataset that will hold the final OMOP tables
@@ -177,7 +177,7 @@ riab --run-etl ./OMOP-CDM \
 
 ```
 
-Run ETL withour re-upload of Usagi CSV's and custom concept CSV's:
+Run ETL without re-upload of Usagi CSV's and custom concept CSV's:
 ```bash
 riab --run-etl ./OMOP-CDM \
   --skip-usagi-and-custom-concept-upload \
