@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
-import math
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, List
@@ -301,7 +300,7 @@ class DataQualityDashboard(EtlBase, ABC):
                             [
                                 dash_table.DataTable(
                                     id="datatable-results",
-                                    editable=True,
+                                    editable=False,
                                     filter_action="native",
                                     sort_action="native",
                                     sort_mode="multi",
@@ -314,7 +313,7 @@ class DataQualityDashboard(EtlBase, ABC):
                                     },
                                     columns=[
                                         {"name": "Status", "id": "status"},
-                                        {"name": "Table", "id": "cmd_table_name"},
+                                        {"name": "Table", "id": "cdm_table_name"},
                                         {"name": "Category", "id": "category"},
                                         {"name": "SubCategory", "id": "subcategory"},
                                         {"name": "Level", "id": "check_level"},
@@ -326,11 +325,26 @@ class DataQualityDashboard(EtlBase, ABC):
                                             "name": "% records",
                                             "id": "pct_violated_rows",
                                         },
+                                        {"name": "SQL file", "id": "sql_file"},
                                     ],
+                                    #hidden_columns=["sql_file"]
                                 ),
                             ],
                             align="end",
                         ),
+                        # html.Br(),
+                        # dbc.Row(
+                        #     [
+                        #         dbc.Label(
+                        #             "Query:",
+                        #             width="auto",
+                        #         ),
+                        #         dcc.Textarea(
+                        #             id="textarea-query"
+                        #         ),
+                        #     ],
+                        #     align="end",
+                        # ),
                     ],
                     color="primary",
                 ),
@@ -403,6 +417,33 @@ class DataQualityDashboard(EtlBase, ABC):
             Output("datatable-results", "data"),
             Input("runs-dropdown", "value"),
         )(self.run_selected)
+        # self.app.callback(
+        #     Output('textarea-query', 'children'),
+        #     Input('datatable-results', 'active_cell'),
+        #     Input('datatable-results', 'derived_virtual_indices'),
+        #     Input('datatable-results', 'data')
+        # )(self.show_query)
+
+    def show_query(self, active_cell, derived_virtual_indices, data):
+        if not active_cell:
+            return None
+
+        full_row_index = derived_virtual_indices[active_cell['row']]
+
+        row = data[full_row_index]
+
+        with open(
+            Path(__file__).parent.parent.resolve()
+            / "libs"
+            / "DataQualityDashboard"
+            / "inst"
+            / "sql"
+            / "sql_server"
+            / row["sql_file"],
+            "r",
+            encoding="utf-8",
+        ) as file:
+            return file.read()
 
     @abstractmethod
     def _get_last_runs(self) -> List[Any]:
@@ -427,6 +468,18 @@ class DataQualityDashboard(EtlBase, ABC):
                 .alias("status")
             )
             .with_columns(pl.col("pct_violated_rows") * 100)
+            .with_columns(
+                pl.when(pl.col("cdm_table_name") is None)
+                .then("")
+                .otherwise(pl.col("cdm_table_name")) # keep original value
+                .alias("cdm_table_name")
+            )
+            # .with_columns(
+            #     pl.when(pl.col("subcategory") is None)
+            #     .then("")
+            #     .otherwise(pl.col("subcategory")) # keep original value
+            #     .alias("subcategory")
+            # )
             .sort(
                 ["status", "pct_violated_rows"],
                 descending=[False, True],
