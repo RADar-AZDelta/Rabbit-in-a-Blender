@@ -332,19 +332,20 @@ class DataQualityDashboard(EtlBase, ABC):
                             ],
                             align="end",
                         ),
-                        # html.Br(),
-                        # dbc.Row(
-                        #     [
-                        #         dbc.Label(
-                        #             "Query:",
-                        #             width="auto",
-                        #         ),
-                        #         dcc.Textarea(
-                        #             id="textarea-query"
-                        #         ),
-                        #     ],
-                        #     align="end",
-                        # ),
+                        html.Br(),
+                        dbc.Row(
+                            [
+                                dbc.Label(
+                                    "Query:",
+                                    width="auto",
+                                ),
+                                dcc.Textarea(
+                                    id="textarea-query",
+                                    style={'width': '100%', 'height': 300},
+                                ),
+                            ],
+                            align="end",
+                        ),
                     ],
                     color="primary",
                 ),
@@ -417,12 +418,12 @@ class DataQualityDashboard(EtlBase, ABC):
             Output("datatable-results", "data"),
             Input("runs-dropdown", "value"),
         )(self.run_selected)
-        # self.app.callback(
-        #     Output('textarea-query', 'children'),
-        #     Input('datatable-results', 'active_cell'),
-        #     Input('datatable-results', 'derived_virtual_indices'),
-        #     Input('datatable-results', 'data')
-        # )(self.show_query)
+        self.app.callback(
+            Output('textarea-query', 'value'),
+            Input('datatable-results', 'active_cell'),
+            Input('datatable-results', 'derived_virtual_indices'),
+            Input('datatable-results', 'data')
+        )(self.show_query)
 
     def show_query(self, active_cell, derived_virtual_indices, data):
         if not active_cell:
