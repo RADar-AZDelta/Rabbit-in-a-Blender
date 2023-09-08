@@ -433,18 +433,7 @@ class DataQualityDashboard(EtlBase, ABC):
 
         row = data[full_row_index]
 
-        with open(
-            Path(__file__).parent.parent.resolve()
-            / "libs"
-            / "DataQualityDashboard"
-            / "inst"
-            / "sql"
-            / "sql_server"
-            / row["sql_file"],
-            "r",
-            encoding="utf-8",
-        ) as file:
-            return file.read()
+        return row["query_text"]
 
     @abstractmethod
     def _get_last_runs(self) -> List[Any]:
