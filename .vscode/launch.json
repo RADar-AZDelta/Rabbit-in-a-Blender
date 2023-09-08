@@ -12,6 +12,8 @@
       "args": [
         //"--help",
         "--verbose",
+
+        "--google-location", "europe-west1",
         
         //"--create-db", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder",
         
@@ -19,7 +21,7 @@
         
         //"--create-folders", "~/OMOP_CDM_test", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop",
         
-        "--run-etl", "~/git/OMOP-PCa-trajecten/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pca_trajecten", "--bigquery-dataset-id-work", "omop_pca_trajecten_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_pca_trajecten", "--bigquery-dataset-id-raw", "hix"
+        //"--run-etl", "~/git/OMOP-PCa-trajecten/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pca_trajecten", "--bigquery-dataset-id-work", "omop_pca_trajecten_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_pca_trajecten", "--bigquery-dataset-id-raw", "hix"
           //,"--skip-usagi-and-custom-concept-upload"
           //,"--table", "episode"
 
@@ -29,10 +31,10 @@
         //"--data-quality", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
         //  ,"--json", "dqd_result.json"
 
-        //"--data-quality-dashboard", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder"
-          //,"--port", "8888"
+        "--data-quality-dashboard", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "phidess_omop_dataset"
+          ,"--port", "9999"
 
-        //"--achilles", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_ehden", "--bigquery-dataset-id-work", "omop_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
+        //"--achilles", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "phidess_omop_dataset", "--bigquery-dataset-id-work", "phidess_work_dataset", "--google-cloud-storage-bucket-uri", "gs://landing_zone_phidess-student_1/achilles"
       ],
       "console": "integratedTerminal",
       "justMyCode": false,
