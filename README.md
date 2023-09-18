@@ -235,7 +235,7 @@ riab --data-quality-dashboard \
 BigQuery
 ========
 
-There are 2 ways to [authenticate]((https://cloud.google.com/docs/authentication/getting-started) with GCP:
+There are 2 ways to [authenticate](https://cloud.google.com/docs/authentication/getting-started) with GCP:
 * Use a [Service Account key file](https://cloud.google.com/docs/authentication/production) with **--google-credentials-file** cli option
 * When developing or testing you can use [Application Default Credentials (ADC)](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login)
 
