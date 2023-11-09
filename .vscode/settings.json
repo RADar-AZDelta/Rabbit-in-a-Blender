@@ -1,27 +1,18 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-    "python.linting.enabled": true,
-    "python.linting.banditEnabled": true,
-    "python.linting.pylintEnabled": true,
-    "python.linting.flake8Enabled": true,
-    "python.linting.lintOnSave": true,
-    "python.linting.flake8Args": [
-      "--max-line-length=120"
-    ],
-    "python.linting.pylintArgs": [
-      "--max-line-length=120"
-    ],
-    "python.analysis.typeCheckingMode": "basic",
-    "python.analysis.diagnosticMode": "workspace",
-    "python.formatting.provider": "black",
-    "[python]": {
-      "editor.formatOnSave": true,
-      "editor.codeActionsOnSave": {"source.organizeImports": true}
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticMode": "workspace",
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": false,
+      "source.organizeImports": true
     },
-    "jupyter.notebookFileRoot": "${workspaceFolder}",
-    "files.associations": {
-      "*.sql.jinja": "jinja-sql"
-    },
-    "sqlfluff.executablePath": "${workspaceFolder}/.venv/bin/sqlfluff" 
-  }
+    "editor.defaultFormatter": "charliermarsh.ruff",
+  },
 
+  "files.associations": {
+    "*.sql.jinja": "jinja-sql"
+  },
+  "sqlfluff.executablePath": "${workspaceFolder}/.venv/bin/sqlfluff"
+}
