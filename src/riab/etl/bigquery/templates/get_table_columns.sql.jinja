@@ -1,0 +1,4 @@
+SELECT *
+FROM {{dataset}}.INFORMATION_SCHEMA.COLUMNS
+WHERE table_name = '{{table_name}}'
+ORDER BY ordinal_position

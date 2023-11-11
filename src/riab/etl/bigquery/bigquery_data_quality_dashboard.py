@@ -18,32 +18,17 @@ class BigQueryDataQualityDashboard(DataQualityDashboard, BigQueryEtlBase):
         super().__init__(**kwargs)
 
     def _get_last_runs(self) -> List[Any]:
-        template = self._template_env.from_string(
-            """
-select FORMAT_TIMESTAMP("%Y-%m-%d %T", startTimestamp) as label, id as value
-from {{project_id}}.{{dataset_id_omop}}.dqdashboard_runs
-order by startTimestamp desc
-limit 15;
-"""
-        )
+        template = self._template_env.get_template("dqd/get_last_dqd_runs.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_dqd=self._dataset_dqd,
         )
         rows = self._gcp.run_query_job(sql)
         return [dict(row.items()) for row in rows]
 
     def _get_run(self, id: str) -> Any:
-        template = self._template_env.from_string(
-            """
-select *
-from {{project_id}}.{{dataset_id_omop}}.dqdashboard_runs
-where id = @id
-"""
-        )
+        template = self._template_env.get_template("dqd/get_dqd_run.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_dqd=self._dataset_dqd,
         )
         rows = self._gcp.run_query_job(
             sql,
@@ -52,16 +37,9 @@ where id = @id
         return dict(next(rows))
 
     def _get_results(self, run_id: str) -> pl.DataFrame:
-        template = self._template_env.from_string(
-            """
-select *
-from {{project_id}}.{{dataset_id_omop}}.dqdashboard_results
-where run_id = @id
-"""
-        )
+        template = self._template_env.get_template("dqd/get_dqd_run_results.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_dqd=self._dataset_dqd,
         )
         rows = self._gcp.run_query_job(
             sql,

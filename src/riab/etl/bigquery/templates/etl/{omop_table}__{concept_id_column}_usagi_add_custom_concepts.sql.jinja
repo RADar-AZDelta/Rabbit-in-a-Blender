@@ -1,0 +1,13 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+INSERT INTO {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted
+SELECT t.concept_code AS sourceCode
+    ,t.concept_name as sourceName
+    ,'APPROVED' as mappingStatus
+    ,c.concept_id as conceptId
+    ,c.concept_name as conceptName
+    ,c.domain_id as domainId
+FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept t
+INNER JOIN {{dataset_work}}.concept_id_swap swap
+    on swap.x = concat('{{concept_id_column}}__', t.concept_code)
+INNER JOIN {{dataset_omop}}.concept c on c.concept_id = swap.y

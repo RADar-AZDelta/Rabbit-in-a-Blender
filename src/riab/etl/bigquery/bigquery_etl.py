@@ -7,14 +7,13 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 import google.cloud.bigquery as bq
-from google.api_core.exceptions import BadRequest
 from google.cloud.exceptions import NotFound
 
 from ..etl import Etl
-from .bigquery_etl_base import BigQueryEtlBase
+from .bigquery_create_omop_db import BigQueryDdl
 
 
-class BigQueryEtl(Etl, BigQueryEtlBase):
+class BigQueryEtl(Etl, BigQueryDdl):
     """
     ETL class that automates the extract-transfer-load process from source data to the OMOP common data model.
     """
@@ -44,12 +43,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         Args:
             etl_start (date): The start data of the ETL.
         """
-        template = self._template_env.get_template(
-            "SOURCE_TO_CONCEPT_MAP_update_invalid_reason.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/SOURCE_TO_CONCEPT_MAP_update_invalid_reason.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
         )
         self._gcp.run_query_job(
             sql,
@@ -63,21 +59,16 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         Args:
             etl_start (date): The start data of the ETL.
         """
-        template = self._template_env.get_template(
-            "SOURCE_ID_TO_OMOP_ID_MAP_update_invalid_reason.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/SOURCE_ID_TO_OMOP_ID_MAP_update_invalid_reason.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
         )
         self._gcp.run_query_job(
             sql,
             query_parameters=[bq.ScalarQueryParameter("etl_start", "DATE", etl_start)],
         )
 
-    def _is_pk_auto_numbering(
-        self, omop_table_name: str, omop_table_props: Any
-    ) -> bool:
+    def _is_pk_auto_numbering(self, omop_table_name: str, omop_table_props: Any) -> bool:
         """Checks if the primary key of the OMOP table needs autonumbering.
         For example the [Person](https://ohdsi.github.io/CommonDataModel/cdm54.html#PERSON) table has an auto numbering primary key, the [Vocabulary](https://ohdsi.github.io/CommonDataModel/cdm54.html#VOCABULARY) table not.
 
@@ -91,23 +82,15 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         if not hasattr(omop_table_props, "pk"):
             return False
         # get the primary key meta data from the the destination OMOP table
-        columns = self._gcp.get_columns(
-            self._project_id,
-            self._dataset_id_omop,
-            omop_table_name,
-        )
-        pk_column_metadata = [
-            column for column in columns if column["column_name"] == omop_table_props.pk
-        ][0]
+        template = self._template_env.get_template("etl/get_table_columns.sql.jinja")
+        sql = template.render(dataset=self._dataset_omop, table_name=omop_table_name)
+        columns = self._gcp.run_query_job(sql)
+        pk_column_metadata = [column for column in columns if column["column_name"] == omop_table_props.pk][0]
         # is the primary key an auto numbering column?
-        pk_auto_numbering = (
-            pk_column_metadata and pk_column_metadata.get("data_type") == "INT64"
-        )
+        pk_auto_numbering = pk_column_metadata and pk_column_metadata.get("data_type") == "INT64"
         return pk_auto_numbering
 
-    def _clear_custom_concept_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _clear_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the custom concept upload table (holds the contents of the custom concept CSV's)
 
         Args:
@@ -115,26 +98,20 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_column (str): The conept id column
         """
         self._gcp.delete_table(
-            self._project_id,
-            self._dataset_id_work,
+            self._dataset_work,
             f"{omop_table}__{concept_id_column}_concept",
         )
 
-    def _create_custom_concept_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _create_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the custom concept upload table (holds the contents of the custom concept CSV's)
 
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        template = self._template_env.get_template(
-            "{omop_table}__{concept_id_column}_concept_create.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{omop_table}__{concept_id_column}_concept_create.sql.jinja")
         ddl = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
@@ -142,10 +119,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
 
     def _create_custom_concept_id_swap_table(self) -> None:
         """Creates the custom concept id swap tabel (swaps between source value and the concept id)"""
-        template = self._template_env.get_template("CONCEPT_ID_swap_create.sql.jinja")
+        template = self._template_env.get_template("etl/CONCEPT_ID_swap_create.sql.jinja")
         ddl = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
         )
         self._gcp.run_query_job(ddl)
 
@@ -165,52 +141,43 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         # load the uploaded Parquet file from the bucket into the specific custom concept table in the work dataset
         self._gcp.batch_load_from_bucket_into_bigquery_table(
             uri,
-            self._project_id,
-            self._dataset_id_work,
+            self._dataset_work,
             f"{omop_table}__{concept_id_column}_concept",
         )
 
-    def _give_custom_concepts_an_unique_id_above_2bilj(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _give_custom_concepts_an_unique_id_above_2bilj(self, omop_table: str, concept_id_column: str) -> None:
         """Give the custom concepts an unique id (above 2.000.000.000) and store those id's in the concept id swap table.
 
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template("CONCEPT_ID_swap_merge.sql.jinja")
+        template = self._template_env.get_template("etl/CONCEPT_ID_swap_merge.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
             min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
         )
         self._gcp.run_query_job(sql)
 
-    def _merge_custom_concepts_with_the_omop_concepts(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _merge_custom_concepts_with_the_omop_concepts(self, omop_table: str, concept_id_column: str) -> None:
         """Merges the uploaded custom concepts in the OMOP concept table.
 
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        template = self._template_env.get_template("CONCEPT_merge.sql.jinja")
+        template = self._template_env.get_template("etl/CONCEPT_merge.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            dataset_id_work=self._dataset_id_work,
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
         self._gcp.run_query_job(sql)
 
-    def _clear_usagi_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _clear_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the usagi upload table (holds the contents of the Usagi CSV's)
 
         Args:
@@ -218,34 +185,26 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_column (str): The conept id column
         """
         self._gcp.delete_table(
-            self._project_id,
-            self._dataset_id_work,
+            self._dataset_work,
             f"{omop_table}__{concept_id_column}_usagi",
         )
 
-    def _create_usagi_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _create_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the Usagi upload table (holds the contents of the Usagi CSV's)
 
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        template = self._template_env.get_template(
-            "{omop_table}__{concept_id_column}_usagi_create.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{omop_table}__{concept_id_column}_usagi_create.sql.jinja")
         ddl = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
         self._gcp.run_query_job(ddl)
 
-    def _load_usagi_parquet_in_upload_table(
-        self, parquet_file: str, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _load_usagi_parquet_in_upload_table(self, parquet_file: str, omop_table: str, concept_id_column: str) -> None:
         """The Usagi CSV's are converted to a parquet file.
         This method loads the parquet file in a upload table.
 
@@ -259,14 +218,11 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         # load the uploaded Parquet file from the bucket into the specific usagi table in the work dataset
         self._gcp.batch_load_from_bucket_into_bigquery_table(
             uri,
-            self._project_id,
-            self._dataset_id_work,
+            self._dataset_work,
             f"{omop_table}__{concept_id_column}_usagi",
         )
 
-    def _add_custom_concepts_to_usagi(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _add_custom_concepts_to_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """The custom concepts are added to the upload Usagi table with status 'APPROVED'.
 
         Args:
@@ -277,17 +233,14 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             "{omop_table}__{concept_id_column}_usagi_add_custom_concepts.sql.jinja"
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
         )
         self._gcp.run_query_job(sql)
 
-    def _update_custom_concepts_in_usagi(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _update_custom_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
         The concept_id column in the Usagi upload table is swapped by the generated custom concept_id (above 2.000.000.000).
 
@@ -299,8 +252,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             "{omop_table}__{concept_id_column}_usagi_update_custom_concepts.sql.jinja"
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
@@ -316,34 +268,28 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_column (str): The conept id column
         """
         template = self._template_env.get_template(
-            "{omop_table}__{concept_id_column}_usagi_cast_concepts.sql.jinja"
+            "etl/{omop_table}__{concept_id_column}_usagi_cast_concepts.sql.jinja"
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
         self._gcp.run_query_job(sql)
 
-    def _store_usagi_source_value_to_concept_id_mapping(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _store_usagi_source_value_to_concept_id_mapping(self, omop_table: str, concept_id_column: str) -> None:
         """Fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the uploaded Usagi CSV's
 
         Args:
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        template = self._template_env.get_template(
-            "SOURCE_TO_CONCEPT_MAP_check_for_duplicates.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/SOURCE_TO_CONCEPT_MAP_check_for_duplicates.sql.jinja")
         sql_doubles = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
         )
         rows = self._gcp.run_query_job(sql_doubles)
         ar_table = rows.to_arrow()
@@ -352,36 +298,28 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck usagi CSV's for column '{concept_id_column}' of table '{omop_table}'\n{ar_table.to_pylist()}"
             )
 
-        template = self._template_env.get_template(
-            "SOURCE_TO_CONCEPT_MAP_merge.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/SOURCE_TO_CONCEPT_MAP_merge.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
         )
         self._gcp.run_query_job(sql)
 
-    def _store_usagi_source_id_to_omop_id_mapping(
-        self, omop_table: str, pk_swap_table_name: str
-    ) -> None:
+    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, pk_swap_table_name: str) -> None:
         """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
 
         Args:
             omop_table (str): The omop table
             pk_swap_table_name (str): The id swap work table
         """
-        template = self._template_env.get_template(
-            "SOURCE_ID_TO_OMOP_ID_MAP_merge.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/SOURCE_ID_TO_OMOP_ID_MAP_merge.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             pk_swap_table_name=pk_swap_table_name,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
         )
         self._gcp.run_query_job(sql)
 
@@ -400,10 +338,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             if Path(sql_file).suffix == ".jinja":
                 template = self._template_env.from_string(select_query)
                 select_query = template.render(
-                    project_id=self._project_id,
-                    dataset_id_raw=self._dataset_id_raw,
-                    dataset_id_work=self._dataset_id_work,
-                    dataset_id_omop=self._dataset_id_omop,
+                    project_raw=self._project_raw,
+                    dataset_work=self._dataset_work,
+                    dataset_omop=self._dataset_omop,
                     omop_table=omop_table,
                 )
         return select_query
@@ -415,12 +352,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             upload_table (str): The work omop table
             select_query (str): The query
         """
-        template = self._template_env.get_template(
-            "{omop_table}_{sql_file}_insert.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{omop_table}_{sql_file}_insert.sql.jinja")
         ddl = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             upload_table=upload_table,
             select_query=select_query,
         )
@@ -436,12 +370,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_columns (List[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
         """
-        template = self._template_env.get_template(
-            "{primary_key_column}_swap_create.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{primary_key_column}_swap_create.sql.jinja")
         ddl = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             pk_swap_table_name=pk_swap_table_name,
             # foreign_key_columns=vars(foreign_key_columns),
             concept_id_columns=concept_id_columns,
@@ -469,12 +400,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             events (Any): Object that holds the events of the the OMOP table.
             sql_files (List[str]): List of upload SQL files
         """
-        template = self._template_env.get_template(
-            "{primary_key_column}_swap_merge.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{primary_key_column}_swap_merge.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             concept_id_columns=concept_id_columns,
@@ -496,12 +424,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             omop_table_name (str): Name of the OMOP table
             sql_files (List[str]): sql_files (List[Path]): The sql files holding the query on the raw data.
         """
-        template = self._template_env.get_template(
-            "{omop_work_table}_combine_upload_tables.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{omop_work_table}_combine_upload_tables.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             sql_files=sql_files,
             columns=columns,
@@ -535,13 +460,10 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template(
-            "{omop_work_table}_merge_check_for_duplicate_rows.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{omop_work_table}_merge_check_for_duplicate_rows.sql.jinja")
         sql_doubles = template.render(
-            project_id=self._project_id,
             omop_table=omop_table,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             primary_key_column=primary_key_column,
             concept_id_columns=concept_id_columns,
             events=events,
@@ -553,12 +475,11 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\n"
             )
 
-        template = self._template_env.get_template("{omop_work_table}_merge.sql.jinja")
+        template = self._template_env.get_template("etl/{omop_work_table}_merge.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
             omop_table=omop_table,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             sql_files=sql_files,
             columns=columns,
             required_columns=required_columns,
@@ -592,34 +513,24 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         event_tables = {}
         try:
             if dict(events):  # we have event colomns
-                template = self._template_env.get_template(
-                    "{omop_table}_get_event_tables.sql.jinja"
-                )
+                template = self._template_env.get_template("etl/{omop_table}_get_event_tables.sql.jinja")
                 sql = template.render(
-                    project_id=self._project_id,
                     omop_table=omop_table,
-                    dataset_id_work=self._dataset_id_work,
+                    dataset_work=self._dataset_work,
                     events=events,
                 )
                 rows = self._gcp.run_query_job(sql)
                 event_tables = dict(
-                    (table, vars(self._omop_tables)[table].pk)
-                    for table in (row.event_table for row in rows)
-                    if table
+                    (table, vars(self._omop_tables)[table].pk) for table in (row.event_table for row in rows) if table
                 )
 
-            cluster_fields = (
-                self._clustering_fields[omop_table]
-                if omop_table in self._clustering_fields
-                else []
-            )
+            cluster_fields = self._clustering_fields[omop_table] if omop_table in self._clustering_fields else []
 
-            template = self._template_env.get_template("{omop_table}_merge.sql.jinja")
+            template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
             sql = template.render(
-                project_id=self._project_id,
-                dataset_id_omop=self._dataset_id_omop,
+                dataset_omop=self._dataset_omop,
                 omop_table=omop_table,
-                dataset_id_work=self._dataset_id_work,
+                dataset_work=self._dataset_work,
                 columns=columns,
                 primary_key_column=primary_key_column,
                 events=events,
@@ -642,22 +553,15 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             events (Any): Object that holds the events of the the OMOP table.
         """
         try:
-            table_ddl = next(
-                (tab for tab in self._parsed_ddl if tab["table_name"] == omop_table)
-            )
+            table_ddl = next((tab for tab in self._parsed_ddl if tab["table_name"] == omop_table))
         except StopIteration as si_err:
             raise Exception(f"{omop_table} not found in ddl") from si_err
 
-        cluster_fields = (
-            self._clustering_fields[omop_table]
-            if omop_table in self._clustering_fields
-            else []
-        )
+        cluster_fields = self._clustering_fields[omop_table] if omop_table in self._clustering_fields else []
 
-        template = self._template_env.get_template("create_omop_work_table.sql.jinja")
+        template = self._template_env.get_template("etl/create_omop_work_table.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_work=self._dataset_id_work,
+            dataset_work=self._dataset_work,
             omop_table=omop_table,
             columns=table_ddl["columns"],
             events=events,

@@ -1,0 +1,129 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+MERGE INTO {{dataset_work}}.{{omop_table}} AS T
+USING (
+    SELECT * EXCEPT(rn)
+    FROM (
+        SELECT *
+            , ROW_NUMBER() OVER(PARTITION BY 
+            {% if omop_table == 'fact_relationship' -%}
+                fact_id_1, fact_id_2
+            {%- elif omop_table == 'death' -%}
+                person_id
+            {%- elif primary_key_column -%}
+                {{primary_key_column}}
+            {%- endif %}
+            {%- for column in concept_id_columns %}
+                {% if not column in events.values() -%}
+                , {{column}}
+                {%- else -%}
+                , {{column}}
+                {%- endif -%} 
+            {%- endfor %}
+            {%- for column in events %}
+                , {{column}}
+            {%- endfor %}
+            ) AS rn
+        FROM (
+            SELECT DISTINCT
+                {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
+                {%- for column in columns -%}
+                    {%- if not loop.first -%}
+                        {{','}}
+                    {%- endif %}
+                {% if column == primary_key_column -%}
+                    {%- if pk_auto_numbering -%}
+                        swap_pk.y as {{column}}
+                    {%- else -%}
+                        t.{{column}} as {{column}}
+                    {%- endif -%}
+                {%- elif column in foreign_key_columns -%}
+                    {%- if column in required_columns -%}
+                    IFNULL(swap_fk{{ns.fk_counter}}.y, 0) as {{column}}
+                    {%- else -%}
+                    swap_fk{{ns.fk_counter}}.y as {{column}}
+                    {%- endif -%}
+                    {%- set ns.fk_counter = ns.fk_counter + 1 -%}
+                {%- elif column in concept_id_columns -%}
+                    {%- if not column in events.values() -%}
+                    IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0) as {{column}}
+                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+                    {%- else -%}
+                    t.{{column}} as {{column}}
+                    {%- endif -%} 
+                {%- elif column.endswith("_source_value") and pk_auto_numbering -%}
+                    STRING_AGG(t.{{column}}) over (
+                        partition by 
+                            swap_pk.y
+                        {%- for column in concept_id_columns %}
+                            {%- if not column in events.values() %}
+                            , swap_pk.{{column}}
+                            {%- endif -%}
+                        {%- endfor %}
+                    ) as {{column}} 
+                {%- else -%}
+                    t.{{column}}
+                {%- endif %}
+                {%- endfor %}
+            FROM {{dataset_work}}.{{omop_table}}_upload t
+            {%- set ns = namespace(ci_counter=0) -%}
+            {%- for column in concept_id_columns %}
+                {%- if not column in events.values() %}
+            LEFT OUTER JOIN {{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
+                {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+                {%- endif -%}
+            {%- endfor %}
+            {%- if pk_auto_numbering %}
+            INNER JOIN {{dataset_work}}.{{pk_swap_table_name}}_swap swap_pk on swap_pk.x = t.{{primary_key_column}}
+                {%- set ns = namespace(ci_counter=0) -%}
+                {%- for column in concept_id_columns %}
+                    {%- if not column in events.values() %}
+                and IFNULL(swap_pk.{{column}}, 0) = IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0)
+                    {%- else -%}
+                and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
+                    {%- endif -%}
+                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+                {%- endfor %} 
+                {%- for column in events %}
+                and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
+                {%- endfor %}
+            {%- endif -%}
+            {%- set ns = namespace(fk_counter=0) -%}
+            {%- for column in foreign_key_columns %}
+            LEFT OUTER JOIN {{dataset_work}}.{{foreign_key_columns[column]}}_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+                {%- set ns.fk_counter = ns.fk_counter + 1 -%}
+            {%- endfor %} 
+        )
+    ) WHERE rn = 1
+) AS S 
+{% if omop_table == 'fact_relationship' -%}
+    ON S.fact_id_1 = T.fact_id_1 and S.fact_id_2 = T.fact_id_2
+{%- elif omop_table == 'death' -%}
+    ON S.person_id = T.person_id
+{%- elif primary_key_column -%}
+    ON S.{{primary_key_column}} = T.{{primary_key_column}}
+{%- else -%}
+    ON TRUE = TRUE
+{%- endif %}
+{%- for column in concept_id_columns %}
+    {% if not column in events.values() -%}
+    and S.{{column}} = T.{{column}}
+    {%- else -%}
+    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    {%- endif -%} 
+{%- endfor %}
+{%- for column in events %}
+    {% if omop_table != 'fact_relationship' -%}
+    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    {%- endif %}
+{%- endfor %}
+WHEN MATCHED THEN
+    UPDATE SET 
+        {%- for column in columns if (column != primary_key_column and omop_table != "death") or (omop_table == "death" and column != "person_id") -%}
+            {% if not loop.first -%}
+                {{','}}
+            {%- endif %}
+        {{column}} = S.{{column}}
+        {%- endfor %}
+WHEN NOT MATCHED THEN
+    INSERT ROW

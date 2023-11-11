@@ -1,0 +1,140 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+CREATE OR REPLACE TABLE {{dataset_omop}}.{{omop_table}}
+LIKE {{dataset_omop}}.{{omop_table}}
+as (
+    SELECT DISTINCT 
+        {%- set ns = namespace(fk_counter=0) -%}
+        {%- for column in columns -%}
+            {%- if not loop.first -%}
+                {{','}}
+            {%- endif %}
+            {%- if column in events -%} {# event foreign key #}
+                {%- if event_tables.keys()|length > 0  %}
+        CASE t.{{events[column]}}            
+                {%- for (table, key) in event_tables.items() %}
+            WHEN "{{table}}" THEN swap_fk{{ns.fk_counter}}.y
+                    {%- set ns.fk_counter = ns.fk_counter + 1 %}
+                {%- endfor %}
+            ELSE 0
+        END as {{column}}
+                {%- else %}
+        null as {{column}}
+                {%- endif %}
+            {%- elif column in events.values() -%} {# event concept_id #}
+                {%- if event_tables.keys()|length > 0  %} 
+        CASE t.{{column}}
+                {%- if "care_site" in event_tables %}
+            WHEN "care_site" THEN 1147195
+                {%- endif -%}
+                {%- if "cohort_definition" in event_tables %}
+            WHEN "cohort_definition" THEN 1147004
+                {%- endif -%}
+                {%- if "concept" in event_tables %}
+            WHEN "concept" THEN 1146945
+                {%- endif -%}
+                {%- if "concept_class" in event_tables %}
+            WHEN "concept_class" THEN 1146963
+                {%- endif -%}
+                {%- if "condition_era" in event_tables %}
+            WHEN "condition_era" THEN 1147295
+                {%- endif -%}
+                {%- if "condition_occurrence" in event_tables %}
+            WHEN "condition_occurrence" THEN 1147127
+                {%- endif -%}
+                {%- if "cost" in event_tables %}
+            WHEN "cost" THEN 
+                {%- endif -%}
+                {%- if "death" in event_tables %}
+            WHEN "death" THEN 1147064
+                {%- endif -%}
+                {%- if "device_exposure" in event_tables %}
+            WHEN "device_exposure" THEN 1147115
+                {%- endif -%}
+                {%- if "domain" in event_tables %}
+            WHEN "domain" THEN 1146960
+                {%- endif -%}
+                {%- if "dose_era" in event_tables %}
+            WHEN "dose_era" THEN 1147288
+                {%- endif -%}
+                {%- if "drug_era" in event_tables %}
+            WHEN "drug_era" THEN 1147281
+                {%- endif -%}
+                {%- if "drug_exposure" in event_tables %}
+            WHEN "drug_exposure" THEN 1147094
+                {%- endif -%}
+                {%- if "episode" in event_tables %}
+            WHEN "episode" THEN 756290
+                {%- endif -%}
+                {%- if "location" in event_tables %}
+            WHEN "location" THEN 1147187
+                {%- endif -%}
+                {%- if "measurement" in event_tables %}
+            WHEN "measurement" THEN 1147138
+                {%- endif -%}
+                {%- if "metadata" in event_tables %}
+            WHEN "metadata" THEN 756314
+                {%- endif -%}
+                {%- if "note" in event_tables %}
+            WHEN "note" THEN 1147156
+                {%- endif -%}
+                {%- if "note_nlp" in event_tables %}
+            WHEN "note_nlp" THEN 1147589
+                {%- endif -%}
+                {%- if "observation" in event_tables %}
+            WHEN "observation" THEN 1147165
+                {%- endif -%}
+                {%- if "observation_period" in event_tables %}
+            WHEN "observation_period" THEN 1147044
+                {%- endif -%}
+                {%- if "payer_plan_period" in event_tables %}
+            WHEN "payer_plan_period" THEN 1147214
+                {%- endif -%}
+                {%- if "person" in event_tables %}
+            WHEN "person" THEN 1147026
+                {%- endif -%}
+                {%- if "procedure_occurrence" in event_tables %}
+            WHEN "procedure_occurrence" THEN 1147082
+                {%- endif -%}
+                {%- if "provider" in event_tables %}
+            WHEN "provider" THEN 1147201
+                {%- endif -%}
+                {% if "relationship" in event_tables %}
+            WHEN "relationship" THEN 1146972
+                {%- endif -%}
+                {%- if "specimen" in event_tables %}
+            WHEN "specimen" THEN 1147049
+                {%- endif -%}
+                {%- if "visit_detail" in event_tables %}
+            WHEN "visit_detail" THEN 1147624
+                {%- endif -%}
+                {%- if "visit_occurrence" in event_tables %}
+            WHEN "visit_occurrence" THEN 1147070
+                {%- endif -%}
+                {%- if "vocabulary" in event_tables %}
+            WHEN "vocabulary" THEN 1146955
+                {%- endif %}
+            ELSE null
+        END as {{column}}
+                {%- else %}
+        null as {{column}}
+                {%- endif %}
+            {%- else %}
+        t.{{column}}
+            {%- endif %}
+        {%- endfor %}            
+    FROM {{dataset_work}}.{{omop_table}} t
+    {%- set ns = namespace(fk_counter=0) -%}
+    {%- for column in events %}
+        {%- for (table, key) in event_tables.items() %}
+    LEFT OUTER JOIN {{dataset_work}}.{{key}}_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+            {%- set ns.fk_counter = ns.fk_counter + 1 -%}
+        {%- endfor %}
+    {%- endfor %}
+    {%- if omop_table == "vocabulary" %}
+    UNION ALL
+    SELECT *
+    FROM {{dataset_omop}}.vocabulary
+    where vocabulary_concept_id < {{min_custom_concept_id}}
+    {%- endif %}
+)

@@ -3,14 +3,11 @@
 
 # pylint: disable=unsubscriptable-object
 """Holds the BigQuery ETL base class"""
-import json
 import logging
-import re
 from abc import ABC
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from threading import Lock
-from typing import Dict, List, Optional, cast
+from typing import List, Optional, cast
 
 import google.auth
 import google.cloud.bigquery as bq
@@ -18,7 +15,6 @@ import jinja2 as jj
 import pyarrow as pa
 import pyarrow.parquet as pq
 from jinja2.utils import select_autoescape
-from simple_ddl_parser import DDLParser
 
 from ..etl_base import EtlBase
 from .gcp import Gcp
@@ -28,121 +24,51 @@ class BigQueryEtlBase(EtlBase, ABC):
     def __init__(
         self,
         credentials_file: Optional[str],
-        project_id: Optional[str],
         location: Optional[str],
-        dataset_id_raw: str,
-        dataset_id_work: str,
-        dataset_id_omop: str,
-        bucket_uri: str,
+        project_raw: Optional[str],
+        dataset_work: str,
+        dataset_omop: str,
+        dataset_dqd: str,
+        dataset_achilles: str,
+        bucket: str,
         **kwargs,
     ):
+        """This class holds the BigQuery specific methods of the ETL process
+
+        Args:
+            credentials_file (Optional[str]): The credentials file must be a service account key, stored authorized user credentials, external account credentials, or impersonated service account credentials. (see https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file), Alternatively, you can also use 'Application Default Credentials' (ADC) (see https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login)
+            location (Optional[str]): Location where to run the BigQuery jobs. Must match the location of the datasets used in the query. (important for GDPR)
+            project_raw (Optional[str]): Can be handy if you use jinja templates for your ETL queries (ex if you are using development-staging-production environments). Must have the following format: PROJECT_ID
+            dataset_work (str): The dataset that will hold RiaB's housekeeping tables. Must have the following format: PROJECT_ID.DATASET_ID
+            dataset_omop (str): The dataset that will hold the OMOP table. Must have the following format: PROJECT_ID.DATASET_ID
+            bucket (str): The Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
+        """
         super().__init__(**kwargs)
 
         if credentials_file:
-            credentials, project = google.auth.load_credentials_from_file(
-                credentials_file
-            )
+            credentials, project = google.auth.load_credentials_from_file(credentials_file)
         else:
             credentials, project = google.auth.default()
 
-        if not project_id:
-            project_id = project
+        # if not project_id:
+        #     project_id = project
 
         self._gcp = Gcp(credentials=credentials, location=location or "EU")
-        self._project_id = cast(str, project_id)
-        self._dataset_id_raw = dataset_id_raw
-        self._dataset_id_work = dataset_id_work
-        self._dataset_id_omop = dataset_id_omop
-        self._bucket_uri = bucket_uri
+        self._project_raw = cast(str, project_raw)
+        self._dataset_work = dataset_work
+        self._dataset_omop = dataset_omop
+        self._dataset_dqd = dataset_dqd
+        self._dataset_achilles = dataset_achilles
+        self._bucket_uri = bucket
 
         template_dir = Path(__file__).resolve().parent / "templates"
         template_loader = jj.FileSystemLoader(searchpath=template_dir)
-        self._template_env = jj.Environment(
-            autoescape=select_autoescape(["sql"]), loader=template_loader
-        )
-
-        self.__clustering_fields = None
-        self.__parsed_ddl = None
-
-        self._lock_ddl = Lock()
+        self._template_env = jj.Environment(autoescape=select_autoescape(["sql"]), loader=template_loader)
 
     def __del__(self):
         logging.info("Total BigQuery cost: %s€", self._gcp.total_cost)
 
-    @property
-    def _ddl(self):
-        with open(
-            str(
-                Path(__file__).parent.resolve()
-                / "templates"
-                / "OMOPCDM_bigquery_5.4_ddl.sql"
-            ),
-            "r",
-            encoding="UTF8",
-        ) as file:
-            ddl = file.read()
-
-        ddl = re.sub(
-            r"(?:create table @cdmDatabaseSchema)(\S*)",
-            rf"create table if not exists {self._project_id}.{self._dataset_id_omop}\1",
-            ddl,
-        )
-        ddl = re.sub(r".(?<!not )null", r"", ddl)
-        ddl = re.sub(r"\"", r"", ddl)
-        ddl = re.sub(r"domain_concept_id_", r"field_concept_id_", ddl)
-        ddl = re.sub(r"cost_domain_id STRING", r"cost_field_concept_id INT64", ddl)
-
-        template = self._template_env.get_template(
-            "SOURCE_ID_TO_OMOP_ID_MAP_create.sql.jinja"
-        )
-        ddl2 = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-        )
-
-        ddl += f"""
-        
-{ddl2}"""
-        return ddl
-
-    @property
-    def _parsed_ddl(self) -> List[Dict]:
-        """Holds the parsed DDL
-
-        Returns:
-            List[Dict]: the parsed DDL
-        """
-        if not self.__parsed_ddl:
-            self._lock_ddl.acquire()
-            try:
-                self.__parsed_ddl = DDLParser(self._ddl).run(output_mode="sql")
-            except Exception as ex:
-                raise ex
-            finally:
-                self._lock_ddl.release()
-        return self.__parsed_ddl
-
-    @property
-    def _clustering_fields(self) -> Dict[str, List[str]]:
-        """The BigQuery clustering fields for every OMOP table
-
-        Returns:
-            Dict[str, List[str]]: A dictionary that holds for every OMOP table the clustering fields.
-        """
-        if not self.__clustering_fields:
-            with open(
-                str(
-                    Path(__file__).parent.resolve()
-                    / "templates"
-                    / "OMOPCDM_bigquery_5.4_clustering_fields.json"
-                ),
-                "r",
-                encoding="UTF8",
-            ) as file:
-                self.__clustering_fields = json.load(file)
-        return self.__clustering_fields
-
-    def _get_column_names(self, omop_table_name: str) -> List[str]:
+    def _get_omop_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of column names of a omop table.
 
         Args:
@@ -151,12 +77,12 @@ class BigQueryEtlBase(EtlBase, ABC):
         Returns:
             List[str]: list of column names
         """
-        columns = self._gcp.get_columns(
-            self._project_id, self._dataset_id_omop, omop_table_name
-        )
+        template = self._template_env.get_template("get_table_columns.sql.jinja")
+        sql = template.render(dataset=self._dataset_omop, table_name=omop_table_name)
+        columns = self._gcp.run_query_job(sql)
         return [column["column_name"] for column in columns]
 
-    def _get_required_column_names(self, omop_table_name: str) -> List[str]:
+    def _get_required_omop_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of required column names of a omop table.
 
         Args:
@@ -165,27 +91,37 @@ class BigQueryEtlBase(EtlBase, ABC):
         Returns:
             List[str]: list of column names
         """
-        columns = self._gcp.get_columns(
-            self._project_id, self._dataset_id_omop, omop_table_name
-        )
-        return [
-            column["column_name"] for column in columns if column["is_nullable"] == "NO"
-        ]
+        template = self._template_env.get_template("get_table_columns.sql.jinja")
+        sql = template.render(dataset=self._dataset_omop, table_name=omop_table_name)
+        columns = self._gcp.run_query_job(sql)
+        return [column["column_name"] for column in columns if column["is_nullable"] == "NO"]
+
+    def _get_all_table_names(self, dataset: str) -> List[str]:
+        """Get all table names from a specific dataset in Big Query
+
+        Args:
+            dataset (str): dataset (format: PROJECT_ID.DATASET_ID)
+
+        Returns:
+            List[str]: list of table names
+        """
+        template = self._template_env.get_template("all_table_names.sql.jinja")
+        sql = template.render(dataset=dataset)
+        rows = self._gcp.run_query_job(sql)
+        return [row.table_name for row in rows]
 
     def _upload_arrow_table(self, table: pa.Table, table_name: str):
         with TemporaryDirectory(prefix="riab_") as tmp_dir:
-            logging.debug("Writing DQD results to parquet")
             tmp_file = str(Path(tmp_dir) / f"{table_name}.parquet")
+            logging.debug("Writing arrow table to parquet file '{tmp_file}'")
             pq.write_table(table, where=tmp_file)
 
-            logging.debug("Loading DQD results parquet into BigQuery table")
             # upload the Parquet file to the Cloud Storage Bucket
             uri = self._gcp.upload_file_to_bucket(tmp_file, self._bucket_uri)
             # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table
             self._gcp.batch_load_from_bucket_into_bigquery_table(
                 uri,
-                self._project_id,
-                self._dataset_id_omop,
+                self._dataset_omop,
                 table_name,
                 write_disposition=bq.WriteDisposition.WRITE_APPEND,
             )

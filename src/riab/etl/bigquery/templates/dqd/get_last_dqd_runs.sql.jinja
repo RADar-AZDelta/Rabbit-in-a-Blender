@@ -1,0 +1,4 @@
+select FORMAT_TIMESTAMP("%Y-%m-%d %T", startTimestamp) as label, id as value
+from {{dataset_dqd}}.dqdashboard_runs
+order by startTimestamp desc
+limit 15;

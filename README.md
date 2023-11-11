@@ -16,20 +16,9 @@ Extract-Transform-Load (ETL) processes are very complex and are mainly crafted b
 Concept
 =======
 
-The main strength of the CDM is its simplified scheme. This scheme is a relational data model, where each table has a primary key and can have foreign keys to other tables. Because of the relational data model, we can extract the dependencies of the tables from the scheme. For example, the provider table is dependent on the care_site table, which is in its turn dependent on the location table. If we flatten that dependency graph, we have a sequence of ETL steps that we need to follow to have consistent data in our OMOP CDM. These ETL steps can be automated, so a hospital can focus its resources on the queries and the mapping of the concepts. The automated ETL consists of multiple tasks. It needs to execute queries, add custom concepts, apply the Usagi source to concept mapping, and do a lot of housekeeping. An example of that housekeeping is the autonumbering of the OMOP CDM primary keys, for which the ETL process needs to maintain a swap table that holds the key of the source table and the generated sequential number of the CDM table’s primary key. Another example of the housekeeping is the upload and processing of the Usagi CSV’s and also the upload and parsing of the custom concept CSV’s. In an ETL process data is divided in zones. The raw zone holds the source data (for example the data from the EMR), the work zone holds all the house keeping tables of the ETL process and the gold zone holds our final OMOP CDM.
+The main strength of the CDM is its simplified scheme. This scheme is a relational data model, where each table has a primary key and can have foreign keys to other tables. Because of the relational data model, we can extract the dependencies of the tables from the scheme. For example, the provider table is dependent on the care_site table, which is in its turn dependent on the location table. If we flatten that dependency graph, we have a sequence of ETL steps that we need to follow to have consistent data in our OMOP CDM. These ETL steps can be automated, so a hospital can focus its resources on the queries and the mapping of the concepts. The automated ETL consists of multiple tasks. It needs to execute queries, add custom concepts, apply the Usagi source to concept mapping, and do a lot of housekeeping. An example of that housekeeping is the autonumbering of the OMOP CDM primary keys, for which the ETL process needs to maintain a swap table that holds the key of the source table and the generated sequential number of the CDM table’s primary key. Another example of the housekeeping is the upload and processing of the Usagi CSV’s and also the upload and parsing of the custom concept CSV’s. In an ETL process data is divided in zones (cfr. the [zones in a data lake](https://www.oreilly.com/library/view/the-enterprise-big/9781491931547/ch01.html#zones_of_a_typical_data_lake)). The raw zone holds the source data (for example the data from the EMR), the work zone holds all the house keeping tables of the ETL process and the gold zone holds our final OMOP CDM.
 After designing the architecture, the implementation needs to be developed. We have two options to choose from: configuration and convention as design paradigm. We choose convention over configuration, because it decreases the number of decisions the user has to make and eliminates the complexity. As convention a specific folder structure is adopted (see [our mappings as example](https://github.com/RADar-AZDelta/AZDelta-OMOP-CDM)). A folder is created for each OMOP CDM table, where the SQL queries are stored to fill up the specific CDM table. In the table folders we also have for each concept column a sub folder. Those concept column sub folders hold our Usagi CSV’s (files ending with _usagi.csv). We also have a custom folder in the concept column sub folder, that holds the custom concept CSV’s (files ending with _concept.csv). With this convention in place, our ETL CLI tool has everything it needs to do its magic.
 One final requirement we want to build in the ETL CLI tool, is that each ETL step is an atomic operation, it either fails or succeeds, so that there is no possibility to corrupt the final OMOP CDM data.
-
-
-Deviations from v5.4
-====================
-
-|Table|Change|Reason|
-|---|---|---|
-|fact_relationship|Renamed domain_concept_id_1 and _2 to field_concept_id_1 and _2|To stay consistent with similar fields like episode_event_field_concept_id. This follows Proposal 1 in the open issue [#230](https://github.com/OHDSI/CommonDataModel/issues/230).| 
-|cost|Changed cost_domain_id with type STRING to cost_field_concept_id of type INT64|To stay consistent with similar fields like episode_event_field_concept_id. This follows the changes made in [v6.0](https://ohdsi.github.io/CommonDataModel/cdm60.html#COST)|
-|source_id_to_omop_id_map|Additional table|The table holds de mapping between the source id's and the generated OMOP id's|
-
 
 Notes on Use
 ============
@@ -40,9 +29,9 @@ The measurement table has the **measurement_event_id** field, the observation ta
 - Linking two people with a personal relationship in the fact_relationship table:
 ```sql
 select distinct
-  'person' as field_concept_id_1  -- foreign table name as string
+  'person' as domain_concept_id_1  -- foreign table name as string
   ,pr.person_nr_1 as fact_id_1	-- same key as used as when adding the person to the person table
-  ,'person' as field_concept_id_2  -- foreign table name as string	
+  ,'person' as domain_concept_id_2  -- foreign table name as string	
   ,pr.person_nr_1 as fact_id_2	-- same key as used as when adding the person to the person table
   ,pr.relationship as relationship_concept_id  -- column with sourceCodes specifying the relationship and mapped in a _usagi.csv file in the relationship_concept_id folder
 from person_relationships pr
@@ -76,6 +65,39 @@ Installation
 pip install Rabbit-in-a-Blender
 ```
 
+Config
+========
+
+With the addition of additional database engines, we switched to a [ini](https://en.wikipedia.org/wiki/INI_file) config file for database specific configurations.
+This makes the CLI arguments less cumbersome.
+Below an example of a config:
+
+```ini
+[RiaB]
+db_engine=BigQuery
+
+[BigQuery]
+credentials_file=service_account.json
+; Optional
+; The credentials file must be a service account key, stored authorized user credentials, external account credentials, or impersonated service account credentials. (see https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file)
+; Alternatively, you can also use 'Application Default Credentials' (ADC) (see https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login)
+location=EU
+; Location where to run the BigQuery jobs. Must match the location of the datasets used in the query. (important for GDPR)
+project_raw=my_omop_project
+; Optional
+; Can be handy if you use jinja templates for your ETL queries (ex if you are using development-staging-production environments). Must have the following format: PROJECT_ID
+dataset_work=my_omop_project.work
+; The dataset that will hold RiaB's housekeeping tables. Must have the following format: PROJECT_ID.DATASET_ID
+dataset_omop=my_omop_project.omop
+; The dataset that will hold the OMOP tables. Must have the following format: PROJECT_ID.DATASET_ID
+dataset_dqd=my_omop_project.dqd
+; The dataset that will hold the data quality tables. Must have the following format: PROJECT_ID.DATASET_ID
+dataset_achilles=my_omop_project.achilles
+; The dataset that will hold the data achilles tables. Must have the following format: PROJECT_ID.DATASET_ID
+bucket=gs://my_omop_bucket/upload
+; The Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
+```
+
 CLI Usage
 ========
 
@@ -85,10 +107,10 @@ CLI Usage
     | -h, --help | Show help message and exit
     | -v, --verbose | Verbose logging (logs are also writen to a log file in the systems tmp folder)
 
-* **Required named arguments:**
+<!-- * **Required named arguments:**
     |  command | help  
     |---|---
-    | -d [DB-ENGINE], --db-engine [DB-ENGINE] | The database engine technology the ETL is running on. Each database engine has its own legacy SQL dialect, so the generated ETL queries can be different for each database engine. For the moment only BigQuery is supported, yet 'Rabbit in a Blender' has an open design, so in the future other database engines can be added easily.
+    | -d [DB-ENGINE], --db-engine [DB-ENGINE] | The database engine technology the ETL is running on. Each database engine has its own legacy SQL dialect, so the generated ETL queries can be different for each database engine. For the moment only BigQuery is supported, yet 'Rabbit in a Blender' has an open design, so in the future other database engines can be added easily. -->
 
 
 * **ETL Commands**:
@@ -118,116 +140,65 @@ CLI Usage
     |---|---  
     | --port [PORT] | The port the dashboard schould listen on.
 
-* **Bigquery specific options:**
-    |  command | help  
-    |---|---
-    | --google-credentials-file [GOOGLE_CREDENTIALS_FILE] | Loads Google credentials from a file.
-    | --google-project-id [GOOGLE_PROJECT_ID] | The Google GCP project id
-    | --google-location [GOOGLE_LOCATION] | The google locations to store the data (see https://cloud.google.com/about/locations) (default EU)
-    | --bigquery-dataset-id-raw [BIGQUERY_DATASET_ID_RAW] | BigQuery dataset that holds the raw EMR data
-    | --bigquery-dataset-id-work [BIGQUERY_DATASET_ID_WORK] | BigQuery dataset that will hold ETL housekeeping tables (ex: swap tablet, etc...)
-    | --bigquery-dataset-id-omop [BIGQUERY_DATASET_ID_OMOP] | BigQuery dataset that will hold the final OMOP tables
-    | --google-cloud-storage-bucket-uri [GOOGLE_CLOUD_STORAGE_BUCKET_URI] | Google Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
-
 CLI Examples
 ========
 
 Create the OMOP CDM database:
 ```bash
-riab --create-db \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop
+riab --create-db
 ```
 
 Import your downloaded vocabularies (from [Athena](https://athena.ohdsi.org/vocabulary/list)) zip file:
 ```bash
-riab --import-vocabularies ./vocabulary-2022-07-28.zip \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --bigquery-dataset-id-work omop_work \
-    --google-cloud-storage-bucket-uri gs://omop/upload
+riab --import-vocabularies ./vocabulary-2022-07-28.zip
 ```
 
 Create the ETL folder structure:
 ```bash
-riab --create-folders ./OMOP_CDM \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop
+riab --create-folders ./OMOP_CDM
 ```     
 
 Run full ETL:
 ```bash
-riab --run-etl ./OMOP-CDM \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --bigquery-dataset-id-work omop_work \
-    --bigquery-dataset-id-raw emr \
-    --google-cloud-storage-bucket-uri gs://omop/upload
+riab --run-etl ./OMOP-CDM
 ```
 
 Run ETL on one table:
 ```bash
 riab --run-etl ./OMOP-CDM \
-  --table provider \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --bigquery-dataset-id-work omop_work \
-    --bigquery-dataset-id-raw emr \
-    --google-cloud-storage-bucket-uri gs://omop/upload
-
+  --table provider
 ```
 
 Run ETL without re-upload of Usagi CSV's and custom concept CSV's:
 ```bash
 riab --run-etl ./OMOP-CDM \
-  --skip-usagi-and-custom-concept-upload \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --bigquery-dataset-id-work omop_work \
-    --bigquery-dataset-id-raw emr \
-    --google-cloud-storage-bucket-uri gs://omop/upload
+  --skip-usagi-and-custom-concept-upload
 ```
 
 Cleanup all tables:
 ```bash
-riab --cleanup \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --bigquery-dataset-id-work omop_work \
-    --google-cloud-storage-bucket-uri gs://omop/upload
+riab --cleanup
 ```
 
 Cleanup one table (example provider table):
 ```bash
-riab --cleanup provider \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --bigquery-dataset-id-work omop_work \
-    --google-cloud-storage-bucket-uri gs://omop/upload
+riab --cleanup provider
 ```
 
 Data quality check:
 ```bash
-riab --data-quality \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --google-cloud-storage-bucket-uri gs://omop/upload
+riab --data-quality
 ```
 
 Data quality check (export result to JSON):
 ```bash
-riab --data-quality \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
-    --google-cloud-storage-bucket-uri gs://omop/upload \
+riab --data-quality
   --json dqd_result.json
 ```
 
 Data quality dashboard (default port = 8050):
 ```bash
-riab --data-quality-dashboard \
-  --db-engine BigQuery \
-    --bigquery-dataset-id-omop omop \
+riab --data-quality-dashboard
   --port 8888
 ```
 
@@ -266,7 +237,6 @@ TODO
 * fix visits and observation period to be data driven (based on other clinical tables in OMOP)
 * add concept_relationship and concept_ancestor tables for custom concepts to framework
 * generate ERA tables (drug_era, dose_era and condition_era)
-* support multiple GCS projects to split up raw, work and omop data
 * improve error logging: check for duplicate concept codes in custom concept files
 
 Authors

@@ -1,0 +1,5 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+CREATE TABLE IF NOT EXISTS {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept
+(concept_id STRING,concept_name STRING,domain_id STRING,vocabulary_id STRING,concept_class_id STRING,standard_concept STRING,concept_code STRING,valid_start_date DATE,valid_end_date DATE,invalid_reason STRING)
+CLUSTER BY concept_id

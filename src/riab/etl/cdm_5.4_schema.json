@@ -148,8 +148,8 @@
     },
     "fact_relationship": {
         "events": {
-            "fact_id_1": "field_concept_id_1",
-            "fact_id_2": "field_concept_id_2"
+            "fact_id_1": "domain_concept_id_1",
+            "fact_id_2": "domain_concept_id_2"
         }
     },
     "payer_plan_period": {

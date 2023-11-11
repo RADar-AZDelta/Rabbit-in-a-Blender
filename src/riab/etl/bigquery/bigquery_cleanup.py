@@ -27,7 +27,7 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         Returns:
             List[str]: List of all the work tables
         """
-        work_tables = self._gcp.get_table_names(self._project_id, self._dataset_id_work)
+        work_tables = self._get_all_table_names(self._dataset_work)
         return work_tables
 
     def _truncate_omop_table(self, table_name: str) -> None:
@@ -39,56 +39,43 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         logging.info("Truncate OMOP table '%s'", table_name)
         template = self._template_env.get_template("cleanup/truncate.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
             table_name=table_name,
         )
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_concept_table(self) -> None:
         """Remove the custom concepts from the OMOP concept table"""
-        template = self._template_env.get_template(
-            "cleanup/CONCEPT_remove_custom_concepts.sql.jinja"
-        )
+        template = self._template_env.get_template("cleanup/CONCEPT_remove_custom_concepts.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
         """Remove the custom concepts from the OMOP concept_relationship table"""
-        template = self._template_env.get_template(
-            "cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts.sql.jinja"
-        )
+        template = self._template_env.get_template("cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
         """Remove the custom concepts from the OMOP concept_ancestor table"""
-        template = self._template_env.get_template(
-            "cleanup/CONCEPT_ANCESTOR_remove_custom_concepts.sql.jinja"
-        )
+        template = self._template_env.get_template("cleanup/CONCEPT_ANCESTOR_remove_custom_concepts.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
         self._gcp.run_query_job(sql)
 
     def _remove_custom_concepts_from_vocabulary_table(self) -> None:
         """Remove the custom concepts from the OMOP vocabulary table"""
-        template = self._template_env.get_template(
-            "cleanup/VOCABULARY_remove_custom_concepts.sql.jinja"
-        )
+        template = self._template_env.get_template("cleanup/VOCABULARY_remove_custom_concepts.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
         self._gcp.run_query_job(sql)
@@ -106,9 +93,8 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
             "cleanup/CONCEPT_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            dataset_id_work=self._dataset_id_work,
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
@@ -132,8 +118,7 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
             "cleanup/SOURCE_ID_TO_OMOP_ID_MAP_remove_ids_by_omop_table.sql.jinja"
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
+            dataset_omop=self._dataset_omop,
             omop_table=omop_table,
         )
         self._gcp.run_query_job(sql)
@@ -151,9 +136,8 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
             "cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"  # noqa: E501 # pylint: disable=line-too-long
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            dataset_id_work=self._dataset_id_work,
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
@@ -180,9 +164,8 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
             "cleanup/CONCEPT_ANCESTOR_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"  # noqa: E501 # pylint: disable=line-too-long
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            dataset_id_work=self._dataset_id_work,
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
@@ -209,9 +192,8 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
             "cleanup/VOCABULARY_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            dataset_id_work=self._dataset_id_work,
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
@@ -225,9 +207,7 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
                 concept_id_column,
             )
 
-    def _remove_source_to_concept_map_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _remove_source_to_concept_map_using_usagi_table(self, omop_table: str, concept_id_column: str) -> None:
         """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table
 
         Args:
@@ -238,9 +218,8 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
             "cleanup/SOURCE_TO_CONCEPT_MAP_remove_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
         )
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            dataset_id_work=self._dataset_id_work,
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
@@ -260,9 +239,9 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         Args:
             work_table (str): The work table
         """
-        table_id = f"{self._project_id}.{self._dataset_id_work}.{work_table}"
+        table_id = f"{self._dataset_work}.{work_table}"
         logging.info("Deleting table '%s'", table_id)
-        self._gcp.delete_table(self._project_id, self._dataset_id_work, work_table)
+        self._gcp.delete_table(self._dataset_work, work_table)
 
     def _custom_db_engine_cleanup(self, table: str) -> None:
         """Custom cleanup method for specific database engine implementation

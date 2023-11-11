@@ -1,0 +1,18 @@
+select source_code, target_concept_id, count(*) as nbr_of_rows
+from (
+    SELECT DISTINCT
+        t.sourceCode as source_code
+        ,0 as source_concept_id
+        ,'' as source_vocabulary_id
+        ,t.sourceName as source_code_description
+        ,t.conceptId as target_concept_id
+        ,c.vocabulary_id as target_vocabulary_id
+        ,CURRENT_DATE() as valid_start_date
+        ,DATE(2099, 12, 31) as valid_end_date
+        ,cast(NULL as string) as invalid_reason
+    FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted t
+    INNER JOIN {{dataset_omop}}.concept c on c.concept_id = t.conceptId
+    where t.mappingStatus = 'APPROVED'
+) t
+group by source_code, target_concept_id
+having count(*) > 1

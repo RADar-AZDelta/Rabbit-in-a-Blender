@@ -1,0 +1,5 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+CREATE TABLE IF NOT EXISTS {{dataset_work}}.concept_id_swap 
+(x STRING, y INT64)
+CLUSTER BY x

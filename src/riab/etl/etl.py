@@ -44,9 +44,7 @@ class Etl(EtlBase):
         super().__init__(**kwargs)
 
         self._only_omop_table = only_omop_table
-        self._skip_usagi_and_custom_concept_upload = (
-            skip_usagi_and_custom_concept_upload
-        )
+        self._skip_usagi_and_custom_concept_upload = skip_usagi_and_custom_concept_upload
 
         with open(
             str(Path(__file__).parent.resolve() / "etl_flow.json"),
@@ -86,12 +84,8 @@ class Etl(EtlBase):
         etl_start = date.today()
 
         if self._only_omop_table:
-            self._process_folder_to_work(
-                self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
-            )
-            self._process_work_to_omop(
-                self._only_omop_table, getattr(self._omop_tables, self._only_omop_table)
-            )
+            self._process_folder_to_work(self._only_omop_table, getattr(self._omop_tables, self._only_omop_table))
+            self._process_work_to_omop(self._only_omop_table, getattr(self._omop_tables, self._only_omop_table))
             for omop_table, table_props in vars(self._omop_tables).items():
                 if omop_table == self._only_omop_table:
                     continue
@@ -159,11 +153,7 @@ class Etl(EtlBase):
             omop_table_props (Any): Object that holds, the pk (primary key), fks (foreign keys) and events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
         omop_table_path = cast(Path, self._cdm_folder_path) / f"{omop_table}/"
-        sql_files = [
-            sql_file
-            for suffix in ["*.sql", "*.sql.jinja"]
-            for sql_file in omop_table_path.glob(suffix)
-        ]
+        sql_files = [sql_file for suffix in ["*.sql", "*.sql.jinja"] for sql_file in omop_table_path.glob(suffix)]
         if not len(sql_files):
             logging.info(
                 "No SQL files found in ETL folder '%s'",
@@ -185,13 +175,13 @@ class Etl(EtlBase):
         self._create_omop_work_table(omop_table, events)
 
         # get all the columns from the destination OMOP table
-        columns = self._get_column_names(omop_table)
+        columns = self._get_omop_column_names(omop_table)
         concept_columns = [
             column
             for column in columns
             if "concept_id" in column  # and "source_concept_id" not in column
         ]
-        required_columns = self._get_required_column_names(omop_table)
+        required_columns = self._get_required_omop_column_names(omop_table)
 
         # is the primary key an auto numbering column?
         pk_auto_numbering = self._is_pk_auto_numbering(omop_table, omop_table_props)
@@ -350,10 +340,7 @@ class Etl(EtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
 
         concept_csv_files = list(
-            (
-                cast(Path, self._cdm_folder_path)
-                / f"{omop_table}/{concept_id_column}/custom/"
-            ).glob("*_concept.csv")
+            (cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/custom/").glob("*_concept.csv")
         )
         if not len(concept_csv_files):
             logging.info(
@@ -386,23 +373,15 @@ class Etl(EtlBase):
             # convert the custom concepts CSV to an Arrow table
             ar_temp_table = self._convert_concept_csv_to_arrow_table(concept_csv_file)
             # concat the Arrow tables into one large Arrow table
-            ar_table = (
-                ar_temp_table
-                if not ar_table
-                else pa.concat_tables([ar_table, ar_temp_table])
-            )
+            ar_table = ar_temp_table if not ar_table else pa.concat_tables([ar_table, ar_temp_table])
         if not ar_table:
             return
         with tempfile.TemporaryDirectory() as temp_dir:
-            parquet_file = (
-                Path(temp_dir) / f"{omop_table}__{concept_id_column}_concept.parquet"
-            )
+            parquet_file = Path(temp_dir) / f"{omop_table}__{concept_id_column}_concept.parquet"
             # save the one large Arrow table in a Parquet file in a temporary directory
             pq.write_table(ar_table, str(parquet_file))
             # load the Parquet file into the specific custom concept upload table
-            self._load_custom_concepts_parquet_in_upload_table(
-                parquet_file, omop_table, concept_id_column
-            )
+            self._load_custom_concepts_parquet_in_upload_table(parquet_file, omop_table, concept_id_column)
 
         logging.info(
             "Swapping the custom concept id's for for column '%s' of table '%s'",
@@ -413,9 +392,7 @@ class Etl(EtlBase):
         self._lock_custom_concepts.acquire()
         try:
             # give the custom concepts an unique id (above 2.000.000.000) and store those id's in the swap table
-            self._give_custom_concepts_an_unique_id_above_2bilj(
-                omop_table, concept_id_column
-            )
+            self._give_custom_concepts_an_unique_id_above_2bilj(omop_table, concept_id_column)
 
             logging.info(
                 "Merging custom concept into CONCEPT table for column '%s' of table '%s'",
@@ -423,9 +400,7 @@ class Etl(EtlBase):
                 omop_table,
             )
             # merge the custom concepts with their uniquely created id's in the OMOP concept table
-            self._merge_custom_concepts_with_the_omop_concepts(
-                omop_table, concept_id_column
-            )
+            self._merge_custom_concepts_with_the_omop_concepts(omop_table, concept_id_column)
         except Exception as ex:
             raise ex
         finally:
@@ -444,9 +419,7 @@ class Etl(EtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
 
         usagi_csv_files = list(
-            (
-                cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/"
-            ).glob("*_usagi.csv")
+            (cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/").glob("*_usagi.csv")
         )
 
         logging.info(
@@ -477,43 +450,29 @@ class Etl(EtlBase):
 
         ar_table = None
         for usagi_csv_file in usagi_csv_files:  # loop all the Usagi CSV's
-            logging.info(
-                "Creating concept_id swap from Usagi file '%s'", str(usagi_csv_file)
-            )
+            logging.info("Creating concept_id swap from Usagi file '%s'", str(usagi_csv_file))
             # convert the CSV to an Arrow table
             ar_temp_table = self._convert_usagi_csv_to_arrow_table(usagi_csv_file)
-            if len(
-                ar_temp_table.group_by(["sourceCode", "conceptId"]).aggregate(
-                    [("sourceCode", "count")]
-                )
-            ) != len(ar_temp_table):
+            if len(ar_temp_table.group_by(["sourceCode", "conceptId"]).aggregate([("sourceCode", "count")])) != len(
+                ar_temp_table
+            ):
                 logging.warning(
                     "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV '%s'!",
                     usagi_csv_file,
                 )
             # concat the Arrow tables into one large Arrow table
-            ar_table = (
-                ar_temp_table
-                if not ar_table
-                else pa.concat_tables([ar_table, ar_temp_table])
-            )
+            ar_table = ar_temp_table if not ar_table else pa.concat_tables([ar_table, ar_temp_table])
 
         if ar_table:
             with tempfile.TemporaryDirectory() as temp_dir:
-                parquet_file = os.path.join(
-                    temp_dir, f"{omop_table}__{concept_id_column}_usagi.parquet"
-                )
+                parquet_file = os.path.join(temp_dir, f"{omop_table}__{concept_id_column}_usagi.parquet")
                 # save the one large Arrow table in a Parquet file in a temporary directory
                 pq.write_table(ar_table, parquet_file)
                 # load the Parquet file into the specific usagi upload table
-                self._load_usagi_parquet_in_upload_table(
-                    parquet_file, omop_table, concept_id_column
-                )
-            if len(
-                ar_table.group_by(["sourceCode", "conceptId"]).aggregate(
-                    [("sourceCode", "count")]
-                )
-            ) != len(ar_table):
+                self._load_usagi_parquet_in_upload_table(parquet_file, omop_table, concept_id_column)
+            if len(ar_table.group_by(["sourceCode", "conceptId"]).aggregate([("sourceCode", "count")])) != len(
+                ar_table
+            ):
                 logging.warning(
                     "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV's for concept column '%s' of OMOP table '%s'!",  # noqa: E501 # pylint: disable=line-too-long
                     concept_id_column,
@@ -521,10 +480,7 @@ class Etl(EtlBase):
                 )
 
         concept_csv_files = list(
-            (
-                cast(Path, self._cdm_folder_path)
-                / f"{omop_table}/{concept_id_column}/custom/"
-            ).glob("*_concept.csv")
+            (cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/custom/").glob("*_concept.csv")
         )
         if len(concept_csv_files):
             logging.info(
@@ -559,9 +515,7 @@ class Etl(EtlBase):
         # fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the Usagi CSV's
         self._lock_source_value_to_concept_id_mapping.acquire()
         try:
-            self._store_usagi_source_value_to_concept_id_mapping(
-                omop_table, concept_id_column
-            )
+            self._store_usagi_source_value_to_concept_id_mapping(omop_table, concept_id_column)
         except Exception as ex:
             raise ex
         finally:
@@ -583,7 +537,7 @@ class Etl(EtlBase):
         )
 
         # get all the columns from the destination OMOP table
-        columns = self._get_column_names(omop_table_name)
+        columns = self._get_omop_column_names(omop_table_name)
 
         # merge everything in the destination OMOP work table
         logging.info(
@@ -622,9 +576,7 @@ class Etl(EtlBase):
             omop_table,
         )
         # create the swap table for the primary key
-        self._create_pk_auto_numbering_swap_table(
-            pk_swap_table_name, concept_id_columns, events
-        )
+        self._create_pk_auto_numbering_swap_table(pk_swap_table_name, concept_id_columns, events)
 
         # execute the swap query
         self._execute_pk_auto_numbering_swap_query(
@@ -709,9 +661,7 @@ class Etl(EtlBase):
         Returns:
             pa.Table: Arrow table
         """
-        logging.debug(
-            "Converting Concept csv '%s' to arrow table", str(concept_csv_file)
-        )
+        logging.debug("Converting Concept csv '%s' to arrow table", str(concept_csv_file))
         table = csv.read_csv(
             concept_csv_file,
             convert_options=csv.ConvertOptions(
@@ -765,9 +715,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _is_pk_auto_numbering(
-        self, omop_table_name: str, omop_table_props: Any
-    ) -> bool:
+    def _is_pk_auto_numbering(self, omop_table_name: str, omop_table_props: Any) -> bool:
         """Checks if the primary key of the OMOP table needs autonumbering.
         For example the [Person](https://ohdsi.github.io/CommonDataModel/cdm54.html#PERSON) table has an auto numbering primary key, the [Vocabulary](https://ohdsi.github.io/CommonDataModel/cdm54.html#VOCABULARY) table not.
 
@@ -781,9 +729,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _clear_custom_concept_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _clear_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the custom concept upload table (holds the contents of the custom concept CSV's)
 
         Args:
@@ -793,9 +739,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _create_custom_concept_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _create_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the custom concept upload table (holds the contents of the custom concept CSV's)
 
         Args:
@@ -824,9 +768,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _give_custom_concepts_an_unique_id_above_2bilj(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _give_custom_concepts_an_unique_id_above_2bilj(self, omop_table: str, concept_id_column: str) -> None:
         """Give the custom concepts an unique id (above 2.000.000.000) and store those id's
         in the concept id swap table.
 
@@ -837,9 +779,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _merge_custom_concepts_with_the_omop_concepts(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _merge_custom_concepts_with_the_omop_concepts(self, omop_table: str, concept_id_column: str) -> None:
         """Merges the uploaded custom concepts in the OMOP concept table.
 
         Args:
@@ -849,9 +789,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _clear_usagi_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _clear_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the usagi upload table (holds the contents of the usagi CSV's)
 
         Args:
@@ -861,9 +799,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _create_usagi_upload_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _create_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the Usagi upload table (holds the contents of the Usagi CSV's)
 
         Args:
@@ -873,9 +809,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _load_usagi_parquet_in_upload_table(
-        self, parquet_file: str, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _load_usagi_parquet_in_upload_table(self, parquet_file: str, omop_table: str, concept_id_column: str) -> None:
         """The Usagi CSV's are converted to a parquet file.
         This method loads the parquet file in a upload table.
 
@@ -887,9 +821,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _add_custom_concepts_to_usagi(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _add_custom_concepts_to_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """The custom concepts are added to the upload Usagi table with status 'APPROVED'.
 
         Args:
@@ -899,9 +831,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _update_custom_concepts_in_usagi(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _update_custom_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
         The concept_id column in the Usagi upload table is swapped by the generated custom concept_id (above 2.000.000.000).
 
@@ -924,9 +854,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _store_usagi_source_value_to_concept_id_mapping(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _store_usagi_source_value_to_concept_id_mapping(self, omop_table: str, concept_id_column: str) -> None:
         """Fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the uploaded Usagi CSV's
 
         Args:
@@ -1024,9 +952,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _store_usagi_source_id_to_omop_id_mapping(
-        self, omop_table: str, pk_swap_table_name: str
-    ) -> None:
+    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, pk_swap_table_name: str) -> None:
         """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
 
         Args:

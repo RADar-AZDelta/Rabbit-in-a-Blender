@@ -1,11 +1,11 @@
 {# Copyright 2022 RADar-AZDelta #}
 {# SPDX-License-Identifier: gpl3+ #}
-delete {{project_id}}.{{dataset_id_omop}}.vocabulary
+delete {{dataset_omop}}.vocabulary
 where vocabulary_concept_id in (
     select conceptId
-    from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted
+    from {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted
     where sourceCode in (
         select concept_code
-        from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept
+        from {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept
     )
 ) and vocabulary_concept_id >= {{min_custom_concept_id}}

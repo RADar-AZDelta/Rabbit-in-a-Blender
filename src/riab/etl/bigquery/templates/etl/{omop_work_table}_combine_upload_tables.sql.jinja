@@ -1,0 +1,19 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+CREATE OR REPLACE TABLE {{dataset_work}}.{{omop_table}}_upload AS
+SELECT DISTINCT *
+FROM (
+    {%- for sql_file in sql_files -%}
+        {%- if not loop.first %}
+    UNION ALL
+        {%- endif %}
+    SELECT 
+    {%- for column in columns -%}
+        {%- if not loop.first -%}
+            {{ ',' }}
+        {%- endif %}
+        {{ column }} 
+    {%- endfor %}
+    FROM {{dataset_work}}.{{omop_table}}__upload__{{sql_file}}
+    {%- endfor %}
+) t
