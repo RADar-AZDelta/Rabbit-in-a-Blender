@@ -70,6 +70,12 @@ Config
 
 With the addition of additional database engines, we switched to a [ini](https://en.wikipedia.org/wiki/INI_file) config file for database specific configurations.
 This makes the CLI arguments less cumbersome.
+
+RiaB searches for the ini config file by using the following cascade:
+1. CLI --config argument
+2. RIAB_CONFIG environment variable
+3. riab.ini in the current folder
+
 Below an example of a config:
 
 ```ini
