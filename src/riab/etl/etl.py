@@ -30,6 +30,7 @@ class Etl(EtlBase):
     def __init__(
         self,
         only_omop_table: Optional[str] = None,
+        only_query: Optional[str] = None,
         skip_usagi_and_custom_concept_upload: Optional[bool] = None,
         **kwargs,
     ):
@@ -39,11 +40,13 @@ class Etl(EtlBase):
         Args:
             cdm_folder_path (str): The path to the OMOP folder structure that holds for each OMOP CDM table (folder) the ETL queries, Usagi CSV's and custom concept CSV's0
             only_omop_table (str): Only do ETL on this OMOP CDM table.
+            only_query (str): Only do ETL for the specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql)
             skip_usagi_and_custom_concept_upload (bool): If no changes have been made to the Usagi and custom concept CSV's, then you can speed up the ETL process by setting this flag to True. The ETL process will skip the upload and processing of the Usagi and custom concept CSV's.
         """  # noqa: E501 # pylint: disable=line-too-long
         super().__init__(**kwargs)
 
         self._only_omop_table = only_omop_table
+        self._only_query: Optional[Path] = Path(only_query) if only_query else None
         self._skip_usagi_and_custom_concept_upload = skip_usagi_and_custom_concept_upload
 
         with open(
@@ -83,7 +86,23 @@ class Etl(EtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
         etl_start = date.today()
 
-        if self._only_omop_table:
+        if self._only_query:
+            omop_table = self._only_query.parts[0]
+            self._process_folder_to_work(omop_table, getattr(self._omop_tables, omop_table))
+            self._process_work_to_omop(omop_table, getattr(self._omop_tables, omop_table))
+            for omop_table, table_props in vars(self._omop_tables).items():
+                if omop_table == self._only_omop_table:
+                    continue
+                events = vars(
+                    getattr(
+                        table_props,
+                        "events",
+                        json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
+                    )
+                )
+                if events:
+                    self._process_work_to_omop(omop_table, table_props)
+        elif self._only_omop_table:
             self._process_folder_to_work(self._only_omop_table, getattr(self._omop_tables, self._only_omop_table))
             self._process_work_to_omop(self._only_omop_table, getattr(self._omop_tables, self._only_omop_table))
             for omop_table, table_props in vars(self._omop_tables).items():
@@ -230,19 +249,22 @@ class Etl(EtlBase):
             )
         pk_swap_table_name = getattr(omop_table_props, "pk", None)
 
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
-            # upload an apply the custom concept CSV's
-            futures = [
-                executor.submit(
-                    self._run_upload_query,
-                    sql_file,
-                    omop_table,
-                )
-                for sql_file in sql_files
-            ]
-            # wait(futures, return_when=ALL_COMPLETED)
-            for result in as_completed(futures):
-                result.result()
+        if self._only_query:
+            self._run_upload_query(cast(Path, self._cdm_folder_path) / self._only_query, omop_table)
+        else:
+            with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+                # upload an apply the custom concept CSV's
+                futures = [
+                    executor.submit(
+                        self._run_upload_query,
+                        sql_file,
+                        omop_table,
+                    )
+                    for sql_file in sql_files
+                ]
+                # wait(futures, return_when=ALL_COMPLETED)
+                for result in as_completed(futures):
+                    result.result()
 
         if pk_auto_numbering:
             # swap the primary key with an auto number

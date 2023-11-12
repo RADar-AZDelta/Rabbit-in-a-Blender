@@ -82,7 +82,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
         if not hasattr(omop_table_props, "pk"):
             return False
         # get the primary key meta data from the the destination OMOP table
-        template = self._template_env.get_template("etl/get_table_columns.sql.jinja")
+        template = self._template_env.get_template("get_table_columns.sql.jinja")
         sql = template.render(dataset=self._dataset_omop, table_name=omop_table_name)
         columns = self._gcp.run_query_job(sql)
         pk_column_metadata = [column for column in columns if column["column_name"] == omop_table_props.pk][0]

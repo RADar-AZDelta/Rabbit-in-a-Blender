@@ -128,6 +128,7 @@ CLI Usage
     |  command | help  
     |---|---  
     | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table
+    | -q [PATH], --only-query [PATH] | Do ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql) 
     | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
 
 * **Data quality specific command options (-dq, --data-quality):**
@@ -173,6 +174,13 @@ Run ETL without re-upload of Usagi CSV's and custom concept CSV's:
 ```bash
 riab --run-etl ./OMOP-CDM \
   --skip-usagi-and-custom-concept-upload
+```
+
+Run ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql)
+```bash
+riab --run-etl ./OMOP-CDM \
+  --skip-usagi-and-custom-concept-upload \
+  --only-sql measurement/lab_measurements.sql
 ```
 
 Cleanup all tables:

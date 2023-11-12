@@ -17,11 +17,12 @@
         
         //"--import-vocabularies", "~/vocabulary-2022-07-28.zip"
         
-        "--create-folders", "~/OMOP_CDM_test"
+        //"--create-folders", "~/git/radar_omop-cdm/"
         
-        //"--run-etl", "~/git/OMOP-PCa-trajecten/"
-          //,"--skip-usagi-and-custom-concept-upload"
-          //,"--table", "episode"
+        "--run-etl", "~/git/radar_omop-cdm/"
+          ,"--skip-usagi-and-custom-concept-upload"
+          //,"--table", "cdm_source"
+          ,"--only-query", "cdm_source/hix.sql.jinja"
 
         //"--cleanup", "all"
         //  ,"--clear-auto-generated-custom-concept-ids"

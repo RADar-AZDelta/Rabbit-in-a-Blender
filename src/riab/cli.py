@@ -120,6 +120,7 @@ class Cli:
                             etl = BigQueryEtl(
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 only_omop_table=args.table,
+                                only_query=args.only_query,
                                 skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
                                 **bigquery_kwargs,
                             )
@@ -338,6 +339,14 @@ class Cli:
             to the Usagi CSV's an custom concept CSV's.
             Skipping results in a significant speed boost.""",
             action="store_true",
+        )
+        argument_group.add_argument(
+            "-q",
+            "--only-query",
+            help="Run only the specified ETL query form the CMD folder structure (ex: measurement/lab_measurements.sql).",  # noqa: E501 # pylint: disable=line-too-long
+            nargs="?",
+            type=str,
+            metavar="PATH",
         )
         argument_group.add_argument(
             "-t",

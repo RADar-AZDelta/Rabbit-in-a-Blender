@@ -67,6 +67,7 @@ class BigQueryEtlBase(EtlBase, ABC):
 
     def __del__(self):
         logging.info("Total BigQuery cost: %s€", self._gcp.total_cost)
+        EtlBase.__del__(self)
 
     def _get_omop_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of column names of a omop table.
