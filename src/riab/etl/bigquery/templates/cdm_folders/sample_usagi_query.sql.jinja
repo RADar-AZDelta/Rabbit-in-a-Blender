@@ -1,0 +1,7 @@
+SELECT
+    CONCAT('PREQUAL_', source_column) AS sourceCode
+    ,source_column AS sourceName
+    ,COUNT(*) AS sourceFrequency
+FROM {{project_raw}}.raw_dataset.raw_{{ omop_table }}
+GROUP BY sourceCode, sourceName
+ORDER BY sourceFrequency DESC
