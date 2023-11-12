@@ -73,7 +73,7 @@ This makes the CLI arguments less cumbersome.
 
 RiaB searches for the ini config file by using the following cascade:
 1. CLI --config argument
-2. RIAB_CONFIG environment variable
+2. RIAB_CONFIG environment variable (the RIAB_CONFIG environment variable can also be placed in a .env file in the current folder)
 3. riab.ini in the current folder
 
 Below an example of a config:
@@ -112,6 +112,7 @@ CLI Usage
     |---|---
     | -h, --help | Show help message and exit
     | -v, --verbose | Verbose logging (logs are also writen to a log file in the systems tmp folder)
+    | --config | Optional path to the ini config file that holds the database engine configuration. Alternatively set the RIAB_CONFIG environment variable, pointing to the ini file. Or place a riab.ini file in the current directory.
 
 <!-- * **Required named arguments:**
     |  command | help  
