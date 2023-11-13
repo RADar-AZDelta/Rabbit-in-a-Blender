@@ -3,5 +3,10 @@
 
 from riab.cli import Cli
 
+
+def cli():
+    Cli()
+
+
 if __name__ == "__main__":
-    cli = Cli()
+    cli()

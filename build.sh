@@ -10,6 +10,11 @@ python3 -m twine upload --verbose --repository pypi dist/* # choose between repo
 # install the package
 pip uninstall -y Rabbit-in-a-Blender
 # wait a moment
-sleep 5
+sleep 10
 #pip install -i https://test.pypi.org/simple/ Rabbit-in-a-Blender # install from test repo
 pip install --no-cache-dir Rabbit-in-a-Blender
+
+
+#git tag -a 0.0.34 -m "0.0.34"
+#git tag
+#git push origin 0.0.34
