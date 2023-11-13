@@ -230,7 +230,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
             concept_id_column (str): The conept id column
         """
         template = self._template_env.get_template(
-            "{omop_table}__{concept_id_column}_usagi_add_custom_concepts.sql.jinja"
+            "etl/{omop_table}__{concept_id_column}_usagi_add_custom_concepts.sql.jinja"
         )
         sql = template.render(
             dataset_work=self._dataset_work,
@@ -249,7 +249,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
             concept_id_column (str): The conept id column
         """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
-            "{omop_table}__{concept_id_column}_usagi_update_custom_concepts.sql.jinja"
+            "etl/{omop_table}__{concept_id_column}_usagi_update_custom_concepts.sql.jinja"
         )
         sql = template.render(
             dataset_work=self._dataset_work,
