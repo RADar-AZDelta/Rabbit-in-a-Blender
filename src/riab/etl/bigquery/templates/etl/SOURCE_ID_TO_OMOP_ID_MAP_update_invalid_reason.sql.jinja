@@ -1,0 +1,5 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+UPDATE {{dataset_omop}}.source_id_to_omop_id_map T
+SET invalid_reason = 'D'
+where valid_start_date < @etl_start

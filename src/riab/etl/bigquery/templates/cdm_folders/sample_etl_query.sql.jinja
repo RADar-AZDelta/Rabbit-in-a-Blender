@@ -1,0 +1,17 @@
+SELECT
+{%- for column in columns -%}
+    {%- if not loop.first %}
+    {{ ',' }}
+    {%- else %}
+    {{ '' }}
+    {%- endif -%}
+    {%- if column.endswith("_concept_id") -%}
+    CONCAT('PREQUAL_', source_column)
+    {%- elif column.endswith("_id") -%}
+    CONCAT('PREQUAL_', source_column)
+    {%- else -%}
+    source_column
+    {%- endif -%}
+    {{" "}}AS {{ column }}
+{%- endfor %}
+FROM {{project_raw}}.raw_dataset.raw_{{ omop_table }}

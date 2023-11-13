@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
-import re
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -90,9 +89,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         # Remove unwanted analyses that have not already been excluded, if any are specified
         if self._exclude_analysis_ids:
             df_analysis_details = df_analysis_details.filter(
-                pl.col("ANALYSIS_ID").apply(
-                    lambda s: s not in (self._exclude_analysis_ids or [])
-                )
+                pl.col("ANALYSIS_ID").apply(lambda s: s not in (self._exclude_analysis_ids or []))
             )
 
         results_tables = [
@@ -110,11 +107,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                         / "schema_achilles_results.csv"
                     ),
                 ),
-                "analysis_ids": list(
-                    df_analysis_details.filter(pl.col("DISTRIBUTION") <= 0)[
-                        "ANALYSIS_ID"
-                    ]
-                ),
+                "analysis_ids": list(df_analysis_details.filter(pl.col("DISTRIBUTION") <= 0)["ANALYSIS_ID"]),
             },
             {
                 "detail_type": "results_dist",
@@ -130,11 +123,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                         / "schema_achilles_results_dist.csv"
                     ),
                 ),
-                "analysis_ids": list(
-                    df_analysis_details.filter(pl.col("DISTRIBUTION") == 1)[
-                        "ANALYSIS_ID"
-                    ]
-                ),
+                "analysis_ids": list(df_analysis_details.filter(pl.col("DISTRIBUTION") == 1)["ANALYSIS_ID"]),
             },
         ]
 
@@ -144,18 +133,10 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         if not self._create_table and not self._analysis_ids:
             self._create_table = True
             preserve_results = False
-        elif (
-            not self._create_table
-            and self._analysis_ids
-            and not self._update_given_analyses_only
-        ):
+        elif not self._create_table and self._analysis_ids and not self._update_given_analyses_only:
             self._create_table = True
             preserve_results = False
-        elif (
-            not self._create_table
-            and self._analysis_ids
-            and self._update_given_analyses_only
-        ):
+        elif not self._create_table and self._analysis_ids and self._update_given_analyses_only:
             preserve_results = True
 
         # If not creating support tables, then either remove ALL prior results or only those results for
@@ -178,9 +159,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         main_sqls = []
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
-            futures = [
-                executor.submit(self._get_analysis_sql, id) for id in main_analysis_ids
-            ]
+            futures = [executor.submit(self._get_analysis_sql, id) for id in main_analysis_ids]
             for result in as_completed(futures):
                 analysis_id, sql = result.result()
                 main_sqls.append({"analysis_id": analysis_id, "sql": sql})
@@ -190,9 +169,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         benchmark = []
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = [
-                executor.submit(
-                    self._execute_analysis, main_sql["sql"], main_sql["analysis_id"]
-                )
+                executor.submit(self._execute_analysis, main_sql["sql"], main_sql["analysis_id"])
                 for main_sql in main_sqls
             ]
             for result in as_completed(futures):
@@ -204,9 +181,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 benchmark.append((analysis_id, execution_time))
 
         df_benchmark = pl.DataFrame(benchmark, schema=["ANALYSIS_ID", "RUN_TIME"])
-        failed_analysis_ids = list(
-            df_benchmark.filter(pl.col("RUN_TIME") == -1)["ANALYSIS_ID"]
-        )
+        failed_analysis_ids = list(df_benchmark.filter(pl.col("RUN_TIME") == -1)["ANALYSIS_ID"])
 
         for table in results_tables:
             for analysis_id in failed_analysis_ids:
@@ -216,14 +191,13 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         # Merge scratch tables into final analysis tables
         # -------------------------------------------------------------------------------------------
         results_tables_to_merge = [
-            table
-            for table in results_tables
-            if len(set(table["analysis_ids"]) & set(df_benchmark["ANALYSIS_ID"]))
+            table for table in results_tables if len(set(table["analysis_ids"]) & set(df_benchmark["ANALYSIS_ID"]))
         ]
 
         merge_sqls = [
             self._merge_achilles_scratch_tables(
-                results_table, df_benchmark  # , main_analysis_ids
+                results_table,
+                df_benchmark,  # , main_analysis_ids
             )
             for results_table in results_tables_to_merge
         ]
@@ -246,9 +220,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             achilles_tables = list(
                 set(
                     df_analysis_details["DISTRIBUTION"].apply(
-                        lambda x: "achilles_results"
-                        if x == 0
-                        else "achilles_results_dist"
+                        lambda x: "achilles_results" if x == 0 else "achilles_results_dist"
                     )
                 )
             )
@@ -267,9 +239,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         execution_time = end - start
 
         if len(failed_analysis_ids):
-            logging.warning(
-                "Failed analysis %s", ",".join([str(id) for id in failed_analysis_ids])
-            )
+            logging.warning("Failed analysis %s", ",".join([str(id) for id in failed_analysis_ids]))
         logging.info("Achilles took %s to run", format_timespan(execution_time))
 
     def _get_analysis_details(self):
@@ -304,12 +274,8 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         self._run_query(sql)
 
     def _delete_existing_results(self, df_analysis_details: pl.DataFrame):
-        result_ids = list(
-            df_analysis_details.filter(pl.col("DISTRIBUTION") == 0)["ANALYSIS_ID"]
-        )
-        dist_ids = list(
-            df_analysis_details.filter(pl.col("DISTRIBUTION") == 1)["ANALYSIS_ID"]
-        )
+        result_ids = list(df_analysis_details.filter(pl.col("DISTRIBUTION") == 0)["ANALYSIS_ID"])
+        dist_ids = list(df_analysis_details.filter(pl.col("DISTRIBUTION") == 1)["ANALYSIS_ID"])
 
         if result_ids:
             parameters = {
@@ -381,9 +347,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
     def _post_prep_query(self, sql: str) -> str:
         return sql
 
-    def _drop_all_scratch_tables(
-        self, results_tables: list[Any], table_types: list[str] | None = None
-    ):
+    def _drop_all_scratch_tables(self, results_tables: list[Any], table_types: list[str] | None = None):
         if not table_types:
             table_types = ["achilles"]
         if "achilles" not in table_types:
@@ -473,17 +437,6 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         sql = self._pre_prep_query(sql)
 
-        sql = re.sub(r"domain_concept_id_", r"field_concept_id_", sql)
-        sql = re.sub(r"cost_domain_id", r"cost_field_concept_id", sql)
-        sql = re.sub(
-            r"cost_field_concept_id = 'Drug", r"cost_field_concept_id = 1147339", sql
-        )  # drug_exposure table
-        sql = re.sub(
-            r"cost_field_concept_id = 'Procedure",
-            r"cost_field_concept_id = 1147301",
-            sql,
-        )  # procedure_occurence table
-
         parameters = {
             "scratchDatabaseSchema": self._scratch_database_schema,
             "cdmDatabaseSchema": self._cdm_database_schema,
@@ -499,9 +452,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         rendered_sql = self._post_prep_query(rendered_sql)
         return analysis_id, rendered_sql
 
-    def _execute_analysis(
-        self, sql: str, analysis_id: int
-    ) -> Tuple[int, pl.DataFrame, float]:
+    def _execute_analysis(self, sql: str, analysis_id: int) -> Tuple[int, pl.DataFrame, float]:
         data_frame, execution_time = self._run_query(sql)
         return analysis_id, data_frame, execution_time
 
@@ -545,9 +496,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         )
 
         df_benchmark_selects = results_table["schema"][["FIELD_NAME"]].apply(
-            lambda x: self._render_benchmark_selects(
-                analysis_id, x[0].lower(), run_time
-            )
+            lambda x: self._render_benchmark_selects(analysis_id, x[0].lower(), run_time)
         )
         benchmark_selects = ", ".join(iter(df_benchmark_selects["map"]))
 
@@ -565,9 +514,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
     ):
         logging.info("Merging achilles scratch tables")
 
-        df_casted_names = results_table["schema"][["FIELD_NAME", "FIELD_TYPE"]].apply(
-            self._render_casted_names
-        )
+        df_casted_names = results_table["schema"][["FIELD_NAME", "FIELD_TYPE"]].apply(self._render_casted_names)
         casted_names = ", ".join(iter(df_casted_names["map"]))
 
         detail_sqls = []

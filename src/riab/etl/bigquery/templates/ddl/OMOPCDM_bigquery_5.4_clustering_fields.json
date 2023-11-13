@@ -1,0 +1,199 @@
+{
+    "person": [
+        "gender_concept_id",
+        "location_id",
+        "race_concept_id",
+        "person_id"
+    ],
+    "observation_period": [
+        "person_id",
+        "period_type_concept_id",
+        "observation_period_id"
+    ],
+    "visit_occurrence": [
+        "visit_concept_id",
+        "provider_id",
+        "person_id",
+        "visit_occurrence_id"
+    ],
+    "visit_detail": [
+        "visit_detail_concept_id",
+        "provider_id",
+        "person_id",
+        "visit_detail_id"
+    ],
+    "condition_occurrence": [
+        "condition_concept_id",
+        "provider_id",
+        "person_id",
+        "condition_occurrence_id"
+    ],
+    "drug_exposure": [
+        "drug_concept_id",
+        "provider_id",
+        "person_id",
+        "drug_exposure_id"
+    ],
+    "procedure_occurrence": [
+        "procedure_concept_id",
+        "provider_id",
+        "person_id",
+        "procedure_occurrence_id"
+    ],
+    "device_exposure": [
+        "device_concept_id",
+        "provider_id",
+        "person_id",
+        "device_exposure_id"
+    ],
+    "measurement": [
+        "measurement_concept_id",
+        "provider_id",
+        "person_id",
+        "measurement_id"
+    ],
+    "observation": [
+        "observation_concept_id",
+        "provider_id",
+        "person_id",
+        "observation_id"
+    ],
+    "death": [
+        "death_type_concept_id",
+        "cause_concept_id",
+        "person_id"
+    ],
+    "note": [
+        "provider_id",
+        "person_id",
+        "note_type_concept_id",
+        "note_id"
+    ],
+    "note_nlp": [
+        "nlp_system",
+        "note_id",
+        "note_nlp_id"
+    ],
+    "specimen": [
+        "specimen_concept_id",
+        "anatomic_site_concept_id",
+        "person_id",
+        "specimen_id"
+    ],
+    "fact_relationship": [
+        "relationship_concept_id",
+        "domain_concept_id_1",
+        "domain_concept_id_2"
+    ],
+    "location": [
+        "country_concept_id",
+        "zip",
+        "location_id"
+    ],
+    "care_site": [
+        "place_of_service_concept_id",
+        "location_id",
+        "care_site_id"
+    ],
+    "provider": [
+        "specialty_concept_id",
+        "care_site_id",
+        "gender_concept_id",
+        "provider_id"
+    ],
+    "payer_plan_period": [
+        "plan_concept_id",
+        "person_id",
+        "payer_plan_period_id"
+    ],
+    "cost": [
+        "drg_concept_id",
+        "revenue_code_concept_id",
+        "cost_event_id",
+        "cost_id"
+    ],
+    "drug_era": [
+        "drug_concept_id",
+        "person_id",
+        "drug_era_id"
+    ],
+    "dose_era": [
+        "drug_concept_id",
+        "person_id",
+        "dose_era_id"
+    ],
+    "condition_era": [
+        "condition_concept_id",
+        "person_id",
+        "condition_era_id"
+    ],
+    "episode": [
+        "episode_concept_id",
+        "person_id",
+        "episode_id"
+    ],
+    "episode_event": [
+        "episode_event_field_concept_id",
+        "event_id",
+        "episode_id"
+    ],
+    "metadata": [
+        "metadata_type_concept_id",
+        "metadata_concept_id"
+    ],
+    "cdm_source": [
+        "cdm_source_name"
+    ],
+    "concept": [
+        "standard_concept",
+        "vocabulary_id",
+        "domain_id",
+        "concept_id"
+    ],
+    "vocabulary": [
+        "vocabulary_concept_id",
+        "vocabulary_id"
+    ],
+    "domain": [
+        "domain_concept_id",
+        "domain_id"
+    ],
+    "concept_class": [
+        "concept_class_concept_id",
+        "concept_class_id"
+    ],
+    "concept_relationship": [
+        "relationship_id",
+        "concept_id_2",
+        "concept_id_1"
+    ],
+    "relationship": [
+        "relationship_concept_id",
+        "reverse_relationship_id",
+        "relationship_id"
+    ],
+    "concept_synonym": [
+        "concept_id"
+    ],
+    "concept_ancestor": [
+        "descendant_concept_id",
+        "ancestor_concept_id"
+    ],
+    "source_to_concept_map": [
+        "source_vocabulary_id",
+        "target_vocabulary_id"
+    ],
+    "drug_strength": [
+        "ingredient_concept_id",
+        "drug_concept_id"
+    ],
+    "cohort": [
+        "subject_id",
+        "cohort_definition_id"
+    ],
+    "cohort_definition": [
+        "subject_concept_id",
+        "definition_type_concept_id",
+        "cohort_definition_id"
+    ]
+}

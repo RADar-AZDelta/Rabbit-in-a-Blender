@@ -13,28 +13,27 @@
         //"--help",
         "--verbose",
 
-        "--google-location", "europe-west1",
+        //"--create-db"
         
-        //"--create-db", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder",
+        //"--import-vocabularies", "~/vocabulary-2022-07-28.zip"
         
-        //--import-vocabularies", "~/vocabulary-2022-07-28.zip", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder",
+        //"--create-folders", "~/git/radar_omop-cdm/"
         
-        //"--create-folders", "~/OMOP_CDM_test", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop",
-        
-        //"--run-etl", "~/git/OMOP-PCa-trajecten/", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_pca_trajecten", "--bigquery-dataset-id-work", "omop_pca_trajecten_work", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_pca_trajecten", "--bigquery-dataset-id-raw", "hix"
-          //,"--skip-usagi-and-custom-concept-upload"
-          //,"--table", "episode"
+        "--run-etl", "~/git/radar_omop-cdm/"
+          ,"--skip-usagi-and-custom-concept-upload"
+          //,"--table", "cdm_source"
+          ,"--only-query", "cdm_source/hix.sql.jinja"
 
-        //"--cleanup", "all", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--bigquery-dataset-id-work", "omop_work_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
+        //"--cleanup", "all"
         //  ,"--clear-auto-generated-custom-concept-ids"
 
-        //"--data-quality", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "omop_zidder", "--google-cloud-storage-bucket-uri", "gs://azdelta-omop/work_zidder"
+        //"--data-quality"
         //  ,"--json", "dqd_result.json"
 
-        "--data-quality-dashboard", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "phidess_omop_dataset"
-          ,"--port", "9999"
+        //"--data-quality-dashboard"
+        //  ,"--port", "9999"
 
-        //"--achilles", "--db-engine", "BigQuery", "--bigquery-dataset-id-omop", "phidess_omop_dataset", "--bigquery-dataset-id-work", "phidess_work_dataset", "--google-cloud-storage-bucket-uri", "gs://landing_zone_phidess-student_1/achilles"
+        //"--achilles"
       ],
       "console": "integratedTerminal",
       "justMyCode": false,

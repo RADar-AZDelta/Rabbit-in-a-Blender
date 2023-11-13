@@ -3,7 +3,7 @@
 
 from .achilles import Achilles
 from .cleanup import Cleanup
-from .create_etl_folders import CreateEtlFolders
+from .create_cdm_folders import CreateCdmFolders
 from .create_omop_db import CreateOmopDb
 from .data_quality import DataQuality
 from .data_quality_dashboard import DataQualityDashboard

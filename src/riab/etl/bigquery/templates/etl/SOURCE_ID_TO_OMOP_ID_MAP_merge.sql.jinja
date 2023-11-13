@@ -1,0 +1,23 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+MERGE INTO {{dataset_omop}}.source_id_to_omop_id_map AS T
+USING (
+    SELECT DISTINCT
+        '{{omop_table}}' as omop_table
+        ,t.y as omop_id
+        ,t.source
+        ,t.x as source_id
+        ,CURRENT_DATE() as valid_start_date
+        ,DATE(2099, 12, 31) as valid_end_date
+        ,cast(NULL as string) as invalid_reason        
+    FROM {{dataset_work}}.{{pk_swap_table_name}}_swap t
+) AS S
+ON S.omop_table = T.omop_table and S.omop_id = T.omop_id
+WHEN MATCHED THEN
+    UPDATE SET T.source = S.source
+        ,T.source_id = S.source_id
+        ,T.valid_start_date = S.valid_start_date
+        ,T.valid_end_date = S.valid_end_date
+        ,T.invalid_reason = S.invalid_reason
+WHEN NOT MATCHED THEN
+    INSERT ROW

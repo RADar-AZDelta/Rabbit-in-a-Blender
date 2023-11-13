@@ -58,3 +58,6 @@ where = ["src"]
 "riab.libs.Achilles.inst.csv" = ["**/*.csv"]
 "riab.libs.Achilles.inst.sql.sql_server" = ["**/*.sql"]
 "riab.assets" = ["*.css"]
+
+[tool.ruff]
+line-length = 120

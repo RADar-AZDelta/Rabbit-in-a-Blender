@@ -12,10 +12,10 @@ import pyarrow.csv as pcsv
 import pyarrow.parquet as pq
 
 from ..import_vocabularies import ImportVocabularies
-from .bigquery_etl_base import BigQueryEtlBase
+from .bigquery_create_omop_db import BigQueryDdl
 
 
-class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
+class BigQueryImportVocabularies(ImportVocabularies, BigQueryDdl):
     """
     Class that imports the downloaded vocabulary zip from the Athena website.
     """
@@ -26,9 +26,7 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
     ):
         super().__init__(**kwargs)
 
-    def _load_vocabulary_in_upload_table(
-        self, csv_file: Path, vocabulary_table: str
-    ) -> None:
+    def _load_vocabulary_in_upload_table(self, csv_file: Path, vocabulary_table: str) -> None:
         """Loads the CSV file in the specific standardised vocabulary table
 
         Args:
@@ -46,8 +44,7 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
         # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table
         self._gcp.batch_load_from_bucket_into_bigquery_table(
             uri,
-            self._project_id,
-            self._dataset_id_work,
+            self._dataset_work,
             vocabulary_table,
             write_disposition=bq.WriteDisposition.WRITE_EMPTY,  # , schema
         )
@@ -59,9 +56,7 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
             vocabulary_table (str): The standardised vocabulary table
         """
         logging.debug("Deleting vocabulary table %s", vocabulary_table)
-        self._gcp.delete_table(
-            self._project_id, self._dataset_id_work, vocabulary_table
-        )
+        self._gcp.delete_table(self._dataset_work, vocabulary_table)
 
     def _read_vocabulary_csv(self, vocabulary_table: str, csv_file: Path) -> pa.Table:
         """Reads a specific standardised vocabulary table CSV file and converts it into an Arrow table
@@ -81,16 +76,12 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
         )
 
         for date_column in date_columns:
-            temp = pc.strptime(
-                tab.column(date_column[1]), format="%Y%m%d", unit="s"
-            ).cast(pa.date64())
+            temp = pc.strptime(tab.column(date_column[1]), format="%Y%m%d", unit="s").cast(pa.date64())
             tab = tab.set_column(date_column[0], date_column[1], temp)
 
         return tab
 
-    def _get_vocabulary_schema(
-        self, vocabulary_table: str
-    ) -> Tuple[pa.Schema, List[Tuple[int, str]]]:
+    def _get_vocabulary_schema(self, vocabulary_table: str) -> Tuple[pa.Schema, List[Tuple[int, str]]]:
         """Returns a Arrow schema of the vocabulary table and a list of all the data columns (column index and name).
 
         Args:
@@ -116,23 +107,13 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
         date_columns = []
 
         try:
-            table_ddl = next(
-                (
-                    tab
-                    for tab in self._parsed_ddl
-                    if tab["table_name"] == vocabulary_table
-                )
-            )
+            table_ddl = next((tab for tab in self._parsed_ddl if tab["table_name"] == vocabulary_table))
         except StopIteration as si_err:
             raise Exception(f"{vocabulary_table} not found in ddl") from si_err
         schema = [(col["name"], _to_pa(col["type"])) for col in table_ddl["columns"]]
         schema = pa.schema(schema)
 
-        date_columns = [
-            (idx, col["name"])
-            for idx, col in enumerate(table_ddl["columns"])
-            if col["type"] == "date"
-        ]
+        date_columns = [(idx, col["name"]) for idx, col in enumerate(table_ddl["columns"]) if col["type"] == "date"]
 
         return (schema, date_columns)
 
@@ -142,20 +123,16 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
         Args:
             vocabulary_table (str): The standardised vocabulary table
         """
-        template = self._template_env.get_template(
-            "vocabulary_table_recreate.sql.jinja"
-        )
+        template = self._template_env.get_template("vocabulary/vocabulary_table_recreate.sql.jinja")
         sql = template.render(
-            project_id=self._project_id,
-            dataset_id_omop=self._dataset_id_omop,
-            dataset_id_work=self._dataset_id_work,
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
             vocabulary_table=vocabulary_table,
         )
         self._gcp.run_query_job(sql)
 
         self._gcp.set_clustering_fields_on_table(
-            self._project_id,
-            self._dataset_id_omop,
+            self._dataset_omop,
             vocabulary_table,
             self._clustering_fields[vocabulary_table],
         )

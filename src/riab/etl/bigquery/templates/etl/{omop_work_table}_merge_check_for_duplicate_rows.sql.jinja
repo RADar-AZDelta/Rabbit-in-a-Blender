@@ -1,0 +1,48 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+
+
+select
+{% if omop_table == 'fact_relationship' -%}
+    fact_id_1, fact_id_2
+{%- elif omop_table == 'death' -%}
+    person_id
+{%- elif primary_key_column -%}
+    {{primary_key_column}}
+{%- endif %}
+{%- for column in concept_id_columns %}
+    {% if not column in events.values() -%}
+    , {{column}}
+    {%- else -%}
+    , {{column}}
+    {%- endif -%} 
+{%- endfor %}
+{%- for column in events %}
+    {% if omop_table != 'fact_relationship' -%}
+    , {{column}}
+    {%- endif %}
+{%- endfor %}
+    , count(*)
+from {{dataset_work}}.{{omop_table}}_upload
+group by 
+{% if omop_table == 'fact_relationship' -%}
+    fact_id_1, fact_id_2
+{%- elif omop_table == 'death' -%}
+    person_id
+{%- elif primary_key_column -%}
+    {{primary_key_column}}
+{%- endif %}
+{%- for column in concept_id_columns %}
+    {% if not column in events.values() -%}
+    , {{column}}
+    {%- else -%}
+    , {{column}}
+    {%- endif -%} 
+{%- endfor %}
+{%- for column in events %}
+    {% if omop_table != 'fact_relationship' -%}
+    , {{column}}
+    {%- endif %}
+{%- endfor %}
+having count(*) > 1
+limit 100

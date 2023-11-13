@@ -1,18 +1,18 @@
 {# Copyright 2022 RADar-AZDelta #}
 {# SPDX-License-Identifier: gpl3+ #}
-delete from {{project_id}}.{{dataset_id_omop}}.concept_ancestor 
+delete from {{dataset_omop}}.concept_ancestor 
 where (CAST(ancestor_concept_id as STRING) in (
     select CAST(conceptId as STRING)
-    from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
+    from {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi
     where sourceCode in (
         select concept_code
-        from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept
+        from {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept
     )
 ) or CAST(descendant_concept_id as STRING) in (
     select CAST(conceptId as STRING)
-    from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi
+    from {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi
     where sourceCode in (
         select concept_code
-        from {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_concept
+        from {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept
     )
 )) and (ancestor_concept_id >= {{min_custom_concept_id}} or descendant_concept_id >= {{min_custom_concept_id}})

@@ -1,0 +1,18 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+MERGE INTO {{dataset_work}}.concept_id_swap AS T
+USING (
+    WITH cte_max AS (
+        SELECT IFNULL(MAX(y), {{min_custom_concept_id}}) as y
+        FROM {{dataset_work}}.concept_id_swap
+    )
+    SELECT distinct concat('{{concept_id_column}}__', t.concept_code) as x, RANK() OVER(ORDER BY t.concept_code) + cte_max.y as y
+    FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept t
+    INNER JOIN cte_max on 1=1
+    LEFT OUTER JOIN {{dataset_work}}.concept_id_swap swap
+        on swap.x = concat('{{concept_id_column}}__', t.concept_code)
+    where swap.x is null
+) AS S
+ON S.x = T.x
+WHEN NOT MATCHED THEN
+    INSERT ROW

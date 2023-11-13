@@ -1,0 +1,25 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+CREATE TABLE IF NOT EXISTS {{dataset_work}}.{{omop_table}} (
+  {%- for column in columns -%}
+      {%- if not loop.first -%}
+          {{ ',' }}
+      {%- endif %}
+      {{ column["name"] }} 
+      {%- if column["name"] in events or column["name"] in events.values() %} STRING
+      {%- else %} {{ column["type"] }}
+      {%- endif -%}
+      {%- if not column['nullable'] %} not null
+      {%- endif -%}
+  {%- endfor %}
+)
+{% if cluster_fields | length > 0 -%}
+  CLUSTER BY
+  {% for field in cluster_fields -%}
+      {%- if not loop.first -%}
+          {{ ',' }}
+      {%- endif -%}
+      {{ field }}   
+  {%- endfor -%}
+{%- endif -%}
+;

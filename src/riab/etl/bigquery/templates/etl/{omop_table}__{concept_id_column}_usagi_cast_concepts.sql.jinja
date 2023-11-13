@@ -1,0 +1,14 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+CREATE OR REPLACE TABLE {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted
+CLUSTER BY sourceCode
+AS
+SELECT 
+    sourceCode,
+    sourceName,
+    mappingStatus,
+    CAST(conceptId AS INT64) conceptId,
+    conceptName,
+    domainId
+FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi
+where conceptId not in ('', '0') and mappingStatus = "APPROVED"

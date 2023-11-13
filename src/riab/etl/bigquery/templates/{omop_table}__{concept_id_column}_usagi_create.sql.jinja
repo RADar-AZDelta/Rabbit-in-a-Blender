@@ -1,5 +1,0 @@
-{# Copyright 2022 RADar-AZDelta #}
-{# SPDX-License-Identifier: gpl3+ #}
-CREATE TABLE IF NOT EXISTS {{project_id}}.{{dataset_id_work}}.{{omop_table}}__{{concept_id_column}}_usagi 
-(sourceCode STRING, sourceName STRING, mappingStatus STRING, conceptId STRING, conceptName STRING, domainId STRING)
-CLUSTER BY sourceCode

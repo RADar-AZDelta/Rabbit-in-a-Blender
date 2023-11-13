@@ -1,0 +1,22 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+MERGE INTO {{dataset_omop}}.concept AS T
+USING (
+    SELECT DISTINCT swap.y as concept_id, t.* EXCEPT(concept_id)
+    FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept t
+    INNER JOIN {{dataset_work}}.concept_id_swap swap 
+        on swap.x = concat('{{concept_id_column}}__', t.concept_code)
+) AS S
+ON S.concept_id = T.concept_id
+WHEN MATCHED THEN
+    UPDATE SET T.concept_name = S.concept_name
+        ,T.domain_id = S.domain_id
+        ,T.vocabulary_id = S.vocabulary_id
+        ,T.concept_class_id = S.concept_class_id
+        ,T.standard_concept = S.standard_concept
+        ,T.concept_code = S.concept_code
+        ,T.valid_start_date = S.valid_start_date
+        ,T.valid_end_date = S.valid_end_date
+        ,T.invalid_reason = S.invalid_reason
+WHEN NOT MATCHED THEN
+    INSERT ROW

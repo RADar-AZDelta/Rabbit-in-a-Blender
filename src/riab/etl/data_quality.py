@@ -3,7 +3,6 @@
 
 import json
 import logging
-import re
 import uuid
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -101,15 +100,9 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         )
 
         # ensure we use only checks that are intended to be run
-        df_table_level = df_table_level[
-            ~df_table_level["cdmTableName"].isin(tables_to_exclude)
-        ]
-        df_field_level = df_field_level[
-            ~df_field_level["cdmTableName"].isin(tables_to_exclude)
-        ]
-        df_concept_level = df_concept_level[
-            ~df_concept_level["cdmTableName"].isin(tables_to_exclude)
-        ]
+        df_table_level = df_table_level[~df_table_level["cdmTableName"].isin(tables_to_exclude)]
+        df_field_level = df_field_level[~df_field_level["cdmTableName"].isin(tables_to_exclude)]
+        df_concept_level = df_concept_level[~df_concept_level["cdmTableName"].isin(tables_to_exclude)]
 
         # remove offset from being checked
         df_field_level = df_field_level[df_field_level["cdmFieldName"] != "offset"]
@@ -158,12 +151,9 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         if self.json_path:
             # uppercase columns names
             check_results.columns = [
-                column.upper() if column not in ["checkId", "_row"] else column
-                for column in check_results.columns
+                column.upper() if column not in ["checkId", "_row"] else column for column in check_results.columns
             ]
-            check_summary["CheckResults"] = [
-                row.dropna().to_dict() for index, row in check_results.iterrows()
-            ]
+            check_summary["CheckResults"] = [row.dropna().to_dict() for index, row in check_results.iterrows()]
             with open(
                 self.json_path,
                 "w",
@@ -173,10 +163,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
 
     def _capture_check_metadata(self):
         cdm_soures = self._get_cdm_sources()
-        metadata = [
-            dict((k.upper(), v) for k, v in cdm_soure.items())
-            for cdm_soure in cdm_soures
-        ]
+        metadata = [dict((k.upper(), v) for k, v in cdm_soure.items()) for cdm_soure in cdm_soures]
         for item in metadata:
             item["DQD_VERSION"] = self.data_quality_dashboard_version
         return metadata
@@ -234,42 +221,23 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
 
     def _summarize_check_results(self, check_results: pd.DataFrame) -> Any:
         countTotal = len(check_results.index)
-        countThresholdFailed = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["error"].isna()
-            ].index
-        )
+        countThresholdFailed = len(check_results[check_results["failed"].eq(1) & check_results["error"].isna()].index)
         countErrorFailed = len(check_results[~check_results["error"].isna()].index)
         countOverallFailed = len(check_results[check_results["failed"] == 1].index)
         countPassed = countTotal - countOverallFailed
         percentPassed = round((countPassed / countTotal) * 100)
         percentFailed = round((countOverallFailed / countTotal) * 100)
-        countTotalPlausibility = len(
-            check_results[check_results["category"] == "Plausibility"].index
-        )
-        countTotalConformance = len(
-            check_results[check_results["category"] == "Conformance"].index
-        )
-        countTotalCompleteness = len(
-            check_results[check_results["category"] == "Completeness"].index
-        )
+        countTotalPlausibility = len(check_results[check_results["category"] == "Plausibility"].index)
+        countTotalConformance = len(check_results[check_results["category"] == "Conformance"].index)
+        countTotalCompleteness = len(check_results[check_results["category"] == "Completeness"].index)
         countFailedPlausibility = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["category"]
-                == "Plausibility"
-            ].index
+            check_results[check_results["failed"].eq(1) & check_results["category"] == "Plausibility"].index
         )
         countFailedConformance = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["category"]
-                == "Conformance"
-            ].index
+            check_results[check_results["failed"].eq(1) & check_results["category"] == "Conformance"].index
         )
         countFailedCompleteness = len(
-            check_results[
-                check_results["failed"].eq(1) & check_results["category"]
-                == "Completeness"
-            ].index
+            check_results[check_results["failed"].eq(1) & check_results["category"] == "Completeness"].index
         )
 
         check_summary = {
@@ -310,9 +278,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                 check_threshold["threshold_value"] = 0
             check_threshold["notes_value"] = item[notes_field]
 
-        if ("threshold_value" not in check_threshold) or (
-            check_threshold["threshold_value"] == 0
-        ):
+        if ("threshold_value" not in check_threshold) or (check_threshold["threshold_value"] == 0):
             if result["num_violated_rows"] and result["num_violated_rows"] > 0:
                 check_threshold["failed"] = 1
         else:
@@ -333,25 +299,17 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
     ) -> Any:
         check_result = {
             "num_violated_rows": result["num_violated_rows"] if result else None,
-            "pct_violated_rows": round(result["pct_violated_rows"], 4)
-            if result
-            else None,
+            "pct_violated_rows": round(result["pct_violated_rows"], 4) if result else None,
             "num_denominator_rows": result["num_denominator_rows"] if result else None,
             "execution_time": f"{execution_time:.6f} secs",
             "query_text": sql,
             "check_name": check.checkName,
             "check_level": check.checkLevel,
             "check_description": check.checkDescription,
-            "cdm_table_name": item.cdmTableName
-            if hasattr(item, "cdmTableName")
-            else None,
-            "cdm_field_name": item.cdmFieldName
-            if hasattr(item, "cdmFieldName")
-            else None,
+            "cdm_table_name": item.cdmTableName if hasattr(item, "cdmTableName") else None,
+            "cdm_field_name": item.cdmFieldName if hasattr(item, "cdmFieldName") else None,
             "concept_id": item.conceptTd if hasattr(item, "conceptTd") else None,
-            "unit_concept_id": item.unitConceptId
-            if hasattr(item, "unitConceptId")
-            else None,
+            "unit_concept_id": item.unitConceptId if hasattr(item, "unitConceptId") else None,
             "sql_file": check.sqlFile,
             "category": check.kahnCategory,
             "subcategory": check.kahnSubcategory,
@@ -404,8 +362,5 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             sql = file.read()
 
         sql = self._render_sql(sql, parameters)
-
-        sql = re.sub(r"domain_concept_id_", r"field_concept_id_", sql)
-        sql = re.sub(r"cost_domain_id", r"cost_field_concept_id", sql)
 
         return sql

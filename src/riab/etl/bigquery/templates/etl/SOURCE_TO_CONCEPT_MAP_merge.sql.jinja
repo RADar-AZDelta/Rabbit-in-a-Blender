@@ -1,0 +1,30 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+MERGE INTO {{dataset_omop}}.source_to_concept_map AS T
+USING (
+    SELECT DISTINCT
+        t.sourceCode as source_code
+        ,0 as source_concept_id
+        ,'' as source_vocabulary_id
+        ,t.sourceName as source_code_description
+        ,t.conceptId as target_concept_id
+        ,c.vocabulary_id as target_vocabulary_id
+        ,CURRENT_DATE() as valid_start_date
+        ,DATE(2099, 12, 31) as valid_end_date
+        ,cast(NULL as string) as invalid_reason
+    FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted t
+    INNER JOIN {{dataset_omop}}.concept c on c.concept_id = t.conceptId
+    where t.mappingStatus = 'APPROVED'
+) AS S
+ON S.source_code = T.source_code and S.target_concept_id = T.target_concept_id
+WHEN MATCHED THEN
+    UPDATE SET T.source_concept_id = S.source_concept_id
+        ,T.source_vocabulary_id = S.source_vocabulary_id
+        ,T.source_code_description = S.source_code_description
+        ,T.target_concept_id = S.target_concept_id
+        ,T.target_vocabulary_id = S.target_vocabulary_id
+        ,T.valid_start_date = S.valid_start_date
+        ,T.valid_end_date = S.valid_end_date
+        ,T.invalid_reason = S.invalid_reason
+WHEN NOT MATCHED THEN
+    INSERT ROW

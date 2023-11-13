@@ -1,0 +1,11 @@
+{# Copyright 2022 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
+UPDATE {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi AS T
+SET T.conceptId = CAST(c.concept_id AS STRING)
+FROM (
+    SELECT t.concept_code AS concept_code, swap.y AS concept_id
+    FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept t
+    INNER JOIN {{dataset_work}}.concept_id_swap swap
+    on swap.x = concat('{{concept_id_column}}__', t.concept_code)
+) c
+WHERE T.conceptId = c.concept_code; 

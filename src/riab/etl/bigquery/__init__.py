@@ -3,7 +3,7 @@
 
 from .bigquery_achilles import BigQueryAchilles
 from .bigquery_cleanup import BigQueryCleanup
-from .bigquery_create_etl_folders import BigQueryCreateEtlFolders
+from .bigquery_create_cdm_folders import BigQueryCreateCdmFolders
 from .bigquery_create_omop_db import BigQueryCreateOmopDb
 from .bigquery_data_quality import BigQueryDataQuality
 from .bigquery_data_quality_dashboard import BigQueryDataQualityDashboard
