@@ -6,8 +6,9 @@ import logging
 import logging.config
 import sys
 import traceback
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawTextHelpFormatter
 from configparser import ConfigParser
+from importlib import metadata
 from os import environ as env
 from os import getcwd, linesep, path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
@@ -211,12 +212,66 @@ class Cli:
     def _create_default_options_argument_parser(self) -> ArgumentParser:
         """Argument parser for the required named arguments"""
 
-        parser = ArgumentParserWithBetterErrorPrinting(add_help=False)
+        parser = ArgumentParserWithBetterErrorPrinting(add_help=False, formatter_class=RawTextHelpFormatter)
         parser.add_argument(
             "-v",
             "--verbose",
             help="Verbose logging (logs are also writen to a log file in the systems tmp folder)",
             action="store_true",
+        )
+
+        parser.add_argument(
+            "-V",
+            "--version",
+            action="version",
+            # version=f"Version: {metadata.version('Rabbit-in-a-Blender')}"
+            version=rf"""
+______      _     _     _ _     _                ______ _                _           
+| ___ \    | |   | |   (_) |   (_)               | ___ \ |              | |          
+| |_/ /__ _| |__ | |__  _| |_   _ _ __     __ _  | |_/ / | ___ _ __   __| | ___ _ __ 
+|    // _` | '_ \| '_ \| | __| | | '_ \   / _` | | ___ \ |/ _ \ '_ \ / _` |/ _ \ '__|
+| |\ \ (_| | |_) | |_) | | |_  | | | | | | (_| | | |_/ / |  __/ | | | (_| |  __/ |   
+\_| \_\__,_|_.__/|_.__/|_|\__| |_|_| |_|  \__,_| \____/|_|\___|_| |_|\__,_|\___|_|   
+
+                            VERSION     {metadata.version('Rabbit-in-a-Blender')}    
+                                                                                
+                                  ,/,(((                                        
+                                  *((((((.                                      
+                                  ,(((((((,,,.                                  
+                                    *((((((((((((.                              
+                                   /(((((((((/,((((.                            
+                                   .((((((((((((((((                            
+                                  ,((((((((((((*..                              
+                               ,(((((((((((((((,                                
+                            *((((((((((((((((((/                                
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&                           
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@@.                      
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&  #&&&&                    
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&    @&&                    
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@    @&&                    
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@    @&&                    
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@    @&&                    
+                      &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@    @&&                    
+                      #&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@    @&&                    
+                      /&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@    @&&                    
+                       &&&&&&&&&&&&&&&&&&&&&&&&&&&&&% *@&&@*                    
+                       @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&@,                       
+                       ,&&&&&&&&&&&&&&&&&&&&&&&&&&&&&                           
+                        ,&&&&&&&&&&&&&&&&&&&&&&&&&&                             
+                          @&&&&&&&&&&&&&&&&&&&&&&*                              
+                           #&&&&&&&&&&&&&&&&&&&@                                
+                             @&&&&&&&&&&&&&&&&,                                 
+                             (((((((((((((((((,                                 
+                           %&&&&&&&&&&&&&&&&&&&&                                
+                          &&&    /&/    @@    %&@.                              
+                         @&&&&&&&&&@(.*@@&&&&&&&&&                              
+                        %&&&&&&&&   @&&&# ,&&&&&&&&                             
+                       &&&&&&&&& &&&# #&&@ /&&&&&&&@                            
+                      (&&&&&&&&& .&&&&&&&% %&&&&&&&&@                           
+                      @&&&&&&&&&&&  ,/*  /&&&&&&&&&&&                           
+                      @&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&                           
+                                       
+            """,
         )
 
         optional_argument_group = parser.add_argument_group("Optional named arguments")

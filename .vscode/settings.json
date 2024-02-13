@@ -5,8 +5,8 @@
   "[python]": {
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.fixAll": false,
-      "source.organizeImports": true
+      "source.fixAll": "never",
+      "source.organizeImports": "explicit"
     },
     "editor.defaultFormatter": "charliermarsh.ruff",
   },
