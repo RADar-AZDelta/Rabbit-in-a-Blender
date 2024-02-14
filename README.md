@@ -240,6 +240,8 @@ There are 2 ways to [authenticate](https://cloud.google.com/docs/authentication/
     # set our project
     PROJECT_ID="our_omop_etl_project_id_on_GCP" #you need to change this
     gcloud config set project ${PROJECT_ID}
+    # you can alternatively set the project_id with a environment variable
+    export GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
     ```
 
     More info can also be found in the [Python API for GCP authentication](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview)

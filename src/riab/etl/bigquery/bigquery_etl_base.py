@@ -46,9 +46,9 @@ class BigQueryEtlBase(EtlBase, ABC):
         super().__init__(**kwargs)
 
         if credentials_file:
-            credentials, project = google.auth.load_credentials_from_file(credentials_file)
+            credentials, project_id = google.auth.load_credentials_from_file(credentials_file)
         else:
-            credentials, project = google.auth.default()
+            credentials, project_id = google.auth.default()
 
         # if not project_id:
         #     project_id = project
