@@ -137,6 +137,7 @@ CLI Usage
     | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table
     | -q [PATH], --only-query [PATH] | Do ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql) 
     | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
+    | -sa, --process-semi-approved-mappings | In addition to 'APPROVED' as mapping status, 'SEMI-APPROVED' will be processed as valid Usagi concept mappings.
 
 * **Data quality specific command options (-dq, --data-quality):**
     |  command | help  
@@ -266,7 +267,7 @@ Authors
 License
 ========
 
-Copyright © 2022, [RADar-AZDelta](mailto:radar@azdelta.be).
+Copyright © 2024, [RADar-AZDelta](mailto:radar@azdelta.be).
 Released under the [GNU General Public License v3.0](LICENSE).
 
 ***

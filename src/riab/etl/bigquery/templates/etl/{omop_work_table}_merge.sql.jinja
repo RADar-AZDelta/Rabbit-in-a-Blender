@@ -1,4 +1,4 @@
-{# Copyright 2022 RADar-AZDelta #}
+{# Copyright 2024 RADar-AZDelta #}
 {# SPDX-License-Identifier: gpl3+ #}
 MERGE INTO {{dataset_work}}.{{omop_table}} AS T
 USING (
@@ -69,7 +69,12 @@ USING (
             {%- set ns = namespace(ci_counter=0) -%}
             {%- for column in concept_id_columns %}
                 {%- if not column in events.values() %}
-            LEFT OUTER JOIN {{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
+            LEFT OUTER JOIN {{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}                and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
+                    {% if not process_semi_approved_mappings -%}
+                and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
+                    {%- else -%}
+                and swap_ci{{ns.ci_counter}}.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
+                    {%- endif -%}                 
                 {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                 {%- endif -%}
             {%- endfor %}

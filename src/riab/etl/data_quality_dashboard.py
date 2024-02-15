@@ -1,4 +1,4 @@
-# Copyright 2022 RADar-AZDelta
+# Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
 import logging
@@ -53,9 +53,7 @@ class DataQualityDashboard(EtlBase, ABC):
                     [
                         dbc.Col(
                             [
-                                html.H2(
-                                    "Data Quality Dashboard", style={"color": "navy"}
-                                ),
+                                html.H2("Data Quality Dashboard", style={"color": "navy"}),
                             ],
                             width=True,
                         ),
@@ -78,9 +76,7 @@ class DataQualityDashboard(EtlBase, ABC):
                                                 id="runs-dropdown",
                                                 placeholder="Select run",
                                                 options=last_runs,
-                                                value=last_runs[0]["value"]
-                                                if last_runs
-                                                else None,
+                                                value=last_runs[0]["value"] if last_runs else None,
                                             ),
                                         ],
                                         className="me-3",
@@ -147,38 +143,18 @@ class DataQualityDashboard(EtlBase, ABC):
                                                             "Plausibility",
                                                             className="right",
                                                         ),
-                                                        html.Td(
-                                                            id="verification_plausibility_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_plausibility_fail"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_plausibility_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_plausibility_percent_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_plausibility_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_plausibility_fail"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_plausibility_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_plausibility_percent_pass"
-                                                        ),
+                                                        html.Td(id="verification_plausibility_pass"),
+                                                        html.Td(id="verification_plausibility_fail"),
+                                                        html.Td(id="verification_plausibility_total"),
+                                                        html.Td(id="verification_plausibility_percent_pass"),
+                                                        html.Td(id="validation_plausibility_pass"),
+                                                        html.Td(id="validation_plausibility_fail"),
+                                                        html.Td(id="validation_plausibility_total"),
+                                                        html.Td(id="validation_plausibility_percent_pass"),
                                                         html.Td(id="plausibility_pass"),
                                                         html.Td(id="plausibility_fail"),
-                                                        html.Td(
-                                                            id="plausibility_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="plausibility_percent_pass"
-                                                        ),
+                                                        html.Td(id="plausibility_total"),
+                                                        html.Td(id="plausibility_percent_pass"),
                                                     ],
                                                 ),
                                                 html.Tr(
@@ -187,36 +163,18 @@ class DataQualityDashboard(EtlBase, ABC):
                                                             "Conformance",
                                                             className="right",
                                                         ),
-                                                        html.Td(
-                                                            id="verification_conformance_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_conformance_fail"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_conformance_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_conformance_percent_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_conformance_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_conformance_fail"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_conformance_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_conformance_percent_pass"
-                                                        ),
+                                                        html.Td(id="verification_conformance_pass"),
+                                                        html.Td(id="verification_conformance_fail"),
+                                                        html.Td(id="verification_conformance_total"),
+                                                        html.Td(id="verification_conformance_percent_pass"),
+                                                        html.Td(id="validation_conformance_pass"),
+                                                        html.Td(id="validation_conformance_fail"),
+                                                        html.Td(id="validation_conformance_total"),
+                                                        html.Td(id="validation_conformance_percent_pass"),
                                                         html.Td(id="conformance_pass"),
                                                         html.Td(id="conformance_fail"),
                                                         html.Td(id="conformance_total"),
-                                                        html.Td(
-                                                            id="conformance_percent_pass"
-                                                        ),
+                                                        html.Td(id="conformance_percent_pass"),
                                                     ],
                                                 ),
                                                 html.Tr(
@@ -225,59 +183,31 @@ class DataQualityDashboard(EtlBase, ABC):
                                                             "Completeness",
                                                             className="right",
                                                         ),
-                                                        html.Td(
-                                                            id="verification_completeness_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_completeness_fail"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_completeness_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_completeness_percent_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_completeness_pass"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_completeness_fail"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_completeness_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="validation_completeness_percent_pass"
-                                                        ),
+                                                        html.Td(id="verification_completeness_pass"),
+                                                        html.Td(id="verification_completeness_fail"),
+                                                        html.Td(id="verification_completeness_total"),
+                                                        html.Td(id="verification_completeness_percent_pass"),
+                                                        html.Td(id="validation_completeness_pass"),
+                                                        html.Td(id="validation_completeness_fail"),
+                                                        html.Td(id="validation_completeness_total"),
+                                                        html.Td(id="validation_completeness_percent_pass"),
                                                         html.Td(id="completeness_pass"),
                                                         html.Td(id="completeness_fail"),
-                                                        html.Td(
-                                                            id="completeness_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="completeness_percent_pass"
-                                                        ),
+                                                        html.Td(id="completeness_total"),
+                                                        html.Td(id="completeness_percent_pass"),
                                                     ],
                                                 ),
                                                 html.Tr(
                                                     [
-                                                        html.Th(
-                                                            "Total", className="right"
-                                                        ),
+                                                        html.Th("Total", className="right"),
                                                         html.Td(id="verification_pass"),
                                                         html.Td(id="verification_fail"),
-                                                        html.Td(
-                                                            id="verification_total"
-                                                        ),
-                                                        html.Td(
-                                                            id="verification_percent_pass"
-                                                        ),
+                                                        html.Td(id="verification_total"),
+                                                        html.Td(id="verification_percent_pass"),
                                                         html.Td(id="validation_pass"),
                                                         html.Td(id="validation_fail"),
                                                         html.Td(id="validation_total"),
-                                                        html.Td(
-                                                            id="validation_percent_pass"
-                                                        ),
+                                                        html.Td(id="validation_percent_pass"),
                                                         html.Td(id="all_pass"),
                                                         html.Td(id="all_fail"),
                                                         html.Td(id="all_total"),
@@ -327,7 +257,7 @@ class DataQualityDashboard(EtlBase, ABC):
                                         },
                                         {"name": "SQL file", "id": "sql_file"},
                                     ],
-                                    #hidden_columns=["sql_file"]
+                                    # hidden_columns=["sql_file"]
                                 ),
                             ],
                             align="end",
@@ -341,7 +271,7 @@ class DataQualityDashboard(EtlBase, ABC):
                                 ),
                                 dcc.Textarea(
                                     id="textarea-query",
-                                    style={'width': '100%', 'height': 300},
+                                    style={"width": "100%", "height": 300},
                                 ),
                             ],
                             align="end",
@@ -419,17 +349,17 @@ class DataQualityDashboard(EtlBase, ABC):
             Input("runs-dropdown", "value"),
         )(self.run_selected)
         self.app.callback(
-            Output('textarea-query', 'value'),
-            Input('datatable-results', 'active_cell'),
-            Input('datatable-results', 'derived_virtual_indices'),
-            Input('datatable-results', 'data')
+            Output("textarea-query", "value"),
+            Input("datatable-results", "active_cell"),
+            Input("datatable-results", "derived_virtual_indices"),
+            Input("datatable-results", "data"),
         )(self.show_query)
 
     def show_query(self, active_cell, derived_virtual_indices, data):
         if not active_cell:
             return None
 
-        full_row_index = derived_virtual_indices[active_cell['row']]
+        full_row_index = derived_virtual_indices[active_cell["row"]]
 
         row = data[full_row_index]
 
@@ -451,17 +381,12 @@ class DataQualityDashboard(EtlBase, ABC):
         # run = self._get_run(run_id)
         df = self._get_results(run_id)
         df = (
-            df.with_columns(
-                pl.when((pl.col("failed") == 1))
-                .then("FAILED")
-                .otherwise("PASS")
-                .alias("status")
-            )
+            df.with_columns(pl.when((pl.col("failed") == 1)).then("FAILED").otherwise("PASS").alias("status"))
             .with_columns(pl.col("pct_violated_rows") * 100)
             .with_columns(
                 pl.when(pl.col("cdm_table_name") is None)
                 .then("")
-                .otherwise(pl.col("cdm_table_name")) # keep original value
+                .otherwise(pl.col("cdm_table_name"))  # keep original value
                 .alias("cdm_table_name")
             )
             # .with_columns(
@@ -478,23 +403,16 @@ class DataQualityDashboard(EtlBase, ABC):
 
         verification_plausibility_pass = len(
             df.filter(
-                (pl.col("failed") == 0)
-                & (pl.col("context") == "Verification")
-                & (pl.col("category") == "Plausibility")
+                (pl.col("failed") == 0) & (pl.col("context") == "Verification") & (pl.col("category") == "Plausibility")
             )
         )
         verification_plausibility_fail = len(
             df.filter(
-                (pl.col("failed") == 1)
-                & (pl.col("context") == "Verification")
-                & (pl.col("category") == "Plausibility")
+                (pl.col("failed") == 1) & (pl.col("context") == "Verification") & (pl.col("category") == "Plausibility")
             )
         )
         verification_plausibility_total = len(
-            df.filter(
-                (pl.col("context") == "Verification")
-                & (pl.col("category") == "Plausibility")
-            )
+            df.filter((pl.col("context") == "Verification") & (pl.col("category") == "Plausibility"))
         )
         verification_plausibility_percent_pass = (
             f"{round(verification_plausibility_pass/verification_plausibility_total * 100)}%"
@@ -504,23 +422,16 @@ class DataQualityDashboard(EtlBase, ABC):
 
         verification_conformance_pass = len(
             df.filter(
-                (pl.col("failed") == 0)
-                & (pl.col("context") == "Verification")
-                & (pl.col("category") == "Conformance")
+                (pl.col("failed") == 0) & (pl.col("context") == "Verification") & (pl.col("category") == "Conformance")
             )
         )
         verification_conformance_fail = len(
             df.filter(
-                (pl.col("failed") == 1)
-                & (pl.col("context") == "Verification")
-                & (pl.col("category") == "Conformance")
+                (pl.col("failed") == 1) & (pl.col("context") == "Verification") & (pl.col("category") == "Conformance")
             )
         )
         verification_conformance_total = len(
-            df.filter(
-                (pl.col("context") == "Verification")
-                & (pl.col("category") == "Conformance")
-            )
+            df.filter((pl.col("context") == "Verification") & (pl.col("category") == "Conformance"))
         )
         verification_conformance_percent_pass = (
             f"{round(verification_conformance_pass/verification_conformance_total * 100)}%"
@@ -530,23 +441,16 @@ class DataQualityDashboard(EtlBase, ABC):
 
         verification_completeness_pass = len(
             df.filter(
-                (pl.col("failed") == 0)
-                & (pl.col("context") == "Verification")
-                & (pl.col("category") == "Completeness")
+                (pl.col("failed") == 0) & (pl.col("context") == "Verification") & (pl.col("category") == "Completeness")
             )
         )
         verification_completeness_fail = len(
             df.filter(
-                (pl.col("failed") == 1)
-                & (pl.col("context") == "Verification")
-                & (pl.col("category") == "Completeness")
+                (pl.col("failed") == 1) & (pl.col("context") == "Verification") & (pl.col("category") == "Completeness")
             )
         )
         verification_completeness_total = len(
-            df.filter(
-                (pl.col("context") == "Verification")
-                & (pl.col("category") == "Completeness")
-            )
+            df.filter((pl.col("context") == "Verification") & (pl.col("category") == "Completeness"))
         )
         verification_completeness_percent_pass = (
             f"{round(verification_completeness_pass/verification_completeness_total * 100)}%"
@@ -554,38 +458,25 @@ class DataQualityDashboard(EtlBase, ABC):
             else "-"
         )
 
-        verification_pass = len(
-            df.filter((pl.col("failed") == 0) & (pl.col("context") == "Verification"))
-        )
-        verification_fail = len(
-            df.filter((pl.col("failed") == 1) & (pl.col("context") == "Verification"))
-        )
+        verification_pass = len(df.filter((pl.col("failed") == 0) & (pl.col("context") == "Verification")))
+        verification_fail = len(df.filter((pl.col("failed") == 1) & (pl.col("context") == "Verification")))
         verification_total = len(df.filter((pl.col("context") == "Verification")))
         verification_percent_pass = (
-            f"{round(verification_pass/verification_total * 100)}%"
-            if verification_total != 0
-            else "-"
+            f"{round(verification_pass/verification_total * 100)}%" if verification_total != 0 else "-"
         )
 
         validation_plausibility_pass = len(
             df.filter(
-                (pl.col("failed") == 0)
-                & (pl.col("context") == "Validation")
-                & (pl.col("category") == "Plausibility")
+                (pl.col("failed") == 0) & (pl.col("context") == "Validation") & (pl.col("category") == "Plausibility")
             )
         )
         validation_plausibility_fail = len(
             df.filter(
-                (pl.col("failed") == 1)
-                & (pl.col("context") == "Validation")
-                & (pl.col("category") == "Plausibility")
+                (pl.col("failed") == 1) & (pl.col("context") == "Validation") & (pl.col("category") == "Plausibility")
             )
         )
         validation_plausibility_total = len(
-            df.filter(
-                (pl.col("context") == "Validation")
-                & (pl.col("category") == "Plausibility")
-            )
+            df.filter((pl.col("context") == "Validation") & (pl.col("category") == "Plausibility"))
         )
         validation_plausibility_percent_pass = (
             f"{round(validation_plausibility_pass/validation_plausibility_total * 100)}%"
@@ -595,23 +486,16 @@ class DataQualityDashboard(EtlBase, ABC):
 
         validation_conformance_pass = len(
             df.filter(
-                (pl.col("failed") == 0)
-                & (pl.col("context") == "Validation")
-                & (pl.col("category") == "Conformance")
+                (pl.col("failed") == 0) & (pl.col("context") == "Validation") & (pl.col("category") == "Conformance")
             )
         )
         validation_conformance_fail = len(
             df.filter(
-                (pl.col("failed") == 1)
-                & (pl.col("context") == "Validation")
-                & (pl.col("category") == "Conformance")
+                (pl.col("failed") == 1) & (pl.col("context") == "Validation") & (pl.col("category") == "Conformance")
             )
         )
         validation_conformance_total = len(
-            df.filter(
-                (pl.col("context") == "Validation")
-                & (pl.col("category") == "Conformance")
-            )
+            df.filter((pl.col("context") == "Validation") & (pl.col("category") == "Conformance"))
         )
         validation_conformance_percent_pass = (
             f"{round(validation_conformance_pass/validation_conformance_total * 100)}%"
@@ -621,23 +505,16 @@ class DataQualityDashboard(EtlBase, ABC):
 
         validation_completeness_pass = len(
             df.filter(
-                (pl.col("failed") == 0)
-                & (pl.col("context") == "Validation")
-                & (pl.col("category") == "Completeness")
+                (pl.col("failed") == 0) & (pl.col("context") == "Validation") & (pl.col("category") == "Completeness")
             )
         )
         validation_completeness_fail = len(
             df.filter(
-                (pl.col("failed") == 1)
-                & (pl.col("context") == "Validation")
-                & (pl.col("category") == "Completeness")
+                (pl.col("failed") == 1) & (pl.col("context") == "Validation") & (pl.col("category") == "Completeness")
             )
         )
         validation_completeness_total = len(
-            df.filter(
-                (pl.col("context") == "Validation")
-                & (pl.col("category") == "Completeness")
-            )
+            df.filter((pl.col("context") == "Validation") & (pl.col("category") == "Completeness"))
         )
         validation_completeness_percent_pass = (
             f"{round(validation_completeness_pass/validation_completeness_total * 100)}%"
@@ -645,64 +522,36 @@ class DataQualityDashboard(EtlBase, ABC):
             else "-"
         )
 
-        validation_pass = len(
-            df.filter((pl.col("failed") == 0) & (pl.col("context") == "Validation"))
-        )
-        validation_fail = len(
-            df.filter((pl.col("failed") == 1) & (pl.col("context") == "Validation"))
-        )
+        validation_pass = len(df.filter((pl.col("failed") == 0) & (pl.col("context") == "Validation")))
+        validation_fail = len(df.filter((pl.col("failed") == 1) & (pl.col("context") == "Validation")))
         validation_total = len(df.filter((pl.col("context") == "Validation")))
-        validation_percent_pass = (
-            f"{round(validation_pass/validation_total * 100)}%"
-            if validation_total != 0
-            else "-"
-        )
+        validation_percent_pass = f"{round(validation_pass/validation_total * 100)}%" if validation_total != 0 else "-"
 
-        plausibility_pass = len(
-            df.filter((pl.col("failed") == 0) & (pl.col("category") == "Plausibility"))
-        )
-        plausibility_fail = len(
-            df.filter((pl.col("failed") == 1) & (pl.col("category") == "Plausibility"))
-        )
+        plausibility_pass = len(df.filter((pl.col("failed") == 0) & (pl.col("category") == "Plausibility")))
+        plausibility_fail = len(df.filter((pl.col("failed") == 1) & (pl.col("category") == "Plausibility")))
         plausibility_total = len(df.filter((pl.col("category") == "Plausibility")))
         plausibility_percent_pass = (
-            f"{round(plausibility_pass/plausibility_total * 100)}%"
-            if plausibility_total != 0
-            else "-"
+            f"{round(plausibility_pass/plausibility_total * 100)}%" if plausibility_total != 0 else "-"
         )
 
-        conformance_pass = len(
-            df.filter((pl.col("failed") == 0) & (pl.col("category") == "Conformance"))
-        )
-        conformance_fail = len(
-            df.filter((pl.col("failed") == 1) & (pl.col("category") == "Conformance"))
-        )
+        conformance_pass = len(df.filter((pl.col("failed") == 0) & (pl.col("category") == "Conformance")))
+        conformance_fail = len(df.filter((pl.col("failed") == 1) & (pl.col("category") == "Conformance")))
         conformance_total = len(df.filter((pl.col("category") == "Conformance")))
         conformance_percent_pass = (
-            f"{round(conformance_pass/conformance_total * 100)}%"
-            if conformance_total != 0
-            else "-"
+            f"{round(conformance_pass/conformance_total * 100)}%" if conformance_total != 0 else "-"
         )
 
-        completeness_pass = len(
-            df.filter((pl.col("failed") == 0) & (pl.col("category") == "Completeness"))
-        )
-        completeness_fail = len(
-            df.filter((pl.col("failed") == 1) & (pl.col("category") == "Completeness"))
-        )
+        completeness_pass = len(df.filter((pl.col("failed") == 0) & (pl.col("category") == "Completeness")))
+        completeness_fail = len(df.filter((pl.col("failed") == 1) & (pl.col("category") == "Completeness")))
         completeness_total = len(df.filter((pl.col("category") == "Completeness")))
         completeness_percent_pass = (
-            f"{round(completeness_pass/completeness_total * 100)}%"
-            if completeness_total != 0
-            else "-"
+            f"{round(completeness_pass/completeness_total * 100)}%" if completeness_total != 0 else "-"
         )
 
         all_pass = len(df.filter((pl.col("failed") == 0)))
         all_fail = len(df.filter((pl.col("failed") == 1)))
         all_total = len(df)
-        all_percent_pass = (
-            f"{round(all_pass/all_total * 100)}%" if all_total != 0 else "-"
-        )
+        all_percent_pass = f"{round(all_pass/all_total * 100)}%" if all_total != 0 else "-"
 
         return (
             verification_plausibility_pass,

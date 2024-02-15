@@ -1,4 +1,4 @@
-# Copyright 2022 RADar-AZDelta
+# Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
 import logging
@@ -274,6 +274,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
             dataset_work=self._dataset_work,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
         self._gcp.run_query_job(sql)
 
@@ -290,6 +291,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
             dataset_omop=self._dataset_omop,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
         rows = self._gcp.run_query_job(sql_doubles)
         ar_table = rows.to_arrow()
@@ -304,6 +306,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
             dataset_omop=self._dataset_omop,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
         self._gcp.run_query_job(sql)
 
@@ -491,6 +494,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
             concept_id_columns=concept_id_columns,
             pk_auto_numbering=pk_auto_numbering,
             events=events,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
         self._gcp.run_query_job(sql)
 

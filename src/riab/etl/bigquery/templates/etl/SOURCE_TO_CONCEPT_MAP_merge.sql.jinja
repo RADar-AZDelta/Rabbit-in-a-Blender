@@ -1,4 +1,4 @@
-{# Copyright 2022 RADar-AZDelta #}
+{# Copyright 2024 RADar-AZDelta #}
 {# SPDX-License-Identifier: gpl3+ #}
 MERGE INTO {{dataset_omop}}.source_to_concept_map AS T
 USING (
@@ -14,7 +14,11 @@ USING (
         ,cast(NULL as string) as invalid_reason
     FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted t
     INNER JOIN {{dataset_omop}}.concept c on c.concept_id = t.conceptId
+{% if not process_semi_approved_mappings -%}
     where t.mappingStatus = 'APPROVED'
+{%- else -%}
+    where t.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
+{%- endif -%} 
 ) AS S
 ON S.source_code = T.source_code and S.target_concept_id = T.target_concept_id
 WHEN MATCHED THEN

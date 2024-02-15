@@ -1,4 +1,4 @@
-# Copyright 2022 RADar-AZDelta
+# Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
 # pylint: disable=unsubscriptable-object
@@ -32,6 +32,7 @@ class Etl(EtlBase):
         only_omop_table: Optional[str] = None,
         only_query: Optional[str] = None,
         skip_usagi_and_custom_concept_upload: Optional[bool] = None,
+        process_semi_approved_mappings: Optional[bool] = None,
         **kwargs,
     ):
         """Constructor
@@ -48,6 +49,7 @@ class Etl(EtlBase):
         self._only_omop_table = only_omop_table
         self._only_query: Optional[Path] = Path(only_query) if only_query else None
         self._skip_usagi_and_custom_concept_upload = skip_usagi_and_custom_concept_upload
+        self._process_semi_approved_mappings = process_semi_approved_mappings
 
         with open(
             str(Path(__file__).parent.resolve() / "etl_flow.json"),

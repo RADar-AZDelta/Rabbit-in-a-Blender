@@ -1,4 +1,4 @@
-# Copyright 2022 RADar-AZDelta
+# Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
 import logging
@@ -21,9 +21,7 @@ class Cleanup(EtlBase, ABC):
     ):
         super().__init__(**kwargs)
 
-        self.clear_auto_generated_custom_concept_ids = (
-            clear_auto_generated_custom_concept_ids
-        )
+        self.clear_auto_generated_custom_concept_ids = clear_auto_generated_custom_concept_ids
 
     def run(self, cleanup_table: str = "all"):
         """
@@ -74,13 +72,10 @@ class Cleanup(EtlBase, ABC):
                 concept_tables = [
                     table_name
                     for table_name in work_tables
-                    if table_name.startswith(cleanup_table)
-                    and table_name.endswith("_concept")
+                    if table_name.startswith(cleanup_table) and table_name.endswith("_concept")
                 ]
                 futures = [
-                    executor.submit(
-                        self._cleanup_custom_concept_tables, table_name, cleanup_table
-                    )
+                    executor.submit(self._cleanup_custom_concept_tables, table_name, cleanup_table)
                     for table_name in concept_tables
                 ]
                 # wait(futures, return_when=ALL_COMPLETED)
@@ -90,8 +85,7 @@ class Cleanup(EtlBase, ABC):
                 usagi_tables = [
                     table_name
                     for table_name in work_tables
-                    if table_name.startswith(cleanup_table)
-                    and table_name.endswith("_usagi")
+                    if table_name.startswith(cleanup_table) and table_name.endswith("_usagi")
                 ]
                 futures = [
                     executor.submit(
@@ -111,10 +105,7 @@ class Cleanup(EtlBase, ABC):
                 for table_name in work_tables
                 if cleanup_table == "all" or table_name.startswith(cleanup_table)
             ]
-            if (
-                not self.clear_auto_generated_custom_concept_ids
-                and "concept_id_swap" in tables_to_delete
-            ):
+            if not self.clear_auto_generated_custom_concept_ids and "concept_id_swap" in tables_to_delete:
                 tables_to_delete.remove("concept_id_swap")
             futures = [
                 executor.submit(
@@ -130,9 +121,7 @@ class Cleanup(EtlBase, ABC):
             # truncate omop tables
             omop_tables_to_delete = [
                 table_name
-                for table_name in (
-                    x for x in vars(self._omop_tables).keys() if x not in ["vocabulary"]
-                )
+                for table_name in (x for x in vars(self._omop_tables).keys() if x not in ["vocabulary"])
                 if cleanup_table == "all" or table_name == cleanup_table
             ]
             futures = [
@@ -154,9 +143,7 @@ class Cleanup(EtlBase, ABC):
             "source_to_concept_map",
             f"{omop_table}__{concept_id_column}_usagi",
         )
-        self._remove_source_to_concept_map_using_usagi_table(
-            omop_table, concept_id_column
-        )
+        self._remove_source_to_concept_map_using_usagi_table(omop_table, concept_id_column)
 
     def _cleanup_custom_concept_tables(self, table_name: str, cleanup_table: str):
         omop_table = table_name.split("__")[0]
@@ -166,27 +153,21 @@ class Cleanup(EtlBase, ABC):
             "concept",
             f"{omop_table}__{concept_id_column}_concept",
         )
-        self._remove_custom_concepts_from_concept_table_using_usagi_table(
-            omop_table, concept_id_column
-        )
+        self._remove_custom_concepts_from_concept_table_using_usagi_table(omop_table, concept_id_column)
 
         logging.info(
             "Removing custom concepts from '%s' based on values from '%s' CSV",
             "concept_relationship",
             f"{omop_table}__{concept_id_column}_usagi",
         )
-        self._remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
-            omop_table, concept_id_column
-        )
+        self._remove_custom_concepts_from_concept_relationship_table_using_usagi_table(omop_table, concept_id_column)
 
         logging.info(
             "Removing custom concepts from '%s' based on values from '%s' CSV",
             "concept_ancestor",
             f"{omop_table}__{concept_id_column}_usagi",
         )
-        self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
-            omop_table, concept_id_column
-        )
+        self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(omop_table, concept_id_column)
 
         if cleanup_table == "vocabulary":
             logging.info(
@@ -194,9 +175,7 @@ class Cleanup(EtlBase, ABC):
                 "vocabulary",
                 f"{omop_table}__{concept_id_column}_usagi",
             )
-            self._remove_custom_concepts_from_vocabulary_table_using_usagi_table(
-                omop_table, concept_id_column
-            )
+            self._remove_custom_concepts_from_vocabulary_table_using_usagi_table(omop_table, concept_id_column)
 
     @abstractmethod
     def _custom_db_engine_cleanup(self, table: str) -> None:
@@ -303,9 +282,7 @@ class Cleanup(EtlBase, ABC):
         pass
 
     @abstractmethod
-    def _remove_source_to_concept_map_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
+    def _remove_source_to_concept_map_using_usagi_table(self, omop_table: str, concept_id_column: str) -> None:
         """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table
 
         Args:

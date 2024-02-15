@@ -1,4 +1,4 @@
-# Copyright 2022 RADar-AZDelta
+# Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
 import logging
@@ -25,9 +25,7 @@ class ImportVocabularies(EtlBase, ABC):
     def run(self, path_to_zip_file: str):
         """import vocabularies, as zip-file downloaded from athena.ohdsi.org, into"""
         with zipfile.ZipFile(path_to_zip_file, "r") as zip_ref:
-            with tempfile.TemporaryDirectory(
-                prefix="omop_vocabularies_"
-            ) as temp_dir_path:
+            with tempfile.TemporaryDirectory(prefix="omop_vocabularies_") as temp_dir_path:
                 logging.info(
                     "Extracting vocabularies zip file '%s' to temporary dir '%s'",
                     path_to_zip_file,
@@ -87,9 +85,7 @@ class ImportVocabularies(EtlBase, ABC):
                         result.result()
 
     @abstractmethod
-    def _load_vocabulary_in_upload_table(
-        self, csv_file: Path, vocabulary_table: str
-    ) -> None:
+    def _load_vocabulary_in_upload_table(self, csv_file: Path, vocabulary_table: str) -> None:
         """Loads the CSV file in the specific standardised vocabulary table
 
         Args:

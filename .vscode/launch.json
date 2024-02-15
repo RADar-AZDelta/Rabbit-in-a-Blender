@@ -6,12 +6,13 @@
   "configurations": [
     {
       "name": "Python: CLI",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "src/riab/__init__.py",
       "args": [
         //"--help",
         "--verbose",
+        //"--version"
 
         //"--create-db"
         
@@ -20,12 +21,13 @@
         //"--create-folders", "~/git/radar_omop-cdm/"
         
         "--run-etl", "~/git/radar_omop-cdm/"
-          ,"--skip-usagi-and-custom-concept-upload"
+          //,"--skip-usagi-and-custom-concept-upload"
+          ,"--process-semi-approved-mappings"
           //,"--table", "cdm_source"
-          ,"--only-query", "cdm_source/hix.sql.jinja"
+          //,"--only-query", "cdm_source/hix.sql.jinja"
 
         //"--cleanup", "all"
-        //  ,"--clear-auto-generated-custom-concept-ids"
+          //,"--clear-auto-generated-custom-concept-ids"
 
         //"--data-quality"
         //  ,"--json", "dqd_result.json"

@@ -1,3 +1,5 @@
+{# Copyright 2024 RADar-AZDelta #}
+{# SPDX-License-Identifier: gpl3+ #}
 select source_code, target_concept_id, count(*) as nbr_of_rows
 from (
     SELECT DISTINCT
@@ -12,7 +14,11 @@ from (
         ,cast(NULL as string) as invalid_reason
     FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted t
     INNER JOIN {{dataset_omop}}.concept c on c.concept_id = t.conceptId
+{% if not process_semi_approved_mappings -%}
     where t.mappingStatus = 'APPROVED'
+{%- else -%}
+    where t.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
+{%- endif -%}     
 ) t
 group by source_code, target_concept_id
 having count(*) > 1

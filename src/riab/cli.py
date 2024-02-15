@@ -1,4 +1,4 @@
-# Copyright 2022 RADar-AZDelta
+# Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
 # pylint: disable=unsubscriptable-object
@@ -123,6 +123,7 @@ class Cli:
                                 only_omop_table=args.table,
                                 only_query=args.only_query,
                                 skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
+                                process_semi_approved_mappings=args.process_semi_approved_mappings,
                                 **bigquery_kwargs,
                             )
                             etl.run()
@@ -386,6 +387,12 @@ ______      _     _     _ _     _                ______ _                _
     def _create_etl_command_argument_group(self, parser: ArgumentParser):
         argument_group = parser.add_argument_group("Run ETL specific command options (-r [PATH], --run-etl [PATH])")
 
+        argument_group.add_argument(
+            "-sa",
+            "--process-semi-approved-mappings",
+            help="""In addition to 'APPROVED' as mapping status, 'SEMI-APPROVED' will be processed as valid Usagi concept mappings.""",
+            action="store_true",
+        )
         argument_group.add_argument(
             "-s",
             "--skip-usagi-and-custom-concept-upload",

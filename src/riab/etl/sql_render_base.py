@@ -1,4 +1,4 @@
-# Copyright 2022 RADar-AZDelta
+# Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
 from abc import ABC
@@ -22,22 +22,12 @@ class SqlRenderBase(ABC):
         self.target_dialect = target_dialect
 
         self.path_to_replacement_patterns = str(
-            Path(__file__).parent.parent.resolve()
-            / "libs"
-            / "SqlRender"
-            / "inst"
-            / "csv"
-            / "replacementPatterns.csv"
+            Path(__file__).parent.parent.resolve() / "libs" / "SqlRender" / "inst" / "csv" / "replacementPatterns.csv"
         )
 
         # launch the JVM
         sqlrender_path = str(
-            Path(__file__).parent.parent.resolve()
-            / "libs"
-            / "SqlRender"
-            / "inst"
-            / "java"
-            / "SqlRender.jar"
+            Path(__file__).parent.parent.resolve() / "libs" / "SqlRender" / "inst" / "java" / "SqlRender.jar"
         )
         jpype.startJVM(classpath=[sqlrender_path])  # type: ignore
 
@@ -58,13 +48,9 @@ class SqlRenderBase(ABC):
             SqlTranslate,
         )
 
-        sql = str(
-            SqlRender.renderSql(sql, list(parameters.keys()), list(parameters.values()))
-        )
+        sql = str(SqlRender.renderSql(sql, list(parameters.keys()), list(parameters.values())))
 
         sql = str(
-            SqlTranslate.translateSqlWithPath(
-                sql, self.target_dialect, None, None, self.path_to_replacement_patterns
-            )
+            SqlTranslate.translateSqlWithPath(sql, self.target_dialect, None, None, self.path_to_replacement_patterns)
         )
         return sql
