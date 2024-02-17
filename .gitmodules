@@ -10,3 +10,7 @@
 	path = src/riab/libs/Achilles
 	url = ssh://git@github.com/OHDSI/Achilles.git
 	branch = main
+[submodule "CommonDataModel"]
+	path = src/riab/libs/CommonDataModel
+	url = ssh://git@github.com/OHDSI/CommonDataModel.git
+	branch = main
