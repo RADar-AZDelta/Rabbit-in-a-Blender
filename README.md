@@ -58,6 +58,47 @@ Examples:
 For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 
 
+ETL flow
+========
+
+Most CDM tables have foreign keys (FKs) to other tables. Some tables can be processed in parallel by the ETL engine, because they have no FKs dependencies between them, others have to be processed in a specific order.
+
+The ETL flow for v5.4 is as follows:
+
+```
+├──VOCABULARY
+├──LOCATION
+├──METADATA
+├──CDM_SOURCE
+├──COST
+└──FACT_RELATIONSHIP
+  └──CARE_SITE
+    └──PROVIDER
+      └──PERSON
+        ├──SPECIMEN
+        ├──DOSE_ERA
+        ├──PAYER_PLAN_PERIOD
+        ├──VISIT_OCCURRENCE
+        ├──CONDITION_ERA
+        ├──EPISODE
+        ├──OBSERVATION_PERIOD
+        ├──DRUG_ERA
+        └──DEATH
+          ├──EPISODE_EVENT
+          └──VISIT_DETAIL
+            ├──OBSERVATION
+            ├──NOTE
+            ├──DRUG_EXPOSURE
+            ├──MEASUREMENT
+            ├──CONDITION_OCCURRENCE
+            ├──PROCEDURE_OCCURRENCE
+            └──DEVICE_EXPOSURE
+              └──NOTE_NLP
+```
+
+Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.
+
+
 Installation
 ========
 
@@ -129,7 +170,8 @@ CLI Usage
     | -r [PATH], --run-etl [PATH] | Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.
     | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
     | -dq, --data-quality | Check the data quality and store the results.
-    | -dqd, --data-quality-dashnoard | View the results of the data quality checks. (UNDER DEVELOPMENT)
+    | -dqd, --data-quality-dashnoard | View the results of the data quality checks.
+    | --print-etl-flow | Print the sequence in which the ETL tables that will be processed
 
 * **Run ETL specific command options (-r [PATH], --run-etl [PATH]):**
     |  command | help  

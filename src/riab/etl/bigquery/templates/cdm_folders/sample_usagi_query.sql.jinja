@@ -1,7 +1,7 @@
 SELECT
-    CONCAT('PREQUAL_', source_column) AS sourceCode
-    ,source_column AS sourceName
+    CONCAT('CONCEPT_PREQUAL_', CAST(raw.{{ concept_column.cdmFieldName }}_column as STRING)) AS sourceCode
+    ,raw.{{ concept_column.cdmFieldName }}_column_with_description AS sourceName
     ,COUNT(*) AS sourceFrequency
-FROM {{project_raw}}.raw_dataset.raw_{{ omop_table }}
+FROM {{project_raw}}.raw_dataset.raw_{{ omop_table }} raw
 GROUP BY sourceCode, sourceName
 ORDER BY sourceFrequency DESC

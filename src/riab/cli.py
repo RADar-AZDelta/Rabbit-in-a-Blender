@@ -66,8 +66,8 @@ class Cli:
                     raise Exception("Config file holds no db_engine option!")
 
                 bigquery_kwargs = None
-                match db_engine:
-                    case "BigQuery":
+                match db_engine.lower():
+                    case "bigquery":
                         bigquery_kwargs = {
                             "credentials_file": config.safe_get(db_engine, "credentials_file"),
                             "location": config.safe_get(db_engine, "location"),
@@ -81,11 +81,25 @@ class Cli:
                     case _:
                         raise ValueError("Not a supported database engine: '{db_engine}'")
 
-                if args.create_db:  # create OMOP CDM Database
+                if args.print_etl_flow:
+                    match db_engine.lower():
+                        case "bigquery":
+                            etl = BigQueryEtl(
+                                db_engine=db_engine.lower(),
+                                **bigquery_kwargs,
+                            )
+                            logging.info(
+                                "Resolved ETL tables foreign keys dependency graph: \n%s",
+                                etl.print_cdm_tables_fks_dependencies_tree(),
+                            )
+                        case _:
+                            raise ValueError("Not a supported database engine")
+                elif args.create_db:  # create OMOP CDM Database
                     create_omop_db: Optional[CreateOmopDb] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             create_omop_db = BigQueryCreateOmopDb(
+                                db_engine=db_engine.lower(),
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 **bigquery_kwargs,
                             )
@@ -94,9 +108,10 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.create_folders:  # create the ETL folder structure
                     create_folders: Optional[CreateCdmFolders] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             create_folders = BigQueryCreateCdmFolders(
+                                db_engine=db_engine.lower(),
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 **bigquery_kwargs,
                             )
@@ -105,9 +120,10 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.import_vocabularies:  # impoprt OMOP CDM vocabularies
                     import_vocabularies: Optional[ImportVocabularies] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             import_vocabularies = BigQueryImportVocabularies(
+                                db_engine=db_engine.lower(),
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 **bigquery_kwargs,
                             )
@@ -116,9 +132,10 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.run_etl:  # run ETL
                     etl: Optional[Etl] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             etl = BigQueryEtl(
+                                db_engine=db_engine.lower(),
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 only_omop_table=args.table,
                                 only_query=args.only_query,
@@ -131,9 +148,10 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.cleanup:  # cleanup OMOP DB
                     cleanup: Optional[Cleanup] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             cleanup = BigQueryCleanup(
+                                db_engine=db_engine.lower(),
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
                                 **bigquery_kwargs,
@@ -143,9 +161,10 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.data_quality:  # check data quality
                     data_quality: Optional[DataQuality] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             data_quality = BigQueryDataQuality(
+                                db_engine=db_engine.lower(),
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 json_path=args.json,
                                 **bigquery_kwargs,
@@ -155,9 +174,10 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.data_quality_dashboard:  # view data quality results
                     data_quality_dashboard: Optional[DataQualityDashboard] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             data_quality_dashboard = BigQueryDataQualityDashboard(
+                                db_engine=db_engine.lower(),
                                 port=args.port if args.port else 8050,
                                 **bigquery_kwargs,
                             )
@@ -166,9 +186,10 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.achilles:  # run descriptive statistics
                     achilles: Optional[Achilles] = None
-                    match db_engine:
-                        case "BigQuery":
+                    match db_engine.lower():
+                        case "bigquery":
                             achilles = BigQueryAchilles(
+                                db_engine=db_engine.lower(),
                                 scratch_database_schema=args.bigquery_dataset_id_work,
                                 results_database_schema=args.bigquery_dataset_id_omop,
                                 cdm_database_schema=args.bigquery_dataset_id_omop,
@@ -378,6 +399,11 @@ ______      _     _     _ _     _                ______ _                _
             "-ach",
             "--achilles",
             help="Generate the descriptive statistics.",
+            action="store_true",
+        )
+        argument_group.add_argument(
+            "--print-etl-flow",
+            help="Print the sequence in which the ETL tables that will be processed",
             action="store_true",
         )
 

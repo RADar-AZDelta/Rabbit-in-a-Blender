@@ -7,7 +7,7 @@ rm -fr ./dist && python -m build # cleanup and build
 python3 -m twine upload --verbose --repository pypi dist/* # choose between repo pypi and testpypi
 
 
-# install the package
+# uninstall the package
 pip uninstall -y Rabbit-in-a-Blender
 # wait a moment
 sleep 10

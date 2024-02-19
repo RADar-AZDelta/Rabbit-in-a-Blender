@@ -1,0 +1,511 @@
+--bigquery CDM DDL Specification for OMOP Common Data Model 5.4
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.person (
+			person_id int64 not null,
+			gender_concept_id int64 not null,
+			year_of_birth int64 not null,
+			month_of_birth int64,
+			day_of_birth int64,
+			birth_datetime datetime,
+			race_concept_id int64 not null,
+			ethnicity_concept_id int64 not null,
+			location_id int64,
+			provider_id int64,
+			care_site_id int64,
+			person_source_value string,
+			gender_source_value string,
+			gender_source_concept_id int64,
+			race_source_value string,
+			race_source_concept_id int64,
+			ethnicity_source_value string,
+			ethnicity_source_concept_id int64 ) cluster by gender_concept_id, location_id, race_concept_id, person_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.observation_period (
+			observation_period_id int64 not null,
+			person_id int64 not null,
+			observation_period_start_date date not null,
+			observation_period_end_date date not null,
+			period_type_concept_id int64 not null ) cluster by person_id, period_type_concept_id, observation_period_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.visit_occurrence (
+			visit_occurrence_id int64 not null,
+			person_id int64 not null,
+			visit_concept_id int64 not null,
+			visit_start_date date not null,
+			visit_start_datetime datetime,
+			visit_end_date date not null,
+			visit_end_datetime datetime,
+			visit_type_concept_id int64 not null,
+			provider_id int64,
+			care_site_id int64,
+			visit_source_value string,
+			visit_source_concept_id int64,
+			admitted_from_concept_id int64,
+			admitted_from_source_value string,
+			discharged_to_concept_id int64,
+			discharged_to_source_value string,
+			preceding_visit_occurrence_id int64 ) cluster by visit_concept_id, provider_id, person_id, visit_occurrence_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.visit_detail (
+			visit_detail_id int64 not null,
+			person_id int64 not null,
+			visit_detail_concept_id int64 not null,
+			visit_detail_start_date date not null,
+			visit_detail_start_datetime datetime,
+			visit_detail_end_date date not null,
+			visit_detail_end_datetime datetime,
+			visit_detail_type_concept_id int64 not null,
+			provider_id int64,
+			care_site_id int64,
+			visit_detail_source_value string,
+			visit_detail_source_concept_id int64,
+			admitted_from_concept_id int64,
+			admitted_from_source_value string,
+			discharged_to_source_value string,
+			discharged_to_concept_id int64,
+			preceding_visit_detail_id int64,
+			parent_visit_detail_id int64,
+			visit_occurrence_id int64 not null ) cluster by visit_detail_concept_id, provider_id, person_id, visit_detail_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.condition_occurrence (
+			condition_occurrence_id int64 not null,
+			person_id int64 not null,
+			condition_concept_id int64 not null,
+			condition_start_date date not null,
+			condition_start_datetime datetime,
+			condition_end_date date,
+			condition_end_datetime datetime,
+			condition_type_concept_id int64 not null,
+			condition_status_concept_id int64,
+			stop_reason string,
+			provider_id int64,
+			visit_occurrence_id int64,
+			visit_detail_id int64,
+			condition_source_value string,
+			condition_source_concept_id int64,
+			condition_status_source_value string ) cluster by condition_concept_id, provider_id, person_id, condition_occurrence_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.drug_exposure (
+			drug_exposure_id int64 not null,
+			person_id int64 not null,
+			drug_concept_id int64 not null,
+			drug_exposure_start_date date not null,
+			drug_exposure_start_datetime datetime,
+			drug_exposure_end_date date not null,
+			drug_exposure_end_datetime datetime,
+			verbatim_end_date date,
+			drug_type_concept_id int64 not null,
+			stop_reason string,
+			refills int64,
+			quantity float64,
+			days_supply int64,
+			sig string,
+			route_concept_id int64,
+			lot_number string,
+			provider_id int64,
+			visit_occurrence_id int64,
+			visit_detail_id int64,
+			drug_source_value string,
+			drug_source_concept_id int64,
+			route_source_value string,
+			dose_unit_source_value string ) cluster by drug_concept_id, provider_id, person_id, drug_exposure_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.procedure_occurrence (
+			procedure_occurrence_id int64 not null,
+			person_id int64 not null,
+			procedure_concept_id int64 not null,
+			procedure_date date not null,
+			procedure_datetime datetime,
+			procedure_end_date date,
+			procedure_end_datetime datetime,
+			procedure_type_concept_id int64 not null,
+			modifier_concept_id int64,
+			quantity int64,
+			provider_id int64,
+			visit_occurrence_id int64,
+			visit_detail_id int64,
+			procedure_source_value string,
+			procedure_source_concept_id int64,
+			modifier_source_value string ) cluster by procedure_concept_id, provider_id, person_id, procedure_occurrence_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.device_exposure (
+			device_exposure_id int64 not null,
+			person_id int64 not null,
+			device_concept_id int64 not null,
+			device_exposure_start_date date not null,
+			device_exposure_start_datetime datetime,
+			device_exposure_end_date date,
+			device_exposure_end_datetime datetime,
+			device_type_concept_id int64 not null,
+			unique_device_id string,
+			production_id string,
+			quantity int64,
+			provider_id int64,
+			visit_occurrence_id int64,
+			visit_detail_id int64,
+			device_source_value string,
+			device_source_concept_id int64,
+			unit_concept_id int64,
+			unit_source_value string,
+			unit_source_concept_id int64 ) cluster by device_concept_id, provider_id, person_id, device_exposure_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.measurement (
+			measurement_id int64 not null,
+			person_id int64 not null,
+			measurement_concept_id int64 not null,
+			measurement_date date not null,
+			measurement_datetime datetime,
+			measurement_time string,
+			measurement_type_concept_id int64 not null,
+			operator_concept_id int64,
+			value_as_number float64,
+			value_as_concept_id int64,
+			unit_concept_id int64,
+			range_low float64,
+			range_high float64,
+			provider_id int64,
+			visit_occurrence_id int64,
+			visit_detail_id int64,
+			measurement_source_value string,
+			measurement_source_concept_id int64,
+			unit_source_value string,
+			unit_source_concept_id int64,
+			value_source_value string,
+			measurement_event_id int64,
+			meas_event_field_concept_id int64 ) cluster by measurement_concept_id, provider_id, person_id, measurement_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.observation (
+			observation_id int64 not null,
+			person_id int64 not null,
+			observation_concept_id int64 not null,
+			observation_date date not null,
+			observation_datetime datetime,
+			observation_type_concept_id int64 not null,
+			value_as_number float64,
+			value_as_string string,
+			value_as_concept_id int64,
+			qualifier_concept_id int64,
+			unit_concept_id int64,
+			provider_id int64,
+			visit_occurrence_id int64,
+			visit_detail_id int64,
+			observation_source_value string,
+			observation_source_concept_id int64,
+			unit_source_value string,
+			qualifier_source_value string,
+			value_source_value string,
+			observation_event_id int64,
+			obs_event_field_concept_id int64 ) cluster by observation_concept_id, provider_id, person_id, observation_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.death (
+			person_id int64 not null,
+			death_date date not null,
+			death_datetime datetime,
+			death_type_concept_id int64,
+			cause_concept_id int64,
+			cause_source_value string,
+			cause_source_concept_id int64 ) cluster by death_type_concept_id, cause_concept_id, person_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.note (
+			note_id int64 not null,
+			person_id int64 not null,
+			note_date date not null,
+			note_datetime datetime,
+			note_type_concept_id int64 not null,
+			note_class_concept_id int64 not null,
+			note_title string,
+			note_text string not null,
+			encoding_concept_id int64 not null,
+			language_concept_id int64 not null,
+			provider_id int64,
+			visit_occurrence_id int64,
+			visit_detail_id int64,
+			note_source_value string,
+			note_event_id int64,
+			note_event_field_concept_id int64 ) cluster by provider_id, person_id, note_type_concept_id, note_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.note_nlp (
+			note_nlp_id int64 not null,
+			note_id int64 not null,
+			section_concept_id int64,
+			snippet string,
+			offset string,
+			lexical_variant string not null,
+			note_nlp_concept_id int64,
+			note_nlp_source_concept_id int64,
+			nlp_system string,
+			nlp_date date not null,
+			nlp_datetime datetime,
+			term_exists string,
+			term_temporal string,
+			term_modifiers string ) cluster by nlp_system, note_id, note_nlp_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.specimen (
+			specimen_id int64 not null,
+			person_id int64 not null,
+			specimen_concept_id int64 not null,
+			specimen_type_concept_id int64 not null,
+			specimen_date date not null,
+			specimen_datetime datetime,
+			quantity float64,
+			unit_concept_id int64,
+			anatomic_site_concept_id int64,
+			disease_status_concept_id int64,
+			specimen_source_id string,
+			specimen_source_value string,
+			unit_source_value string,
+			anatomic_site_source_value string,
+			disease_status_source_value string ) cluster by specimen_concept_id, anatomic_site_concept_id, person_id, specimen_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.fact_relationship (
+			domain_concept_id_1 int64 not null,
+			fact_id_1 int64 not null,
+			domain_concept_id_2 int64 not null,
+			fact_id_2 int64 not null,
+			relationship_concept_id int64 not null ) cluster by relationship_concept_id, domain_concept_id_1, domain_concept_id_2;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.location (
+			location_id int64 not null,
+			address_1 string,
+			address_2 string,
+			city string,
+			state string,
+			zip string,
+			county string,
+			location_source_value string,
+			country_concept_id int64,
+			country_source_value string,
+			latitude float64,
+			longitude float64 ) cluster by country_concept_id, zip, location_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.care_site (
+			care_site_id int64 not null,
+			care_site_name string,
+			place_of_service_concept_id int64,
+			location_id int64,
+			care_site_source_value string,
+			place_of_service_source_value string ) cluster by place_of_service_concept_id, location_id, care_site_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.provider (
+			provider_id int64 not null,
+			provider_name string,
+			npi string,
+			dea string,
+			specialty_concept_id int64,
+			care_site_id int64,
+			year_of_birth int64,
+			gender_concept_id int64,
+			provider_source_value string,
+			specialty_source_value string,
+			specialty_source_concept_id int64,
+			gender_source_value string,
+			gender_source_concept_id int64 ) cluster by specialty_concept_id, care_site_id, gender_concept_id, provider_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.payer_plan_period (
+			payer_plan_period_id int64 not null,
+			person_id int64 not null,
+			payer_plan_period_start_date date not null,
+			payer_plan_period_end_date date not null,
+			payer_concept_id int64,
+			payer_source_value string,
+			payer_source_concept_id int64,
+			plan_concept_id int64,
+			plan_source_value string,
+			plan_source_concept_id int64,
+			sponsor_concept_id int64,
+			sponsor_source_value string,
+			sponsor_source_concept_id int64,
+			family_source_value string,
+			stop_reason_concept_id int64,
+			stop_reason_source_value string,
+			stop_reason_source_concept_id int64 ) cluster by plan_concept_id, person_id, payer_plan_period_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.cost (
+			cost_id int64 not null,
+			cost_event_id int64 not null,
+			cost_domain_id string not null,
+			cost_type_concept_id int64 not null,
+			currency_concept_id int64,
+			total_charge float64,
+			total_cost float64,
+			total_paid float64,
+			paid_by_payer float64,
+			paid_by_patient float64,
+			paid_patient_copay float64,
+			paid_patient_coinsurance float64,
+			paid_patient_deductible float64,
+			paid_by_primary float64,
+			paid_ingredient_cost float64,
+			paid_dispensing_fee float64,
+			payer_plan_period_id int64,
+			amount_allowed float64,
+			revenue_code_concept_id int64,
+			revenue_code_source_value string,
+			drg_concept_id int64,
+			drg_source_value string ) cluster by drg_concept_id, revenue_code_concept_id, cost_event_id, cost_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.drug_era (
+			drug_era_id int64 not null,
+			person_id int64 not null,
+			drug_concept_id int64 not null,
+			drug_era_start_date date not null,
+			drug_era_end_date date not null,
+			drug_exposure_count int64,
+			gap_days int64 ) cluster by drug_concept_id, person_id, drug_era_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.dose_era (
+			dose_era_id int64 not null,
+			person_id int64 not null,
+			drug_concept_id int64 not null,
+			unit_concept_id int64 not null,
+			dose_value float64 not null,
+			dose_era_start_date date not null,
+			dose_era_end_date date not null ) cluster by drug_concept_id, person_id, dose_era_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.condition_era (
+			condition_era_id int64 not null,
+			person_id int64 not null,
+			condition_concept_id int64 not null,
+			condition_era_start_date date not null,
+			condition_era_end_date date not null,
+			condition_occurrence_count int64 ) cluster by condition_concept_id, person_id, condition_era_id;
+--HINT DISTRIBUTE ON KEY (person_id)
+create table if not exists {{dataset_omop}}.episode (
+			episode_id int64 not null,
+			person_id int64 not null,
+			episode_concept_id int64 not null,
+			episode_start_date date not null,
+			episode_start_datetime datetime,
+			episode_end_date date,
+			episode_end_datetime datetime,
+			episode_parent_id int64,
+			episode_number int64,
+			episode_object_concept_id int64 not null,
+			episode_type_concept_id int64 not null,
+			episode_source_value string,
+			episode_source_concept_id int64 ) cluster by episode_concept_id, person_id, episode_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.episode_event (
+			episode_id int64 not null,
+			event_id int64 not null,
+			episode_event_field_concept_id int64 not null ) cluster by episode_event_field_concept_id, event_id, episode_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.metadata (
+			metadata_id int64 not null,
+			metadata_concept_id int64 not null,
+			metadata_type_concept_id int64 not null,
+			name string not null,
+			value_as_string string,
+			value_as_concept_id int64,
+			value_as_number float64,
+			metadata_date date,
+			metadata_datetime datetime ) cluster by metadata_type_concept_id, metadata_concept_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.cdm_source (
+			cdm_source_name string not null,
+			cdm_source_abbreviation string not null,
+			cdm_holder string not null,
+			source_description string,
+			source_documentation_reference string,
+			cdm_etl_reference string,
+			source_release_date date not null,
+			cdm_release_date date not null,
+			cdm_version string,
+			cdm_version_concept_id int64 not null,
+			vocabulary_version string not null ) cluster by cdm_source_name;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.concept (
+			concept_id int64 not null,
+			concept_name string not null,
+			domain_id string not null,
+			vocabulary_id string not null,
+			concept_class_id string not null,
+			standard_concept string,
+			concept_code string not null,
+			valid_start_date date not null,
+			valid_end_date date not null,
+			invalid_reason string ) cluster by standard_concept, vocabulary_id, domain_id, concept_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.vocabulary (
+			vocabulary_id string not null,
+			vocabulary_name string not null,
+			vocabulary_reference string,
+			vocabulary_version string,
+			vocabulary_concept_id int64 not null ) cluster by vocabulary_concept_id, vocabulary_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.domain (
+			domain_id string not null,
+			domain_name string not null,
+			domain_concept_id int64 not null ) cluster by domain_concept_id, domain_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.concept_class (
+			concept_class_id string not null,
+			concept_class_name string not null,
+			concept_class_concept_id int64 not null ) cluster by concept_class_concept_id, concept_class_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.concept_relationship (
+			concept_id_1 int64 not null,
+			concept_id_2 int64 not null,
+			relationship_id string not null,
+			valid_start_date date not null,
+			valid_end_date date not null,
+			invalid_reason string ) cluster by relationship_id, concept_id_2, concept_id_1;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.relationship (
+			relationship_id string not null,
+			relationship_name string not null,
+			is_hierarchical string not null,
+			defines_ancestry string not null,
+			reverse_relationship_id string not null,
+			relationship_concept_id int64 not null ) cluster by relationship_concept_id, reverse_relationship_id, relationship_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.concept_synonym (
+			concept_id int64 not null,
+			concept_synonym_name string not null,
+			language_concept_id int64 not null ) cluster by concept_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.concept_ancestor (
+			ancestor_concept_id int64 not null,
+			descendant_concept_id int64 not null,
+			min_levels_of_separation int64 not null,
+			max_levels_of_separation int64 not null ) cluster by descendant_concept_id, ancestor_concept_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.source_to_concept_map (
+			source_code string not null,
+			source_concept_id int64 not null,
+			source_vocabulary_id string not null,
+			source_code_description string,
+			target_concept_id int64 not null,
+			target_vocabulary_id string not null,
+			valid_start_date date not null,
+			valid_end_date date not null,
+			invalid_reason string ) cluster by source_vocabulary_id, target_vocabulary_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.drug_strength (
+			drug_concept_id int64 not null,
+			ingredient_concept_id int64 not null,
+			amount_value float64,
+			amount_unit_concept_id int64,
+			numerator_value float64,
+			numerator_unit_concept_id int64,
+			denominator_value float64,
+			denominator_unit_concept_id int64,
+			box_size int64,
+			valid_start_date date not null,
+			valid_end_date date not null,
+			invalid_reason string ) cluster by ingredient_concept_id, drug_concept_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.cohort (
+			cohort_definition_id int64 not null,
+			subject_id int64 not null,
+			cohort_start_date date not null,
+			cohort_end_date date not null ) cluster by subject_id, cohort_definition_id;
+--HINT DISTRIBUTE ON RANDOM
+create table if not exists {{dataset_omop}}.cohort_definition (
+			cohort_definition_id int64 not null,
+			cohort_definition_name string not null,
+			cohort_definition_description string,
+			definition_type_concept_id int64 not null,
+			cohort_definition_syntax string,
+			subject_concept_id int64 not null,
+			cohort_initiation_date date ) cluster by subject_concept_id, definition_type_concept_id, cohort_definition_id;

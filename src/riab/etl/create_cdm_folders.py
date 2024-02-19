@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import cast
 
+import polars as pl
+
 from .etl_base import EtlBase
 
 
@@ -28,20 +30,25 @@ class CreateCdmFolders(EtlBase, ABC):
 
         Path.mkdir(cast(Path, self._cdm_folder_path), exist_ok=True)
 
-        for omop_table, table_props in vars(self._omop_tables).items():
+        omop_tables = self._df_omop_tables.filter(
+            (pl.col("schema") == "CDM") | (pl.col("cdmTableName").str.to_lowercase() == "vocabulary")
+        ).select(cdmTableName=(pl.col("cdmTableName").str.to_lowercase()))["cdmTableName"]
+
+        for omop_table in omop_tables:
+            omop_fields = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table)
+
             folder = cast(Path, self._cdm_folder_path) / omop_table
             Path.mkdir(folder, exist_ok=True)
             logging.info("Creating folder %s", folder)
 
-            sql = self._generate_sample_etl_query(omop_table)
+            sql = self._generate_sample_etl_query(omop_table, omop_fields)
             query_path = cast(Path, self._cdm_folder_path) / omop_table / "example.sql._jinja"
             with open(query_path, "w", encoding="UTF8") as f:
                 f.write(sql)
             logging.info("Creating example RTL query %s", query_path)
-
-            columns = self._get_omop_column_names(omop_table)
-            for concept_column in (column for column in columns if "concept_id" in column):
-                folder = cast(Path, self._cdm_folder_path) / omop_table / concept_column
+            concept_columns = omop_fields.filter(pl.col("fkTableName").str.to_lowercase() == "concept").rows(named=True)
+            for concept_column in concept_columns:
+                folder = cast(Path, self._cdm_folder_path) / omop_table / concept_column["cdmFieldName"]
                 Path.mkdir(
                     folder,
                     exist_ok=True,
@@ -49,24 +56,36 @@ class CreateCdmFolders(EtlBase, ABC):
                 logging.info("Creating folder %s", folder)
 
                 sql = self._generate_sample_usagi_query(omop_table, concept_column)
-                query_path = cast(Path, self._cdm_folder_path) / omop_table / concept_column / "example.sql._jinja"
+                query_path = (
+                    cast(Path, self._cdm_folder_path)
+                    / omop_table
+                    / concept_column["cdmFieldName"]
+                    / "example.sql._jinja"
+                )
                 with open(query_path, "w", encoding="UTF8") as f:
                     f.write(sql)
                 logging.info("Creating example Usagi query %s", query_path)
 
-                usagi_csv_path = cast(Path, self._cdm_folder_path) / omop_table / concept_column / "example._csv"
+                usagi_csv_path = (
+                    cast(Path, self._cdm_folder_path) / omop_table / concept_column["cdmFieldName"] / "example._csv"
+                )
                 with open(usagi_csv_path, "w", encoding="UTF8") as f:
                     f.write("sourceCode,sourceName,sourceFrequency")
                 logging.info("Creating example usagi source CSV %s", query_path)
 
-                usagi_csv_path = cast(Path, self._cdm_folder_path) / omop_table / concept_column / "example_usagi._csv"
+                usagi_csv_path = (
+                    cast(Path, self._cdm_folder_path)
+                    / omop_table
+                    / concept_column["cdmFieldName"]
+                    / "example_usagi._csv"
+                )
                 with open(usagi_csv_path, "w", encoding="UTF8") as f:
                     f.write(
                         "sourceCode,sourceName,sourceFrequency,sourceAutoAssignedConceptIds,ADD_INFO:additionalInfo,matchScore,mappingStatus,equivalence,statusSetBy,statusSetOn,conceptId,conceptName,domainId,mappingType,comment,createdBy,createdOn,assignedReviewer"
                     )
                 logging.info("Creating example usagi CSV %s", query_path)
 
-                folder = cast(Path, self._cdm_folder_path) / omop_table / concept_column / "custom"
+                folder = cast(Path, self._cdm_folder_path) / omop_table / concept_column["cdmFieldName"] / "custom"
                 Path.mkdir(
                     folder,
                     exist_ok=True,
@@ -74,7 +93,11 @@ class CreateCdmFolders(EtlBase, ABC):
                 logging.info("Creating folder %s", folder)
 
                 custom_concepts_csv_path = (
-                    cast(Path, self._cdm_folder_path) / omop_table / concept_column / "custom" / "example._csv"
+                    cast(Path, self._cdm_folder_path)
+                    / omop_table
+                    / concept_column["cdmFieldName"]
+                    / "custom"
+                    / "example._csv"
                 )
                 with open(custom_concepts_csv_path, "w", encoding="UTF8") as f:
                     f.write(
@@ -83,7 +106,7 @@ class CreateCdmFolders(EtlBase, ABC):
                 logging.info("Creating example custom concept CSV %s", query_path)
 
     @abstractmethod
-    def _generate_sample_etl_query(self, omop_table: str) -> str:
+    def _generate_sample_etl_query(self, omop_table: str, omop_fields: pl.DataFrame) -> str:
         """Generates an example SQL query to query the raw data.
 
         Args:
@@ -92,7 +115,7 @@ class CreateCdmFolders(EtlBase, ABC):
         pass
 
     @abstractmethod
-    def _generate_sample_usagi_query(self, omop_table: str, concept_column: str) -> str:
+    def _generate_sample_usagi_query(self, omop_table: str, concept_column: dict[str, str]) -> str:
         """Generates an example SQL query to generate the Usagi source CSV.
 
         Args:

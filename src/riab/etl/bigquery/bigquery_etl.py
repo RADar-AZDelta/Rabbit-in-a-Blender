@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 import google.cloud.bigquery as bq
+import polars as pl
 from google.cloud.exceptions import NotFound
 
 from ..etl import Etl
-from .bigquery_create_omop_db import BigQueryDdl
+from .bigquery_etl_base import BigQueryEtlBase
 
 
-class BigQueryEtl(Etl, BigQueryDdl):
+class BigQueryEtl(Etl, BigQueryEtlBase):
     """
     ETL class that automates the extract-transfer-load process from source data to the OMOP common data model.
     """
@@ -528,8 +529,6 @@ class BigQueryEtl(Etl, BigQueryDdl):
                     (table, vars(self._omop_tables)[table].pk) for table in (row.event_table for row in rows) if table
                 )
 
-            cluster_fields = self._clustering_fields[omop_table] if omop_table in self._clustering_fields else []
-
             template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
             sql = template.render(
                 dataset_omop=self._dataset_omop,
@@ -539,7 +538,6 @@ class BigQueryEtl(Etl, BigQueryDdl):
                 primary_key_column=primary_key_column,
                 events=events,
                 event_tables=event_tables,
-                cluster_fields=cluster_fields,
                 min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
             )
             self._gcp.run_query_job(sql)
@@ -556,10 +554,11 @@ class BigQueryEtl(Etl, BigQueryDdl):
             omop_table (str): The OMOP table
             events (Any): Object that holds the events of the the OMOP table.
         """
-        try:
-            table_ddl = next((tab for tab in self._parsed_ddl if tab["table_name"] == omop_table))
-        except StopIteration as si_err:
-            raise Exception(f"{omop_table} not found in ddl") from si_err
+        columns = (
+            self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table)
+            .with_columns([pl.col("cdmDatatype").map_elements(lambda s: self._get_column_type(s)).alias("cdmDatatype")])
+            .rows(named=True)
+        )
 
         cluster_fields = self._clustering_fields[omop_table] if omop_table in self._clustering_fields else []
 
@@ -567,7 +566,7 @@ class BigQueryEtl(Etl, BigQueryDdl):
         sql = template.render(
             dataset_work=self._dataset_work,
             omop_table=omop_table,
-            columns=table_ddl["columns"],
+            columns=columns,
             events=events,
             cluster_fields=cluster_fields,
         )

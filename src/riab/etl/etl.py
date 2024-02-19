@@ -51,13 +51,6 @@ class Etl(EtlBase):
         self._skip_usagi_and_custom_concept_upload = skip_usagi_and_custom_concept_upload
         self._process_semi_approved_mappings = process_semi_approved_mappings
 
-        with open(
-            str(Path(__file__).parent.resolve() / "etl_flow.json"),
-            "r",
-            encoding="UTF8",
-        ) as file:
-            self._etl_flow = json.load(file, object_hook=lambda x: SimpleNamespace(**x))
-
         self._lock_custom_concepts = Lock()
         self._lock_source_value_to_concept_id_mapping = Lock()
 
@@ -120,7 +113,8 @@ class Etl(EtlBase):
                 if events:
                     self._process_work_to_omop(omop_table, table_props)
         else:
-            self._do_folder_to_work_etl_flow(self._etl_flow)
+            etl_flow = self._cdm_tables_fks_dependencies_resolved.copy()
+            self._do_folder_to_work_etl_flow(etl_flow)
 
             self._do_parallel_work_to_omop()
 
@@ -144,27 +138,28 @@ class Etl(EtlBase):
             for result in as_completed(futures):
                 result.result()
 
-    def _do_folder_to_work_etl_flow(self, elt_flow: Any):
+    def _do_folder_to_work_etl_flow(self, elt_flow: List[set[str]]):
         """Recursive function that parallelizes the processing of ETL folders
 
         Args:
             elt_flow (Any): The tree structure of the tabbel to tun in parallel and the dependent tables
         """
-        with ThreadPoolExecutor(max_workers=len(elt_flow.tables)) as executor:
+        tables = elt_flow.pop(0)
+        with ThreadPoolExecutor(max_workers=len(tables)) as executor:
             futures = [
                 executor.submit(
                     self._process_folder_to_work,
                     omop_table,
                     getattr(self._omop_tables, omop_table),
                 )
-                for omop_table in elt_flow.tables
+                for omop_table in tables
             ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
 
-        if hasattr(elt_flow, "dependent"):
-            self._do_folder_to_work_etl_flow(elt_flow.dependent)
+        if len(elt_flow):
+            self._do_folder_to_work_etl_flow(elt_flow)
 
     def _process_folder_to_work(self, omop_table: str, omop_table_props: Any):
         """ETL method for one OMOP table

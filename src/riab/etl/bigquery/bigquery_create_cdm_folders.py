@@ -1,6 +1,8 @@
 # Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
+import polars as pl
+
 from ..create_cdm_folders import CreateCdmFolders
 from .bigquery_etl_base import BigQueryEtlBase
 
@@ -12,7 +14,7 @@ class BigQueryCreateCdmFolders(CreateCdmFolders, BigQueryEtlBase):
     ):
         super().__init__(**kwargs)
 
-    def _generate_sample_etl_query(self, omop_table: str) -> str:
+    def _generate_sample_etl_query(self, omop_table: str, omop_fields: pl.DataFrame) -> str:
         """Generates an example SQL query to query the raw data.
 
         Args:
@@ -20,7 +22,8 @@ class BigQueryCreateCdmFolders(CreateCdmFolders, BigQueryEtlBase):
         """
         template = self._template_env.get_template("cdm_folders/sample_etl_query.sql.jinja")
 
-        columns = self._get_omop_column_names(omop_table)
+        columns = omop_fields.rows(named=True)
+
         sql = template.render(
             project_raw="{{project_raw}}",  # self._project_raw,
             omop_table="omop_table",
@@ -28,7 +31,7 @@ class BigQueryCreateCdmFolders(CreateCdmFolders, BigQueryEtlBase):
         )
         return sql
 
-    def _generate_sample_usagi_query(self, omop_table: str, concept_column: str) -> str:
+    def _generate_sample_usagi_query(self, omop_table: str, concept_column: dict[str, str]) -> str:
         """Generates an example SQL query to generate the Usagi source CSV.
 
         Args:

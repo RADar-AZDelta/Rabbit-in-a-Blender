@@ -51,6 +51,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "riab.etl" = ["**/*.json", "**/*.sql", "**/*.jinja"]
+"riab.libs.CommonDataModel.inst.csv" = ["*.csv"]
 "riab.libs.SqlRender.inst.csv" = ["*.csv"]
 "riab.libs.SqlRender.inst.java" = ["*.jar"]
 "riab.libs.DataQualityDashboard.inst.csv" = ["*.csv"]

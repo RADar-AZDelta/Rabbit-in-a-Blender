@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
+import polars as pl
+
 from .etl_base import EtlBase
 
 
@@ -124,6 +126,7 @@ class Cleanup(EtlBase, ABC):
                 for table_name in (x for x in vars(self._omop_tables).keys() if x not in ["vocabulary"])
                 if cleanup_table == "all" or table_name == cleanup_table
             ]
+
             futures = [
                 executor.submit(
                     self._truncate_omop_table,

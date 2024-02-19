@@ -1,3 +1,25 @@
+{%- set cdmToBigQuertyDataTypes = {
+    'integer': 'INTEGER',
+    'datetime': 'DATETIME',
+    'varchar(50)': 'STRING',
+    'date': 'DATE',
+    'Integer': 'INTEGER',
+    'varchar(20)': 'STRING',
+    'float': 'FLOAT',
+    'varchar(MAX)': 'STRING',
+    'varchar(255)': 'STRING',
+    'varchar(10)': 'STRING',
+    'varchar(60)': 'STRING',
+    'varchar(250)': 'STRING',
+    'varchar(1)': 'STRING',
+    'varchar(2000)': 'STRING',
+    'varchar(2)': 'STRING',
+    'varchar(9)': 'STRING',
+    'varchar(80)': 'STRING',
+    'varchar(3)': 'STRING',
+    'varchar(25)': 'STRING',
+    'varchar(1000)': 'STRING'
+}-%}
 SELECT
 {%- for column in columns -%}
     {%- if not loop.first %}
@@ -5,13 +27,15 @@ SELECT
     {%- else %}
     {{ '' }}
     {%- endif -%}
-    {%- if column.endswith("_concept_id") -%}
-    CONCAT('PREQUAL_', source_column)
-    {%- elif column.endswith("_id") -%}
-    CONCAT('PREQUAL_', source_column)
+    {%- if column.isPrimaryKey == 'Yes' -%}
+    CONCAT('PK_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as STRING))
+    {%- elif column.isForeignKey == 'Yes' and column.fkTableName != "CONCEPT" -%}
+    CONCAT('FK_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as STRING))
+    {%- elif column.isForeignKey == 'Yes' and column.fkTableName == "CONCEPT" -%}
+    CONCAT('CONCEPT_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as STRING))
     {%- else -%}
-    source_column
+    CAST(raw.{{ column.cdmFieldName }}_column as {{ cdmToBigQuertyDataTypes[column.cdmDatatype] }})
     {%- endif -%}
-    {{" "}}AS {{ column }}
+    {{" "}}AS {{ column.cdmFieldName }}
 {%- endfor %}
-FROM {{project_raw}}.raw_dataset.raw_{{ omop_table }}
+FROM {{project_raw}}.raw_dataset.raw_{{ omop_table }} raw

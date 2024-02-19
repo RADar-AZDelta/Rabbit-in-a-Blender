@@ -5,11 +5,11 @@ CREATE TABLE IF NOT EXISTS {{dataset_work}}.{{omop_table}} (
       {%- if not loop.first -%}
           {{ ',' }}
       {%- endif %}
-      {{ column["name"] }} 
-      {%- if column["name"] in events or column["name"] in events.values() %} STRING
-      {%- else %} {{ column["type"] }}
+      {{ column["cdmFieldName"] }} 
+      {%- if column["cdmFieldName"] in events or column["cdmFieldName"] in events.values() %} STRING
+      {%- else %} {{ column["cdmDatatype"] }}
       {%- endif -%}
-      {%- if not column['nullable'] %} not null
+      {%- if column['isRequired'] == "Yes" %} not null
       {%- endif -%}
   {%- endfor %}
 )

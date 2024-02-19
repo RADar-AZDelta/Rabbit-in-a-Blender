@@ -3,18 +3,17 @@
 
 # pylint: disable=unsubscriptable-object
 """Holds the BigQuery ETL base class"""
+import json
 import logging
 from abc import ABC
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import List, Optional, cast
+from typing import Dict, List, Optional, cast
 
 import google.auth
 import google.cloud.bigquery as bq
-import jinja2 as jj
 import pyarrow as pa
 import pyarrow.parquet as pq
-from jinja2.utils import select_autoescape
 
 from ..etl_base import EtlBase
 from .gcp import Gcp
@@ -50,9 +49,6 @@ class BigQueryEtlBase(EtlBase, ABC):
         else:
             credentials, project_id = google.auth.default()
 
-        # if not project_id:
-        #     project_id = project
-
         self._gcp = Gcp(credentials=credentials, location=location or "EU")
         self._project_raw = cast(str, project_raw)
         self._dataset_work = dataset_work
@@ -61,13 +57,32 @@ class BigQueryEtlBase(EtlBase, ABC):
         self._dataset_achilles = dataset_achilles
         self._bucket_uri = bucket
 
-        template_dir = Path(__file__).resolve().parent / "templates"
-        template_loader = jj.FileSystemLoader(searchpath=template_dir)
-        self._template_env = jj.Environment(autoescape=select_autoescape(["sql"]), loader=template_loader)
+        self.__clustering_fields = None
 
     def __del__(self):
         logging.info("Total BigQuery cost: %s€", self._gcp.total_cost)
         EtlBase.__del__(self)
+
+    @property
+    def _clustering_fields(self) -> Dict[str, List[str]]:
+        """The BigQuery clustering fields for every OMOP table
+
+        Returns:
+            Dict[str, List[str]]: A dictionary that holds for every OMOP table the clustering fields.
+        """
+        if not self.__clustering_fields:
+            with open(
+                str(
+                    Path(__file__).parent.resolve()
+                    / "templates"
+                    / "ddl"
+                    / f"OMOPCDM_bigquery_{self._omop_cdm_version}_clustering_fields.json"
+                ),
+                "r",
+                encoding="UTF8",
+            ) as file:
+                self.__clustering_fields = json.load(file)
+        return self.__clustering_fields
 
     def _get_omop_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of column names of a omop table.
@@ -126,3 +141,50 @@ class BigQueryEtlBase(EtlBase, ABC):
                 table_name,
                 write_disposition=bq.WriteDisposition.WRITE_APPEND,
             )
+
+    def _get_column_type(self, cdmDatatype: str) -> str:
+        match cdmDatatype:
+            case "integer":
+                return "int64"
+            case "datetime":
+                return "datetime"
+            case "varchar(50)":
+                return "string"
+            case "date":
+                return "date"
+            case "datetime":
+                return "datetime"
+            case "Integer":
+                return "int64"
+            case "varchar(20)":
+                return "string"
+            case "float":
+                return "float64"
+            case "varchar(MAX)":
+                return "string"
+            case "varchar(255)":
+                return "string"
+            case "varchar(10)":
+                return "string"
+            case "varchar(60)":
+                return "string"
+            case "varchar(250)":
+                return "string"
+            case "varchar(1)":
+                return "string"
+            case "varchar(2000)":
+                return "string"
+            case "varchar(2)":
+                return "string"
+            case "varchar(9)":
+                return "string"
+            case "varchar(80)":
+                return "string"
+            case "varchar(3)":
+                return "string"
+            case "varchar(25)":
+                return "string"
+            case "varchar(1000)":
+                return "string"
+            case _:
+                raise ValueError(f"Unknown cdmDatatype: {cdmDatatype}")
