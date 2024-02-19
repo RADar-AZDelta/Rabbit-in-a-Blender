@@ -233,6 +233,12 @@ riab --run-etl ./OMOP-CDM \
   --only-sql measurement/lab_measurements.sql
 ```
 
+Run ETL with SEMI-APPROVED concepts during ETL testing in dev branch
+```bash
+riab --run-etl ./OMOP-CDM \
+  --process-semi-approved-mappings
+```
+
 Cleanup all tables:
 ```bash
 riab --cleanup
