@@ -176,7 +176,7 @@ CLI Usage
 * **Run ETL specific command options (-r [PATH], --run-etl [PATH]):**
     |  command | help  
     |---|---  
-    | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table (this argument can be used multiple times). (ex: --run-etl ~/git/omop-cdm/ -t cdm_source -t "metadata -t vocabulary -t location)
+    | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table (this argument can be used multiple times). (ex: --run-etl ~/git/omop-cdm/ -t cdm_source -t metadata -t vocabulary -t location)
     | -q [PATH], --only-query [PATH] | Do ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql) 
     | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
     | -sa, --process-semi-approved-mappings | In addition to 'APPROVED' as mapping status, 'SEMI-APPROVED' will be processed as valid Usagi concept mappings.
