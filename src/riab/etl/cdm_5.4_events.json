@@ -1,0 +1,18 @@
+{
+    "measurement": {
+        "measurement_event_id": "meas_event_field_concept_id"
+    },
+    "observation": {
+        "observation_event_id": "obs_event_field_concept_id"
+    },
+    "note": {
+        "note_event_id": "note_event_field_concept_id"
+    },
+    "fact_relationship": {
+        "fact_id_1": "domain_concept_id_1",
+        "fact_id_2": "domain_concept_id_2"
+    },
+    "episode_event": {
+        "event_id": "episode_event_field_concept_id"
+    }
+}

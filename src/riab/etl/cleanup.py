@@ -6,8 +6,6 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
-import polars as pl
-
 from .etl_base import EtlBase
 
 
@@ -123,7 +121,7 @@ class Cleanup(EtlBase, ABC):
             # truncate omop tables
             omop_tables_to_delete = [
                 table_name
-                for table_name in (x for x in vars(self._omop_tables).keys() if x not in ["vocabulary"])
+                for table_name in self._omop_cdm_tables
                 if cleanup_table == "all" or table_name == cleanup_table
             ]
 

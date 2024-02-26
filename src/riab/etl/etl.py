@@ -3,7 +3,6 @@
 
 # pylint: disable=unsubscriptable-object
 """Holds the ETL abstract class"""
-import json
 import logging
 import os
 import tempfile
@@ -12,7 +11,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from pathlib import Path
 from threading import Lock
-from types import SimpleNamespace
 from typing import Any, List, Optional, cast
 
 import pyarrow as pa
@@ -29,7 +27,7 @@ class Etl(EtlBase):
 
     def __init__(
         self,
-        only_omop_table: Optional[str] = None,
+        only_omop_table: Optional[list[str]] = None,
         only_query: Optional[str] = None,
         skip_usagi_and_custom_concept_upload: Optional[bool] = None,
         process_semi_approved_mappings: Optional[bool] = None,
@@ -83,35 +81,20 @@ class Etl(EtlBase):
 
         if self._only_query:
             omop_table = self._only_query.parts[0]
-            self._process_folder_to_work(omop_table, getattr(self._omop_tables, omop_table))
-            self._process_work_to_omop(omop_table, getattr(self._omop_tables, omop_table))
-            for omop_table, table_props in vars(self._omop_tables).items():
-                if omop_table == self._only_omop_table:
+            self._process_folder_to_work(omop_table)
+            self._process_work_to_omop(omop_table)
+            for table_with_events in self._omop_event_fields:
+                if table_with_events == self._only_omop_table:
                     continue
-                events = vars(
-                    getattr(
-                        table_props,
-                        "events",
-                        json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
-                    )
-                )
-                if events:
-                    self._process_work_to_omop(omop_table, table_props)
+                self._process_work_to_omop(table_with_events)
         elif self._only_omop_table:
-            self._process_folder_to_work(self._only_omop_table, getattr(self._omop_tables, self._only_omop_table))
-            self._process_work_to_omop(self._only_omop_table, getattr(self._omop_tables, self._only_omop_table))
-            for omop_table, table_props in vars(self._omop_tables).items():
-                if omop_table == self._only_omop_table:
-                    continue
-                events = vars(
-                    getattr(
-                        table_props,
-                        "events",
-                        json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
-                    )
-                )
-                if events:
-                    self._process_work_to_omop(omop_table, table_props)
+            for omop_table in self._only_omop_table:
+                self._process_folder_to_work(omop_table)
+                self._process_work_to_omop(omop_table)
+
+            for table_with_events in self._omop_event_fields:
+                if table_with_events not in self._only_omop_table:
+                    self._process_work_to_omop(table_with_events)
         else:
             etl_flow = self._cdm_tables_fks_dependencies_resolved.copy()
             self._do_folder_to_work_etl_flow(etl_flow)
@@ -125,20 +108,13 @@ class Etl(EtlBase):
 
     def _do_parallel_work_to_omop(self):
         """Parallelize the mapping of the event columns to the correct foreign keys and fills up the final OMOP tables"""  # noqa: E501 # pylint: disable=line-too-long
-        with ThreadPoolExecutor(max_workers=len(vars(self._omop_tables))) as executor:
-            futures = [
-                executor.submit(
-                    self._process_work_to_omop,
-                    omop_table,
-                    table_props,
-                )
-                for omop_table, table_props in vars(self._omop_tables).items()
-            ]
+        with ThreadPoolExecutor(max_workers=len(self._omop_etl_tables)) as executor:
+            futures = [executor.submit(self._process_work_to_omop, omop_table) for omop_table in self._omop_etl_tables]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
 
-    def _do_folder_to_work_etl_flow(self, elt_flow: List[set[str]]):
+    def _do_folder_to_work_etl_flow(self, elt_flow: list[list[str]]):
         """Recursive function that parallelizes the processing of ETL folders
 
         Args:
@@ -146,14 +122,7 @@ class Etl(EtlBase):
         """
         tables = elt_flow.pop(0)
         with ThreadPoolExecutor(max_workers=len(tables)) as executor:
-            futures = [
-                executor.submit(
-                    self._process_folder_to_work,
-                    omop_table,
-                    getattr(self._omop_tables, omop_table),
-                )
-                for omop_table in tables
-            ]
+            futures = [executor.submit(self._process_folder_to_work, omop_table) for omop_table in tables]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
@@ -161,7 +130,7 @@ class Etl(EtlBase):
         if len(elt_flow):
             self._do_folder_to_work_etl_flow(elt_flow)
 
-    def _process_folder_to_work(self, omop_table: str, omop_table_props: Any):
+    def _process_folder_to_work(self, omop_table: str):
         """ETL method for one OMOP table
 
         Args:
@@ -179,13 +148,7 @@ class Etl(EtlBase):
 
         logging.info("Processing ETL folder: %s", omop_table_path)
 
-        events = vars(
-            getattr(
-                omop_table_props,
-                "events",
-                json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
-            )
-        )
+        events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}
 
         # create the OMOP work table based on the DDL, but with the event_id columns of type STRING
         self._create_omop_work_table(omop_table, events)
@@ -200,7 +163,7 @@ class Etl(EtlBase):
         required_columns = self._get_required_omop_column_names(omop_table)
 
         # is the primary key an auto numbering column?
-        pk_auto_numbering = self._is_pk_auto_numbering(omop_table, omop_table_props)
+        pk_auto_numbering = self._is_pk_auto_numbering(omop_table)
 
         if not self._skip_usagi_and_custom_concept_upload:
             with ThreadPoolExecutor(max_workers=len(concept_columns)) as executor:
@@ -230,24 +193,14 @@ class Etl(EtlBase):
                 for result in as_completed(futures):
                     result.result()
 
-        foreign_key_columns = getattr(
-            omop_table_props,
-            "fks",
-            json.loads(
-                "{}", object_hook=lambda d: SimpleNamespace(**d)
-            ),  # create an empty SimpleNamespace object as default value
-        )
-        # replace foreign table with primary key of foreign table
-        for foreign_key, foreign_table in vars(foreign_key_columns).items():
-            setattr(
-                foreign_key_columns,
-                foreign_key,
-                getattr(getattr(self._omop_tables, foreign_table), "pk"),
-            )
-        pk_swap_table_name = getattr(omop_table_props, "pk", None)
+        foreign_key_columns = self._get_fks(omop_table)
+        primary_key_column = self._get_pk(omop_table)
 
         if self._only_query:
-            self._run_upload_query(cast(Path, self._cdm_folder_path) / self._only_query, omop_table)
+            sql_files = [cast(Path, self._cdm_folder_path) / self._only_query]
+
+        if self._only_query:
+            self._run_upload_query(sql_files[0], omop_table)
         else:
             with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
                 # upload an apply the custom concept CSV's
@@ -263,26 +216,32 @@ class Etl(EtlBase):
                 for result in as_completed(futures):
                     result.result()
 
+        upload_tables = (
+            [Path(Path(self._only_query).stem).stem]
+            if self._only_query
+            else [Path(Path(sql_file).stem).stem for sql_file in sql_files]
+        )  # remove file extensions
+
         if pk_auto_numbering:
             # swap the primary key with an auto number
             self._swap_primary_key_auto_numbering_column(
                 omop_table=omop_table,
-                pk_swap_table_name=cast(str, pk_swap_table_name),
-                primary_key_column=omop_table_props.pk,
+                primary_key_column=cast(str, primary_key_column),
                 concept_id_columns=concept_columns,
                 events=events,
-                sql_files=[Path(Path(sql_file).stem).stem for sql_file in sql_files],
+                sql_files=[Path(sql_file).name for sql_file in sql_files],
+                upload_tables=upload_tables,
             )
             # store the ID swap in our 'source_id_to_omop_id_swap' table
             self._store_usagi_source_id_to_omop_id_mapping(
                 omop_table=omop_table,
-                pk_swap_table_name=cast(str, pk_swap_table_name),
+                primary_key_column=cast(str, primary_key_column),
             )
 
         # usefull to combine all upload results into one large table
         self._combine_upload_tables(
             omop_table,
-            [Path(Path(sql_file).stem).stem for sql_file in sql_files],
+            upload_tables=upload_tables,
             columns=columns,
         )
 
@@ -292,12 +251,10 @@ class Etl(EtlBase):
             omop_table,
         )
         self._merge_into_omop_work_table(
-            sql_files=[Path(Path(sql_file).stem).stem for sql_file in sql_files],
             omop_table=omop_table,
             columns=columns,
             required_columns=required_columns,
-            pk_swap_table_name=pk_swap_table_name,
-            primary_key_column=getattr(omop_table_props, "pk", None),
+            primary_key_column=primary_key_column,
             pk_auto_numbering=pk_auto_numbering,
             foreign_key_columns=foreign_key_columns,
             concept_id_columns=concept_columns,
@@ -320,29 +277,30 @@ class Etl(EtlBase):
             sql_file (str): The sql file holding the query on the raw data.
             omop_table (str): OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
+        upload_table = f"{omop_table}__upload__{Path(Path(sql_file).stem).stem}"  # remove file extension
         logging.debug(
             "Running query '%s' from raw tables into table '%s'",
             str(sql_file),
-            f"{omop_table}__upload__{Path(Path(sql_file).stem).stem}",
+            upload_table,
         )
         select_query = self._get_query_from_sql_file(sql_file, omop_table)
 
         # load the results of the query in the tempopary work table
-        upload_table = f"{omop_table}__upload__{Path(Path(sql_file).stem).stem}"
         self._query_into_upload_table(upload_table, select_query)
 
     @abstractmethod
     def _combine_upload_tables(
         self,
         omop_table: str,
-        sql_files: List[str],
+        upload_tables: List[str],
         columns: List[str],
     ):
-        """_summary_
+        """Combine the data of the upload tables into one table.
 
         Args:
             omop_table_name (str): Name of the OMOP table
-            sql_files (List[str]): sql_files (List[Path]): The sql files holding the query on the raw data.
+            upload_tables (List[str]): The list of upload tables
+            columns (List[str]): The list of columns
         """
         pass
 
@@ -540,54 +498,51 @@ class Etl(EtlBase):
         finally:
             self._lock_source_value_to_concept_id_mapping.release()
 
-    def _process_work_to_omop(self, omop_table_name: str, omop_table_props: Any):
+    def _process_work_to_omop(self, omop_table: str):
         """Maps the event columns to the correct foreign keys and fills up the final OMOP tables
 
         Args:
             omop_table_name (str): OMOP table
             omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
         """
-        events = vars(
-            getattr(
-                omop_table_props,
-                "events",
-                json.loads("{}", object_hook=lambda d: SimpleNamespace(**d)),
-            )
-        )
+        events = self._omop_event_fields.get(omop_table, {})
 
         # get all the columns from the destination OMOP table
-        columns = self._get_omop_column_names(omop_table_name)
+        columns = self._get_omop_column_names(omop_table)
+
+        primary_key_column = self._get_pk(omop_table)
 
         # merge everything in the destination OMOP work table
         logging.info(
             "Merging work table '%s' into omop table '%s'",
-            omop_table_name,
-            omop_table_name,
+            omop_table,
+            omop_table,
         )
         self._merge_into_omop_table(
-            omop_table=omop_table_name,
+            omop_table=omop_table,
             columns=columns,
-            primary_key_column=getattr(omop_table_props, "pk", None),
+            primary_key_column=primary_key_column,
             events=events,
         )
 
     def _swap_primary_key_auto_numbering_column(
         self,
         omop_table: str,
-        pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
         events: Any,
         sql_files: List[str],
+        upload_tables: List[str],
     ):
         """Swap the primary key source value of the omop table with a generated incremental number.
 
         Args:
             omop_table (str): OMOP table.
-            pk_swap_table_name (str): Name of the swap table, for generating the auto numbering.
             primary_key_column (str): The name of the primary key column.
             concept_id_columns (List[str]): List of the columns that hold concepts
             events (Any): Object that holds the events of the the OMOP table.
+            sql_files (List[str]): List of the SQL files to execute.
+            upload_tables (List[str]): List of the upload tables to execute.
         """  # noqa: E501 # pylint: disable=line-too-long
         logging.debug(
             "Swapping primary key column '%s' for table '%s'",
@@ -595,26 +550,24 @@ class Etl(EtlBase):
             omop_table,
         )
         # create the swap table for the primary key
-        self._create_pk_auto_numbering_swap_table(pk_swap_table_name, concept_id_columns, events)
+        self._create_pk_auto_numbering_swap_table(primary_key_column, concept_id_columns, events)
 
         # execute the swap query
         self._execute_pk_auto_numbering_swap_query(
             omop_table=omop_table,
-            pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             concept_id_columns=concept_id_columns,
             events=events,
             sql_files=sql_files,
+            upload_tables=upload_tables,
         )
 
     @abstractmethod
     def _merge_into_omop_work_table(
         self,
-        sql_files: List[str],
         omop_table: str,
         columns: List[str],
         required_columns: List[str],
-        pk_swap_table_name: Optional[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
@@ -731,20 +684,6 @@ class Etl(EtlBase):
         Args:
             etl_start (date): The start data of the ETL.
         """
-        pass
-
-    @abstractmethod
-    def _is_pk_auto_numbering(self, omop_table_name: str, omop_table_props: Any) -> bool:
-        """Checks if the primary key of the OMOP table needs autonumbering.
-        For example the [Person](https://ohdsi.github.io/CommonDataModel/cdm54.html#PERSON) table has an auto numbering primary key, the [Vocabulary](https://ohdsi.github.io/CommonDataModel/cdm54.html#VOCABULARY) table not.
-
-        Args:
-            omop_table_name (str): OMOP table
-            omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
-
-        Returns:
-            bool: True if the PK needs autonumbering
-        """  # noqa: E501 # pylint: disable=line-too-long
         pass
 
     @abstractmethod
@@ -907,12 +846,12 @@ class Etl(EtlBase):
 
     @abstractmethod
     def _create_pk_auto_numbering_swap_table(
-        self, pk_swap_table_name: str, concept_id_columns: List[str], events: Any
+        self, primary_key_column: str, concept_id_columns: List[str], events: Any
     ) -> None:
         """This method created a swap table so that our source codes can be translated to auto numbering primary keys.
 
         Args:
-            pk_swap_table_name (str): The name of our primary key swap table
+            primary_key_column (str): The primary key column of the OMOP table
             concept_id_columns (List[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
         """
@@ -922,22 +861,22 @@ class Etl(EtlBase):
     def _execute_pk_auto_numbering_swap_query(
         self,
         omop_table: str,
-        pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
         events: Any,
         sql_files: List[str],
+        upload_tables: List[str],
     ) -> None:
         """This method does the swapping of our source codes to an auto number that will be the primary key
         of our OMOP table.
 
         Args:
             omop_table (str): The OMOP table
-            pk_swap_table_name (str): Primary key swap table
             primary_key_column (str): Primary key column
             concept_id_columns (List[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
             sql_files (List[str]): List of upload SQL files
+            upload_tables (List[str]): List of upload tables
         """
         pass
 
@@ -971,11 +910,11 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, pk_swap_table_name: str) -> None:
+    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, primary_key_column: str) -> None:
         """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
 
         Args:
             omop_table (str): The omop table
-            pk_swap_table_name (str): The id swap work table
+            primary_key_column (str): The primary key column
         """
         pass

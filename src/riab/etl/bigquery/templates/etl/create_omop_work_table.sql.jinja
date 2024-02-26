@@ -1,5 +1,5 @@
-{# Copyright 2024 RADar-AZDelta #}
-{# SPDX-License-Identifier: gpl3+ #}
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
 CREATE TABLE IF NOT EXISTS {{dataset_work}}.{{omop_table}} (
   {%- for column in columns -%}
       {%- if not loop.first -%}

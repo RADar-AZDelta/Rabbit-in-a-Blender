@@ -69,28 +69,6 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             query_parameters=[bq.ScalarQueryParameter("etl_start", "DATE", etl_start)],
         )
 
-    def _is_pk_auto_numbering(self, omop_table_name: str, omop_table_props: Any) -> bool:
-        """Checks if the primary key of the OMOP table needs autonumbering.
-        For example the [Person](https://ohdsi.github.io/CommonDataModel/cdm54.html#PERSON) table has an auto numbering primary key, the [Vocabulary](https://ohdsi.github.io/CommonDataModel/cdm54.html#VOCABULARY) table not.
-
-        Args:
-            omop_table_name (str): OMOP table
-            omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
-
-        Returns:
-            bool: True if the PK needs autonumbering
-        """  # noqa: E501 # pylint: disable=line-too-long
-        if not hasattr(omop_table_props, "pk"):
-            return False
-        # get the primary key meta data from the the destination OMOP table
-        template = self._template_env.get_template("get_table_columns.sql.jinja")
-        sql = template.render(dataset=self._dataset_omop, table_name=omop_table_name)
-        columns = self._gcp.run_query_job(sql)
-        pk_column_metadata = [column for column in columns if column["column_name"] == omop_table_props.pk][0]
-        # is the primary key an auto numbering column?
-        pk_auto_numbering = pk_column_metadata and pk_column_metadata.get("data_type") == "INT64"
-        return pk_auto_numbering
-
     def _clear_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the custom concept upload table (holds the contents of the custom concept CSV's)
 
@@ -311,18 +289,18 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         )
         self._gcp.run_query_job(sql)
 
-    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, pk_swap_table_name: str) -> None:
+    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, primary_key_column: str) -> None:
         """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
 
         Args:
             omop_table (str): The omop table
-            pk_swap_table_name (str): The id swap work table
+            primary_key_column (str): The primary key column
         """
         template = self._template_env.get_template("etl/SOURCE_ID_TO_OMOP_ID_MAP_merge.sql.jinja")
         sql = template.render(
             dataset_work=self._dataset_work,
             omop_table=omop_table,
-            pk_swap_table_name=pk_swap_table_name,
+            primary_key_column=primary_key_column,
             dataset_omop=self._dataset_omop,
         )
         self._gcp.run_query_job(sql)
@@ -365,19 +343,19 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         self._gcp.run_query_job(ddl)
 
     def _create_pk_auto_numbering_swap_table(
-        self, pk_swap_table_name: str, concept_id_columns: List[str], events: Any
+        self, primary_key_column: str, concept_id_columns: List[str], events: Any
     ) -> None:
         """This method created a swap table so that our source codes can be translated to auto numbering primary keys.
 
         Args:
-            pk_swap_table_name (str): The name of our primary key swap table
+            primary_key_column (str): The primary key column
             concept_id_columns (List[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
         """
         template = self._template_env.get_template("etl/{primary_key_column}_swap_create.sql.jinja")
         ddl = template.render(
             dataset_work=self._dataset_work,
-            pk_swap_table_name=pk_swap_table_name,
+            primary_key_column=primary_key_column,
             # foreign_key_columns=vars(foreign_key_columns),
             concept_id_columns=concept_id_columns,
             events=events,
@@ -387,63 +365,63 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
     def _execute_pk_auto_numbering_swap_query(
         self,
         omop_table: str,
-        pk_swap_table_name: str,
         primary_key_column: str,
         concept_id_columns: List[str],
         events: Any,
         sql_files: List[str],
+        upload_tables: List[str],
     ) -> None:
         """This method does the swapping of our source codes to an auto number that will be the primary key
         of our OMOP table.
 
         Args:
             omop_table (str): The OMOP table
-            pk_swap_table_name (str): Primary key swap table
             primary_key_column (str): Primary key column
             concept_id_columns (List[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
             sql_files (List[str]): List of upload SQL files
+            upload_tables (List[str]): List of upload tables
         """
         template = self._template_env.get_template("etl/{primary_key_column}_swap_merge.sql.jinja")
         sql = template.render(
             dataset_work=self._dataset_work,
-            pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
             concept_id_columns=concept_id_columns,
             omop_table=omop_table,
             events=events,
             sql_files=sql_files,
+            upload_tables=upload_tables,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
         self._gcp.run_query_job(sql)
 
     def _combine_upload_tables(
         self,
         omop_table: str,
-        sql_files: List[str],
+        upload_tables: List[str],
         columns: List[str],
     ):
-        """_summary_
+        """Combine the data of the upload tables into one table.
 
         Args:
             omop_table_name (str): Name of the OMOP table
-            sql_files (List[str]): sql_files (List[Path]): The sql files holding the query on the raw data.
+            upload_tables (List[Path]): Thelist of upload tables
+            columns (List[str]): List of columns of the OMOP table
         """
         template = self._template_env.get_template("etl/{omop_work_table}_combine_upload_tables.sql.jinja")
         sql = template.render(
             dataset_work=self._dataset_work,
             omop_table=omop_table,
-            sql_files=sql_files,
+            upload_tables=upload_tables,
             columns=columns,
         )
         self._gcp.run_query_job(sql)
 
     def _merge_into_omop_work_table(
         self,
-        sql_files: List[str],
         omop_table: str,
         columns: List[str],
         required_columns: List[str],
-        pk_swap_table_name: Optional[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
@@ -453,11 +431,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
         Args:
-            sql_files (List[str]): The sql files holding the query on the raw data.
             omop_table (str): OMOP table.
             columns (List[str]): List of columns of the OMOP table.
             required_columns (List[str]): List of required columns of the OMOP table.
-            pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
             primary_key_column (str): The name of the primary key column.
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
             foreign_key_columns (Any): List of foreign key columns.
@@ -476,7 +452,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         ar_table = rows.to_arrow()
         if len(ar_table):
             raise Exception(
-                f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\n"
+                f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\nQuery to get the duplicates:\n{sql_doubles}"
             )
 
         template = self._template_env.get_template("etl/{omop_work_table}_merge.sql.jinja")
@@ -484,14 +460,10 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             dataset_omop=self._dataset_omop,
             omop_table=omop_table,
             dataset_work=self._dataset_work,
-            sql_files=sql_files,
             columns=columns,
             required_columns=required_columns,
-            pk_swap_table_name=pk_swap_table_name,
             primary_key_column=primary_key_column,
-            foreign_key_columns=vars(foreign_key_columns)
-            if hasattr(foreign_key_columns, "__dict__")
-            else foreign_key_columns,
+            foreign_key_columns=foreign_key_columns,
             concept_id_columns=concept_id_columns,
             pk_auto_numbering=pk_auto_numbering,
             events=events,
@@ -504,7 +476,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         omop_table: str,
         columns: List[str],
         primary_key_column: Optional[str],
-        events: Any,
+        events: dict[str, str],
     ):
         """The one shot merge of OMOP work table into the destination OMOP table applying the events.
 
@@ -515,9 +487,10 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
+
         event_tables = {}
         try:
-            if dict(events):  # we have event colomns
+            if len(events) > 0:  # we have event columns
                 template = self._template_env.get_template("etl/{omop_table}_get_event_tables.sql.jinja")
                 sql = template.render(
                     omop_table=omop_table,
@@ -526,7 +499,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 )
                 rows = self._gcp.run_query_job(sql)
                 event_tables = dict(
-                    (table, vars(self._omop_tables)[table].pk) for table in (row.event_table for row in rows) if table
+                    (table, self._get_pk(table)) for table in (row.event_table for row in rows) if table
                 )
 
             template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
@@ -541,11 +514,12 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
             )
             self._gcp.run_query_job(sql)
-        except NotFound:
-            logging.debug(
-                "Table %s not found in work dataset, continue without merge for this table",
-                omop_table,
-            )
+        except Exception as e:
+            if isinstance(e.__cause__, NotFound):  # chained exception!!!
+                logging.debug(
+                    "Table %s not found in work dataset, continue without merge for this table",
+                    omop_table,
+                )
 
     def _create_omop_work_table(self, omop_table: str, events: Any) -> None:
         """Creates the OMOP work table (if it does'nt yet exists) based on the DDL.

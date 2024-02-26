@@ -27,7 +27,7 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         Returns:
             List[str]: List of all the work tables
         """
-        work_tables = self._get_all_table_names(self._dataset_work)
+        work_tables = self._get_all_work_table_names(self._dataset_work)
         return work_tables
 
     def _truncate_omop_table(self, table_name: str) -> None:

@@ -21,16 +21,14 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
     ):
         super().__init__(**kwargs)
 
-    def _load_vocabulary_in_upload_table(self, csv_file: Path, vocabulary_table: str) -> None:
+    def _load_vocabulary_parquet_in_upload_table(self, vocabulary_table: str, parquet_file: Path) -> None:
         """Loads the CSV file in the specific standardised vocabulary table
 
         Args:
-            csv_file (Path): Path to the CSV file
             vocabulary_table (str): The standardised vocabulary table
+            parquet_file (Path): Path to the CSV file
         """
-        parquet_file = self._convert_csv_to_parquet(vocabulary_table, csv_file)
-
-        logging.debug("Loading '%s.parquet' into vocabulary table", vocabulary_table)
+        logging.debug("Loading '%s' into vocabulary table %s", parquet_file, vocabulary_table)
         # upload the Parquet file to the Cloud Storage Bucket
         uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
         # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table
@@ -51,7 +49,7 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
         self._gcp.delete_table(self._dataset_work, vocabulary_table)
 
     def _refill_vocabulary_table(self, vocabulary_table: str) -> None:
-        """Recreates a specific standardised vocabulary table
+        """Recreates a specific standardised vocabulary table from the upload table
 
         Args:
             vocabulary_table (str): The standardised vocabulary table

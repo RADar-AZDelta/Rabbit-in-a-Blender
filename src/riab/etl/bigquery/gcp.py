@@ -79,8 +79,14 @@ class Gcp:
         Returns:
             RowIterator: row iterator
         """  # noqa: E501 # pylint: disable=line-too-long
-        result, execution_time = self.run_query_job_with_benchmark(query, query_parameters)
-        return result
+
+        try:
+            result, execution_time = self.run_query_job_with_benchmark(query, query_parameters)
+            return result
+        except Exception as e:
+            raise Exception(
+                f"Failed to run query!\n\nQuery parameters: {str(query_parameters)}\n\nQuery:\n{query}"
+            ) from e
 
     def run_query_job_with_benchmark(
         self,
@@ -136,30 +142,6 @@ class Gcp:
         except Exception as ex:
             logging.debug("FAILED QUERY: %s\nWith parameters: %s", query, str(query_parameters))
             raise ex
-
-    def set_clustering_fields_on_table(
-        self,
-        dataset: str,
-        table_name: str,
-        clustering_fields: List[str],
-    ):
-        """Delete a table from Big Query
-        see https://cloud.google.com/bigquery/docs/creating-clustered-tables#modifying-cluster-spec
-
-        Args:
-            dataset (str): dataset (format: PROJECT_ID.DATASET_ID)
-            table_name (str): table name
-            clustering_fields (List[str]): list of fields (ordered!) to cluster in table table_name
-        """  # noqa: E501 # pylint: disable=line-too-long
-        logging.debug(
-            "Setting cluster fields on BigQuery table '%s.%s'",
-            dataset,
-            table_name,
-        )
-        dataset_parts = dataset.split(".")
-        table = self._bq_client.get_table(bq.DatasetReference(dataset_parts[0], dataset_parts[1]).table(table_name))
-        table.clustering_fields = clustering_fields
-        self._bq_client.update_table(table, ["clustering_fields"])
 
     def delete_table(self, dataset: str, table_name: str):
         """Delete a table from BigQuery
@@ -255,37 +237,3 @@ class Gcp:
             dataset,
             table_name,
         )
-
-    @backoff.on_exception(
-        backoff.expo,
-        (Exception),
-        max_time=600,
-        max_tries=20,
-        giveup=lambda e: isinstance(e, RuntimeError) and "Token error" in str(e),
-    )
-    def load_local_query_result(self, conn: str, query: str) -> Tuple[pa.Table, int]:
-        """Executes a local query and loads the results in an Arrow table
-        see https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table
-
-        Args:
-            conn (str): The connection string
-            query (str): The SQL statement of the select query
-
-        Returns:
-            Table: Memory efficient Arrow table, with the query results
-        """
-        logging.debug("Running query '%s", query)
-        start = time.time()
-        table: pa.Table = cx.read_sql(conn, query, return_type="arrow")
-        end = time.time()
-        table_size = table.nbytes
-        logging.debug(
-            "Query returned %i rows with table size %.2f MB in %.2f seconds",
-            table.num_rows,
-            table.nbytes / Gcp._MEGA,
-            end - start,
-        )
-        return (
-            deepcopy(table),
-            table_size,
-        )  # deepcopy because of https://github.com/sfu-db/connector-x/issues/196

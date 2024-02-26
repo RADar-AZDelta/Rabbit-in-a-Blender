@@ -1,15 +1,16 @@
-{# Copyright 2024 RADar-AZDelta #}
-{# SPDX-License-Identifier: gpl3+ #}
-MERGE INTO {{dataset_work}}.{{pk_swap_table_name}}_swap AS T
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+MERGE INTO {{dataset_work}}.{{primary_key_column}}_swap AS T
 USING (
     WITH cte_max AS (
         SELECT IFNULL(MAX(y), 0) as y
-        FROM {{dataset_work}}.{{pk_swap_table_name}}_swap
+        FROM {{dataset_work}}.{{primary_key_column}}_swap
     ),
     swap AS (
         SELECT DISTINCT *
         from (
         {%- for sql_file in sql_files -%}
+            {%- set upload_table = upload_tables[loop.index0] -%}
             {%- if not loop.first %}
 
             UNION ALL
@@ -18,21 +19,20 @@ USING (
             SELECT t.{{primary_key_column}} as x,
                 {%- set ns = namespace(ci_counter=0) -%}
                 {%- for column in concept_id_columns %}
-                    {% if not column in events.values() -%}
-                    swap_ci{{ns.ci_counter}}.conceptId as {{column}},
-                    {# t.{{column}} as {{column}}_source_value, #}
+                    {%- if not column in events.values() %}
+                swap_ci{{ns.ci_counter}}.conceptId as {{column}},
                         {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                     {%- else %}
-                    t.{{column}},
+                t.{{column}},
                     {%- endif -%}
-                {%- endfor %} 
+                {%- endfor -%} 
                 {%- for column in events %}
                     t.{{column}},
                 {%- endfor %}
-                '{{sql_file}}.sql' as source
-            FROM {{dataset_work}}.{{omop_table}}__upload__{{sql_file}} t      
+                '{{sql_file}}' as source
+            FROM {{dataset_work}}.{{omop_table}}__upload__{{upload_table}} t      
             {%- set ns = namespace(ci_counter=0) %}    
-            LEFT OUTER JOIN {{dataset_work}}.{{pk_swap_table_name}}_swap swap on swap.x = t.{{primary_key_column}}
+            LEFT OUTER JOIN {{dataset_work}}.{{primary_key_column}}_swap swap on swap.x = t.{{primary_key_column}}
                 {%- set ns = namespace(ci_counter=0) %}  
                 {%- for column in concept_id_columns %}
                     {%- if not column in events and not column in events.values() %}
@@ -44,7 +44,7 @@ USING (
                         {%- endif -%}                  
                         {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                     {%- endif -%}
-                {%- endfor %} 
+                {%- endfor %}
             where swap.x is null    
         {%- endfor %} 
         ) t
@@ -53,9 +53,8 @@ USING (
         s.x,
         {%- for column in concept_id_columns %}
         s.{{column}},
-        {# s.{{column}}_source_value, #}
         {%- endfor %} 
-        {%- for column in events %}
+        {%- for column in events -%}
         s.{{column}},
         {%- endfor %}
         s.source,

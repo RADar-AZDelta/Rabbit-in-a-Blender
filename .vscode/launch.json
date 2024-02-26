@@ -11,22 +11,31 @@
       "program": "src/riab/__init__.py",
       "args": [
         //"--help",
+        
         "--verbose",
+        
         //"--version"
+        
+        //"--print-etl-flow"
 
         //"--create-db"
         
         //"--import-vocabularies", "~/vocabulary-2022-07-28.zip"
         
-        //"--create-folders", "~/git/radar_omop-cdm/"
+        //"--create-folders", "~/tmp/radar_omop-cdm/"
         
         "--run-etl", "~/git/radar_omop-cdm/"
-          //,"--skip-usagi-and-custom-concept-upload"
-          ,"--process-semi-approved-mappings"
-          //,"--table", "cdm_source"
-          //,"--only-query", "cdm_source/hix.sql.jinja"
+          // ,"--table", "cdm_source"
+          // ,"--table", "metadata"
+          // ,"--table", "vocabulary"
+          //,"--table", "location"
+          ,"--table", "care_site"
+          ,"--table", "provider"
+          //,"--only-query", "measurement/labo.sql.jinja"
+          // ,"--skip-usagi-and-custom-concept-upload"
+          // ,"--process-semi-approved-mappings"
 
-        //"--cleanup", "all"
+        //"--cleanup", "location"
           //,"--clear-auto-generated-custom-concept-ids"
 
         //"--data-quality"
@@ -43,6 +52,15 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src"
       }    
+    },
+    {
+      "name": "Python: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "python": "${command:python.interpreterPath}"
     }
   ]
 }

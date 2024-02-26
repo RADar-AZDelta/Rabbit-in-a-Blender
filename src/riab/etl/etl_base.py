@@ -5,9 +5,8 @@
 import json
 import logging
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 from pathlib import Path
-from types import SimpleNamespace
 from typing import List
 
 import jinja2 as jj
@@ -44,7 +43,7 @@ class EtlBase(ABC):
         self._omop_cdm_version = omop_cdm_version
         self._max_workers = max_workers
 
-        self._cdm_tables_fks_dependencies_resolved: List[set[str]] = []
+        self._cdm_tables_fks_dependencies_resolved: list[list[str]] = []
 
         template_dir = Path(__file__).resolve().parent / self._db_engine / "templates"
         template_loader = jj.FileSystemLoader(searchpath=template_dir)
@@ -61,8 +60,20 @@ class EtlBase(ABC):
             )
         )
         # ctx = pl.SQLContext(omop_tables=self._df_omop_tables, eager_execution=True)
-        # for table in ctx.execute("SELECT lower(cdmTableName) FROM omop_tables WHERE schema = 'CDM'")["cdmTableName"]:
-        #     print(table)
+        # self._omop_cdm_tables = ctx.execute("SELECT lower(cdmTableName) FROM omop_tables WHERE schema = 'CDM'")["cdmTableName"].to_list()
+        self._omop_cdm_tables: List[str] = (
+            self._df_omop_tables.filter(pl.col("schema") == "CDM")
+            .select(cdmTableName=(pl.col("cdmTableName").str.to_lowercase()))["cdmTableName"]
+            .to_list()
+        )
+
+        self._omop_etl_tables: List[str] = (
+            self._df_omop_tables.filter(
+                (pl.col("schema") == "CDM") | (pl.col("cdmTableName").str.to_lowercase() == "vocabulary")
+            )
+            .select(cdmTableName=(pl.col("cdmTableName").str.to_lowercase()))["cdmTableName"]
+            .to_list()
+        )
 
         self._df_omop_fields: pl.DataFrame = pl.read_csv(
             str(
@@ -87,11 +98,11 @@ class EtlBase(ABC):
         self._resolve_cdm_tables_fks_dependencies()
 
         with open(
-            str(Path(__file__).parent.resolve() / f"cdm_{omop_cdm_version}_schema.json"),
+            str(Path(__file__).parent.resolve() / f"cdm_{omop_cdm_version}_events.json"),
             "r",
             encoding="UTF8",
         ) as file:
-            self._omop_tables = json.load(file, object_hook=lambda x: SimpleNamespace(**x))
+            self._omop_event_fields: dict[str, dict[str, str]] = json.load(file)
 
     def __del__(self):
         end_time = time.time()
@@ -121,10 +132,10 @@ class EtlBase(ABC):
         )
 
         # remove circular references
-        tables = dict(((k, set(v) - set([k])) for k, v in tables.items()))
+        tables = dict(((k.lower(), set(v.lower() for v in v) - set([k.lower()])) for k, v in tables.items()))
 
         tables_with_no_fks = set(k for k, v in tables.items() if not v)
-        self._cdm_tables_fks_dependencies_resolved.append(tables_with_no_fks)
+        self._cdm_tables_fks_dependencies_resolved.append(sorted(tables_with_no_fks))
         tables_with_fks = dict(
             ((k, set(v) - tables_with_no_fks) for k, v in tables.items() if k not in tables_with_no_fks)
         )
@@ -135,7 +146,7 @@ class EtlBase(ABC):
             # and keys without value (tables without FK's)
             t.update(k for k, v in tables_with_fks.items() if not v)
             # can be done right away
-            self._cdm_tables_fks_dependencies_resolved.append(t)
+            self._cdm_tables_fks_dependencies_resolved.append(sorted(t))
             # and cleaned up
             tables_with_fks = dict(((k, set(v) - t) for k, v in tables_with_fks.items() if v))
 
@@ -151,12 +162,11 @@ class EtlBase(ABC):
         for level in self._cdm_tables_fks_dependencies_resolved:
             for idx, table in enumerate(level):
                 depency_tree_text_representation.append(
-                    f"{' ' * spacer}{('└──' if idx == (len(level) - 1) else '├──') }{table}"
+                    f"{' ' * spacer}{('└──' if idx == (len(level) - 1) else '├──') }{table.lower()}"
                 )
             spacer += 2
         return "\n".join(depency_tree_text_representation)
 
-    @abstractmethod
     def _get_omop_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of column names of a omop table.
 
@@ -166,9 +176,11 @@ class EtlBase(ABC):
         Returns:
             List[str]: list of column names
         """
-        pass
+        fields = self._df_omop_fields.filter((pl.col("cdmTableName").str.to_lowercase() == omop_table_name))[
+            "cdmFieldName"
+        ].to_list()
+        return fields
 
-    @abstractmethod
     def _get_required_omop_column_names(self, omop_table_name: str) -> List[str]:
         """Get list of required column names of a omop table.
 
@@ -178,4 +190,96 @@ class EtlBase(ABC):
         Returns:
             List[str]: list of column names
         """
-        pass
+        fields = self._df_omop_fields.filter(
+            (pl.col("cdmTableName").str.to_lowercase() == omop_table_name) & (pl.col("isRequired") == "Yes")
+        )["cdmFieldName"].to_list()
+        return fields
+
+    def _is_pk_auto_numbering(self, omop_table_name: str) -> bool:
+        """Checks if the primary key of the OMOP table needs autonumbering.
+        For example the [Person](https://ohdsi.github.io/CommonDataModel/cdm54.html#PERSON) table has an auto numbering primary key, the [Vocabulary](https://ohdsi.github.io/CommonDataModel/cdm54.html#VOCABULARY) table not.
+
+        Args:
+            omop_table_name (str): OMOP table
+            omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
+
+        Returns:
+            bool: True if the PK needs autonumbering
+        """  # noqa: E501 # pylint: disable=line-too-long
+        pk_auto_numbering = (
+            len(
+                self._df_omop_fields.filter(
+                    (pl.col("cdmTableName").str.to_lowercase() == omop_table_name)
+                    & (pl.col("isPrimaryKey") == "Yes")
+                    & (pl.col("cdmDatatype") == "integer")
+                )
+            )
+            > 0
+        )
+        return pk_auto_numbering
+
+    def _get_pk(self, omop_table_name: str) -> str | None:
+        """Get primary key column of a omop table.
+
+        Args:
+            omop_table_name (str): OMOP table
+
+        Returns:
+            str: primary key column name
+        """
+        fks = (
+            self._df_omop_fields.filter(
+                (pl.col("cdmTableName").str.to_lowercase() == omop_table_name) & (pl.col("isPrimaryKey") == "Yes")
+            )
+            .select("cdmFieldName")["cdmFieldName"]
+            .to_list()
+        )
+
+        return len(fks) > 0 and fks[0] or None
+
+    def _get_fks(self, omop_table_name: str) -> dict[str, str]:
+        """Get list of foreign key columns of a omop table. (without foreign keys to the CONCEPT table)
+
+        Args:
+            omop_table_name (str): OMOP table
+
+        Returns:
+            dict[str, str]: dict with he column name and the foreign key table name
+        """
+        fks = dict(
+            self._df_omop_fields.filter(
+                (pl.col("cdmTableName").str.to_lowercase() == omop_table_name)
+                & (pl.col("isForeignKey") == "Yes")
+                & (pl.col("fkTableName").str.to_lowercase() != "concept")
+            )
+            .select("cdmFieldName", pl.col("fkTableName").str.to_lowercase())
+            .iter_rows()
+        )
+
+        return fks
+
+    def _get_fk_domains(self, omop_table_name: str) -> dict[str, List[str]]:
+        """Get list of domains of the foreign key columns of a omop table.
+
+        Args:
+            omop_table_name (str): OMOP table
+
+        Returns:
+            dict[str, List[str]]: dict with he column name and the list of foreign key domain names
+        """
+        fk_domains = dict(
+            self._df_omop_fields.filter(
+                (pl.col("cdmTableName").str.to_lowercase() == omop_table_name) & (pl.col("fkDomain").is_not_null())
+            )
+            .with_columns(
+                pl.col("fkDomain")
+                .str.to_lowercase()
+                .str.split(",")
+                .list.eval(pl.element().str.strip())
+                .alias("fkDomain")
+            )
+            .select("cdmFieldName", "fkDomain")
+            .iter_rows()
+        )
+
+        return fk_domains

@@ -48,7 +48,7 @@ class ImportVocabularies(EtlBase, ABC):
                         "vocabulary",
                     ]
 
-                    logging.info("Deleting vocabulary tables.")
+                    logging.info("Deleting vocabulary upload tables.")
                     futures = [
                         executor.submit(
                             self._clear_vocabulary_upload_table,
@@ -63,10 +63,10 @@ class ImportVocabularies(EtlBase, ABC):
                     logging.info("Uploading vocabulary CSV's")
                     futures = [
                         executor.submit(
-                            self._load_vocabulary_in_upload_table,
+                            self._convert_csv_to_parquet_and_upload,
+                            vocabulary_table,
                             Path(temp_dir_path)
                             / f"{vocabulary_table.upper()}.csv",  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
-                            vocabulary_table,
                         )
                         for vocabulary_table in vocabulary_tables
                     ]
@@ -85,6 +85,17 @@ class ImportVocabularies(EtlBase, ABC):
                     # wait(futures, return_when=ALL_COMPLETED)
                     for result in as_completed(futures):
                         result.result()
+
+    def _convert_csv_to_parquet_and_upload(self, vocabulary_table: str, csv_file: Path):
+        """
+        Convert a CSV file to parquet and upload it to the vocabulary upload table.
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+            csv_file (Path): Path to the CSV file
+        """
+        parquet_file = self._convert_csv_to_parquet(vocabulary_table, csv_file)
+        self._load_vocabulary_parquet_in_upload_table(vocabulary_table, parquet_file)
 
     def _get_polars_type(self, cdmDatatype: str) -> pl.DataType:
         match cdmDatatype:
@@ -182,12 +193,16 @@ class ImportVocabularies(EtlBase, ABC):
         return df_vocabulary_table
 
     @abstractmethod
-    def _load_vocabulary_in_upload_table(self, csv_file: Path, vocabulary_table: str) -> None:
+    def _load_vocabulary_parquet_in_upload_table(
+        self,
+        vocabulary_table: str,
+        parquet_file: Path,
+    ) -> None:
         """Loads the CSV file in the specific standardised vocabulary table
 
         Args:
-            csv_file (Path): Path to the CSV file
             vocabulary_table (str): The standardised vocabulary table
+            parquet_file (Path): Path to the CSV file
         """
         pass
 
@@ -202,7 +217,7 @@ class ImportVocabularies(EtlBase, ABC):
 
     @abstractmethod
     def _refill_vocabulary_table(self, vocabulary_table: str) -> None:
-        """Refills a specific standardised vocabulary table
+        """Refills a specific standardised vocabulary table table from the upload table
 
         Args:
             vocabulary_table (str): The standardised vocabulary table

@@ -30,11 +30,7 @@ class CreateCdmFolders(EtlBase, ABC):
 
         Path.mkdir(cast(Path, self._cdm_folder_path), exist_ok=True)
 
-        omop_tables = self._df_omop_tables.filter(
-            (pl.col("schema") == "CDM") | (pl.col("cdmTableName").str.to_lowercase() == "vocabulary")
-        ).select(cdmTableName=(pl.col("cdmTableName").str.to_lowercase()))["cdmTableName"]
-
-        for omop_table in omop_tables:
+        for omop_table in self._omop_etl_tables:
             omop_fields = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table)
 
             folder = cast(Path, self._cdm_folder_path) / omop_table

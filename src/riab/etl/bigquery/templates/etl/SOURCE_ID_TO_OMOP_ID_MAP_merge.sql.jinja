@@ -1,5 +1,5 @@
-{# Copyright 2024 RADar-AZDelta #}
-{# SPDX-License-Identifier: gpl3+ #}
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
 MERGE INTO {{dataset_omop}}.source_id_to_omop_id_map AS T
 USING (
     SELECT DISTINCT
@@ -10,7 +10,7 @@ USING (
         ,CURRENT_DATE() as valid_start_date
         ,DATE(2099, 12, 31) as valid_end_date
         ,cast(NULL as string) as invalid_reason        
-    FROM {{dataset_work}}.{{pk_swap_table_name}}_swap t
+    FROM {{dataset_work}}.{{primary_key_column}}_swap t
 ) AS S
 ON S.omop_table = T.omop_table and S.omop_id = T.omop_id
 WHEN MATCHED THEN

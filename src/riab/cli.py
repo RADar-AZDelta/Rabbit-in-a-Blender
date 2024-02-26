@@ -470,6 +470,7 @@ ______      _     _     _ _     _                ______ _                _
             type=str,
             help="""Do only ETL on this specific OMOP CDM table""",
             metavar="TABLE",
+            action="append",
         )
 
     def _create_cleanup_command_argument_group(self, parser: ArgumentParser):

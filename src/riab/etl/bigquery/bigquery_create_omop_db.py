@@ -1,15 +1,7 @@
 # Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
-import json
 import logging
-import re
-import warnings
-from pathlib import Path
-from threading import Lock
-from typing import Dict, List
-
-from simple_ddl_parser import DDLParser
 
 from ..create_omop_db import CreateOmopDb
 from .bigquery_etl_base import BigQueryEtlBase

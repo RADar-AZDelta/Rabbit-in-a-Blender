@@ -66,34 +66,34 @@ Most CDM tables have foreign keys (FKs) to other tables. Some tables can be proc
 The ETL flow for v5.4 is as follows:
 
 ```
-├──VOCABULARY
-├──LOCATION
-├──METADATA
-├──CDM_SOURCE
-├──COST
-└──FACT_RELATIONSHIP
-  └──CARE_SITE
-    └──PROVIDER
-      └──PERSON
-        ├──SPECIMEN
-        ├──DOSE_ERA
-        ├──PAYER_PLAN_PERIOD
-        ├──VISIT_OCCURRENCE
-        ├──CONDITION_ERA
-        ├──EPISODE
-        ├──OBSERVATION_PERIOD
-        ├──DRUG_ERA
-        └──DEATH
-          ├──EPISODE_EVENT
-          └──VISIT_DETAIL
-            ├──OBSERVATION
-            ├──NOTE
-            ├──DRUG_EXPOSURE
-            ├──MEASUREMENT
-            ├──CONDITION_OCCURRENCE
-            ├──PROCEDURE_OCCURRENCE
-            └──DEVICE_EXPOSURE
-              └──NOTE_NLP
+├──cdm_source
+├──cost
+├──fact_relationship
+├──location
+├──metadata
+└──vocabulary
+  └──care_site
+    └──provider
+      └──person
+        ├──condition_era
+        ├──death
+        ├──dose_era
+        ├──drug_era
+        ├──episode
+        ├──observation_period
+        ├──payer_plan_period
+        ├──specimen
+        └──visit_occurrence
+          ├──episode_event
+          └──visit_detail
+            ├──condition_occurrence
+            ├──device_exposure
+            ├──drug_exposure
+            ├──measurement
+            ├──note
+            ├──observation
+            └──procedure_occurrence
+              └──note_nlp
 ```
 
 Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.
@@ -176,7 +176,7 @@ CLI Usage
 * **Run ETL specific command options (-r [PATH], --run-etl [PATH]):**
     |  command | help  
     |---|---  
-    | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table
+    | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table (this argument can be used multiple times). (ex: --run-etl ~/git/omop-cdm/ -t cdm_source -t "metadata -t vocabulary -t location)
     | -q [PATH], --only-query [PATH] | Do ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql) 
     | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
     | -sa, --process-semi-approved-mappings | In addition to 'APPROVED' as mapping status, 'SEMI-APPROVED' will be processed as valid Usagi concept mappings.
@@ -230,7 +230,7 @@ Run ETL for a specified sql file in the CDM folder structure. (ex: measurement/l
 ```bash
 riab --run-etl ./OMOP-CDM \
   --skip-usagi-and-custom-concept-upload \
-  --only-sql measurement/lab_measurements.sql
+  --only-query measurement/lab_measurements.sql
 ```
 
 Run ETL with SEMI-APPROVED concepts during ETL testing in dev branch

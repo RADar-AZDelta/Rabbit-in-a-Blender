@@ -84,35 +84,7 @@ class BigQueryEtlBase(EtlBase, ABC):
                 self.__clustering_fields = json.load(file)
         return self.__clustering_fields
 
-    def _get_omop_column_names(self, omop_table_name: str) -> List[str]:
-        """Get list of column names of a omop table.
-
-        Args:
-            omop_table_name (str): OMOP table
-
-        Returns:
-            List[str]: list of column names
-        """
-        template = self._template_env.get_template("get_table_columns.sql.jinja")
-        sql = template.render(dataset=self._dataset_omop, table_name=omop_table_name)
-        columns = self._gcp.run_query_job(sql)
-        return [column["column_name"] for column in columns]
-
-    def _get_required_omop_column_names(self, omop_table_name: str) -> List[str]:
-        """Get list of required column names of a omop table.
-
-        Args:
-            omop_table_name (str): OMOP table
-
-        Returns:
-            List[str]: list of column names
-        """
-        template = self._template_env.get_template("get_table_columns.sql.jinja")
-        sql = template.render(dataset=self._dataset_omop, table_name=omop_table_name)
-        columns = self._gcp.run_query_job(sql)
-        return [column["column_name"] for column in columns if column["is_nullable"] == "NO"]
-
-    def _get_all_table_names(self, dataset: str) -> List[str]:
+    def _get_all_work_table_names(self, dataset: str) -> List[str]:
         """Get all table names from a specific dataset in Big Query
 
         Args:
@@ -121,7 +93,7 @@ class BigQueryEtlBase(EtlBase, ABC):
         Returns:
             List[str]: list of table names
         """
-        template = self._template_env.get_template("all_table_names.sql.jinja")
+        template = self._template_env.get_template("all_work_table_names.sql.jinja")
         sql = template.render(dataset=dataset)
         rows = self._gcp.run_query_job(sql)
         return [row.table_name for row in rows]
