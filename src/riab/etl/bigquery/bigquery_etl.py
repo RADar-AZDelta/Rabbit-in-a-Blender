@@ -545,3 +545,28 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             cluster_fields=cluster_fields,
         )
         self._gcp.run_query_job(sql)
+
+    def _check_usagi_fk_domains(self, omop_table: str, concept_id_column: str, domains: list[str]) -> bool:
+        """Checks the usagi fk domain of the concept id column.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+            domains (list[str]): The allowed domains
+        """
+        template = self._template_env.get_template(
+            "etl/{omop_table}__{concept_id_column}_usagi_fk_domain_check.sql.jinja"
+        )
+        sql = template.render(
+            dataset_work=self._dataset_work,
+            dataset_omop=self._dataset_omop,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+            domains=domains,
+        )
+        rows = self._gcp.run_query_job(sql)
+        ar_table = rows.to_arrow()
+        if len(ar_table):
+            raise Exception(
+                f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!"
+            )

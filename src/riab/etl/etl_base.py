@@ -283,3 +283,60 @@ class EtlBase(ABC):
         )
 
         return fk_domains
+
+    def _get_polars_type(self, cdmDatatype: str) -> pl.DataType:
+        match cdmDatatype:
+            case "integer":
+                return pl.Int64  # type: ignore
+            case "datetime":
+                return pl.Datetime  # type: ignore
+            case "varchar(50)":
+                return pl.Utf8  # type: ignore
+            case "date":
+                return pl.Utf8  # type: ignore
+            # WARNING: pl.Date # Data not parsed well --> will do it manually
+            case "Integer":
+                return pl.Int64  # type: ignore
+            case "varchar(20)":
+                return pl.Utf8  # type: ignore
+            case "float":
+                return pl.Float64  # type: ignore
+            case "varchar(MAX)":
+                return pl.Utf8  # type: ignore
+            case "varchar(255)":
+                return pl.Utf8  # type: ignore
+            case "varchar(10)":
+                return pl.Utf8  # type: ignore
+            case "varchar(60)":
+                return pl.Utf8  # type: ignore
+            case "varchar(250)":
+                return pl.Utf8  # type: ignore
+            case "varchar(1)":
+                return pl.Utf8  # type: ignore
+            case "varchar(2000)":
+                return pl.Utf8  # type: ignore
+            case "varchar(2)":
+                return pl.Utf8  # type: ignore
+            case "varchar(9)":
+                return pl.Utf8  # type: ignore
+            case "varchar(80)":
+                return pl.Utf8  # type: ignore
+            case "varchar(3)":
+                return pl.Utf8  # type: ignore
+            case "varchar(25)":
+                return pl.Utf8  # type: ignore
+            case "varchar(1000)":
+                return pl.Utf8  # type: ignore
+            case _:
+                raise ValueError(f"Unknown cdmDatatype: {cdmDatatype}")
+
+    def _get_polars_schema_for_cdm_table(self, vocabulary_table: str) -> dict[str, pl.DataType]:
+        df_table_fields = self._df_omop_fields.filter(
+            pl.col("cdmTableName").str.to_lowercase() == vocabulary_table
+        ).select(["cdmFieldName", "cdmDatatype"])
+        polars_schema: dict[str, pl.DataType] = {}
+        cdmFieldName: str
+        cdmDatatype: str
+        for cdmFieldName, cdmDatatype in df_table_fields.iter_rows():
+            polars_schema[cdmFieldName] = self._get_polars_type(cdmDatatype)
+        return polars_schema

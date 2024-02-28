@@ -13,9 +13,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, List, Optional, cast
 
-import pyarrow as pa
-import pyarrow.csv as csv
-import pyarrow.parquet as pq
+import polars as pl
 
 from .etl_base import EtlBase
 
@@ -341,22 +339,27 @@ class Etl(EtlBase):
         # create the swap table
         self._create_custom_concept_id_swap_table()
 
-        ar_table = None
+        # ar_table = None
+        df = pl.DataFrame()
         for concept_csv_file in concept_csv_files:  # loop the custom concept CSV's
             logging.info(
                 "Creating concept_id swap from custom concept file '%s'",
                 str(concept_csv_file),
             )
-            # convert the custom concepts CSV to an Arrow table
-            ar_temp_table = self._convert_concept_csv_to_arrow_table(concept_csv_file)
-            # concat the Arrow tables into one large Arrow table
-            ar_table = ar_temp_table if not ar_table else pa.concat_tables([ar_table, ar_temp_table])
-        if not ar_table:
+            # convert the custom concepts CSV to a DataFrame
+            df_temp = self._convert_concept_csv_to_polars_dataframe(concept_csv_file)
+
+            # concat the DataFrame into one large DataFrame
+            df = df_temp if df.is_empty() else pl.concat([df, df_temp])
+
+        # = ar_temp_table if not ar_table else pa.concat_tables([ar_table, ar_temp_table])
+        if df.is_empty():
             return
         with tempfile.TemporaryDirectory() as temp_dir:
             parquet_file = Path(temp_dir) / f"{omop_table}__{concept_id_column}_concept.parquet"
-            # save the one large Arrow table in a Parquet file in a temporary directory
-            pq.write_table(ar_table, str(parquet_file))
+            # save the one large DataFrame in a Parquet file in a temporary directory
+            df.write_parquet(str(parquet_file))
+
             # load the Parquet file into the specific custom concept upload table
             self._load_custom_concepts_parquet_in_upload_table(parquet_file, omop_table, concept_id_column)
 
@@ -425,36 +428,52 @@ class Etl(EtlBase):
             )
             return
 
-        ar_table = None
+        df = pl.DataFrame()
         for usagi_csv_file in usagi_csv_files:  # loop all the Usagi CSV's
             logging.info("Creating concept_id swap from Usagi file '%s'", str(usagi_csv_file))
             # convert the CSV to an Arrow table
-            ar_temp_table = self._convert_usagi_csv_to_arrow_table(usagi_csv_file)
-            if len(ar_temp_table.group_by(["sourceCode", "conceptId"]).aggregate([("sourceCode", "count")])) != len(
-                ar_temp_table
-            ):
-                logging.warning(
-                    "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV '%s'!",
-                    usagi_csv_file,
-                )
-            # concat the Arrow tables into one large Arrow table
-            ar_table = ar_temp_table if not ar_table else pa.concat_tables([ar_table, ar_temp_table])
+            df_temp = self._convert_usagi_csv_to_polars_dataframe(usagi_csv_file)
 
-        if ar_table:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                parquet_file = os.path.join(temp_dir, f"{omop_table}__{concept_id_column}_usagi.parquet")
-                # save the one large Arrow table in a Parquet file in a temporary directory
-                pq.write_table(ar_table, parquet_file)
-                # load the Parquet file into the specific usagi upload table
-                self._load_usagi_parquet_in_upload_table(parquet_file, omop_table, concept_id_column)
-            if len(ar_table.group_by(["sourceCode", "conceptId"]).aggregate([("sourceCode", "count")])) != len(
-                ar_table
-            ):
+            df_duplicates = (
+                df_temp.group_by("sourceCode", "conceptId")
+                .agg(count=pl.col("sourceCode").len())
+                .filter(pl.col("count") > 1)
+                .sort("count", descending=True)
+            )
+            if not df_duplicates.is_empty():
+                logging.warning(
+                    "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV '%s'!\n%s",
+                    usagi_csv_file,
+                    df_duplicates,
+                )
+
+            # concat the Arrow tables into one large Arrow table
+            df = df_temp if df.is_empty() else pl.concat([df, df_temp])
+
+        if not df.is_empty():
+            df_duplicates = (
+                df.group_by("sourceCode", "conceptId")
+                .agg(count=pl.col("sourceCode").len())
+                .filter(pl.col("count") > 1)
+                .sort("count", descending=True)
+            )
+            if not df_duplicates.is_empty():
                 logging.warning(
                     "Duplicates (combination of sourceCode and conceptId) in the Usagi CSV's for concept column '%s' of OMOP table '%s'!",  # noqa: E501 # pylint: disable=line-too-long
                     concept_id_column,
                     omop_table,
                 )
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                parquet_file = os.path.join(temp_dir, f"{omop_table}__{concept_id_column}_usagi.parquet")
+                # save the one large Arrow table in a Parquet file in a temporary directory
+                df.write_parquet(parquet_file)
+                # load the Parquet file into the specific usagi upload table
+                self._load_usagi_parquet_in_upload_table(parquet_file, omop_table, concept_id_column)
+
+            fk_domains = self._get_fk_domains(omop_table)
+            for column, domains in fk_domains.items():
+                self._check_usagi_fk_domains(omop_table, column, domains)
 
         concept_csv_files = list(
             (cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/custom/").glob("*_concept.csv")
@@ -590,7 +609,46 @@ class Etl(EtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
         pass
 
-    def _convert_usagi_csv_to_arrow_table(self, usagi_csv_file: Path) -> pa.Table:
+    def _convert_concept_csv_to_polars_dataframe(self, concept_csv_file: Path) -> pl.DataFrame:
+        """Converts a custom concept CSV file to a Polars dataframe, containing the relevant columns.
+
+        Args:
+            concept_csv_file (Path): Concept CSV file
+
+        Returns:
+            pl.DataFrame: Polars dataframe
+        """
+        logging.debug("Converting Concept csv '%s' to polars dataframe", str(concept_csv_file))
+        polars_schema: dict[str, pl.DataType] = {
+            "concept_id": pl.Utf8,  # type: ignore
+            "concept_name": pl.Utf8,  # type: ignore
+            "domain_id": pl.Utf8,  # type: ignore
+            "vocabulary_id": pl.Utf8,  # type: ignore
+            "concept_class_id": pl.Utf8,  # type: ignore
+            "standard_concept": pl.Utf8,  # type: ignore
+            "concept_code": pl.Utf8,  # type: ignore
+            "valid_start_date": pl.Date,  # type: ignore
+            "valid_end_date": pl.Date,  # type: ignore
+            "invalid_reason": pl.Utf8,  # type: ignore
+        }
+        df = pl.read_csv(
+            str(concept_csv_file), try_parse_dates=True, missing_utf8_is_empty_string=True, dtypes=polars_schema
+        )
+        df = df.with_columns(
+            "concept_id",
+            "concept_name",
+            "domain_id",
+            "vocabulary_id",
+            "concept_class_id",
+            "standard_concept",
+            "concept_code",
+            "valid_start_date",
+            "valid_end_date",
+            "invalid_reason",
+        )
+        return df
+
+    def _convert_usagi_csv_to_polars_dataframe(self, usagi_csv_file: Path) -> pl.DataFrame:
         """Converts a Usagi CSV file to an Arrow table, maintaining the relevant columns.
 
         Args:
@@ -599,72 +657,24 @@ class Etl(EtlBase):
         Returns:
             pa.Table: Arrow table.
         """
-        logging.debug("Converting Usagi csv '%s' to arrow table", str(usagi_csv_file))
-        table = csv.read_csv(
-            usagi_csv_file,
-            parse_options=csv.ParseOptions(quote_char='"'),
-            convert_options=csv.ConvertOptions(
-                include_columns=[
-                    "sourceCode",
-                    "sourceName",
-                    "mappingStatus",
-                    "conceptId",
-                    "conceptName",
-                    "domainId",
-                ],
-                column_types={
-                    "sourceCode": pa.string(),
-                    "sourceName": pa.string(),
-                    "mappingStatus": pa.string(),
-                    "conceptId": pa.string(),
-                    "conceptName": pa.string(),
-                    "domainId": pa.string(),
-                },
-            ),
+        logging.debug("Converting Usagi csv '%s' to polars DataFrame", str(usagi_csv_file))
+        polars_schema: dict[str, pl.DataType] = {
+            "sourceCode": pl.Utf8,  # type: ignore
+            "sourceName": pl.Utf8,  # type: ignore
+            "mappingStatus": pl.Utf8,  # type: ignore
+            "conceptId": pl.Utf8,  # type: ignore
+            "conceptName": pl.Utf8,  # type: ignore
+            "domainId": pl.Utf8,  # type: ignore
+        }
+        df = pl.read_csv(str(usagi_csv_file), dtypes=polars_schema).with_columns(
+            "sourceCode",
+            "sourceName",
+            "mappingStatus",
+            "conceptId",
+            "conceptName",
+            "domainId",
         )
-        return table
-
-    def _convert_concept_csv_to_arrow_table(self, concept_csv_file: Path) -> pa.Table:
-        """Converts a custom concept CSV file to an Arrow table, containing the relevant columns.
-
-        Args:
-            concept_csv_file (str): Concept CSV file
-
-        Returns:
-            pa.Table: Arrow table
-        """
-        logging.debug("Converting Concept csv '%s' to arrow table", str(concept_csv_file))
-        table = csv.read_csv(
-            concept_csv_file,
-            convert_options=csv.ConvertOptions(
-                include_columns=[
-                    "concept_id",
-                    "concept_name",
-                    "domain_id",
-                    "vocabulary_id",
-                    "concept_class_id",
-                    "standard_concept",
-                    "concept_code",
-                    "valid_start_date",
-                    "valid_end_date",
-                    "invalid_reason",
-                ],
-                column_types={
-                    "concept_id": pa.string(),
-                    "concept_name": pa.string(),
-                    "domain_id": pa.string(),
-                    "vocabulary_id": pa.string(),
-                    "concept_class_id": pa.string(),
-                    "standard_concept": pa.string(),
-                    "concept_code": pa.string(),
-                    "valid_start_date": pa.date32(),  # can only custom parse with timestamp, not date
-                    "valid_end_date": pa.date32(),  # can only custom parse with timestamp, not date
-                    "invalid_reason": pa.string(),
-                },
-                # timestamp_parsers=[csv.ISO8601, '%Y-%m-%d', '%d/%m/%Y']
-            ),
-        )
-        return table
+        return df
 
     @abstractmethod
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
@@ -916,5 +926,16 @@ class Etl(EtlBase):
         Args:
             omop_table (str): The omop table
             primary_key_column (str): The primary key column
+        """
+        pass
+
+    @abstractmethod
+    def _check_usagi_fk_domains(self, omop_table: str, concept_id_column: str, domains: list[str]) -> bool:
+        """Checks the usagi fk domain of the concept id column.
+
+        Args:
+            omop_table (str): The omop table
+            concept_id_column (str): The conept id column
+            domains (list[str]): The allowed domains
         """
         pass

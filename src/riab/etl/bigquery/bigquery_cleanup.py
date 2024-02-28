@@ -228,8 +228,10 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         self._lock_source_to_concept_map_cleanup.acquire()
         try:
             self._gcp.run_query_job(sql)
-        except Exception as ex:
-            raise ex
+        except Exception:
+            logging.warn(
+                f"Cannot cleanup source_to_concept_map table with the concepts from the usagi concepts of {omop_table}.{concept_id_column}"
+            )
         finally:
             self._lock_source_to_concept_map_cleanup.release()
 
