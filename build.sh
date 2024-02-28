@@ -15,6 +15,6 @@ sleep 10
 pip install --no-cache-dir Rabbit-in-a-Blender==0.0.38
 
 
-#git tag -a 0.0.37 -m "0.0.37"
+#git tag -a 0.0.38 -m "0.0.38"
 #git tag
-#git push origin 0.0.37
+#git push origin 0.0.38
