@@ -36,7 +36,6 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         Args:
             table_name (str): Omop table to truncate
         """
-        logging.info("Truncate OMOP table '%s'", table_name)
         template = self._template_env.get_template("cleanup/truncate.sql.jinja")
         sql = template.render(
             dataset_omop=self._dataset_omop,
