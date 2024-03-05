@@ -324,7 +324,7 @@ There are 2 ways to [authenticate](https://cloud.google.com/docs/authentication/
 SQL Server
 ==========
 
-RiaB as a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
+RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
 
 Authors
 ========
