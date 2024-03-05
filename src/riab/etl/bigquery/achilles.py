@@ -8,7 +8,7 @@ from typing import Tuple, cast
 import polars as pl
 
 from ..achilles import Achilles
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryAchilles(Achilles, BigQueryEtlBase):
@@ -21,7 +21,7 @@ class BigQueryAchilles(Achilles, BigQueryEtlBase):
         **kwargs,
     ):
         """Constructor"""
-        super().__init__(target_dialect="bigquery", **kwargs)
+        super().__init__(**kwargs)
 
     def _run_query(self, sql) -> Tuple[pl.DataFrame, float]:
         try:

@@ -3,21 +3,18 @@
 
 """This module holds the Gcp class,
 Google Cloud Provider class with usefull methods for ETL"""
+
 # pylint: disable=no-member
 import logging
 import math
 import time
-from copy import deepcopy
 from pathlib import Path
 from threading import Lock
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
-import backoff
-import connectorx as cx
 import google.cloud.bigquery as bq
 import google.cloud.storage as cs
-import pyarrow as pa
 from google.auth.credentials import Credentials
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import RowIterator, _EmptyRowIterator

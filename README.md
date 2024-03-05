@@ -121,9 +121,9 @@ Below an example of a config:
 
 ```ini
 [RiaB]
-db_engine=BigQuery
+db_engine=bigquery
 
-[BigQuery]
+[bigquery]
 credentials_file=service_account.json
 ; Optional
 ; The credentials file must be a service account key, stored authorized user credentials, external account credentials, or impersonated service account credentials. (see https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file)
@@ -143,6 +143,8 @@ dataset_achilles=my_omop_project.achilles
 ; The dataset that will hold the data achilles tables. Must have the following format: PROJECT_ID.DATASET_ID
 bucket=gs://my_omop_bucket/upload
 ; The Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
+
+[sql_server]
 ```
 
 CLI Usage

@@ -10,7 +10,7 @@ import pandas as pd
 import pyarrow as pa
 
 from ..data_quality import DataQuality
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
@@ -18,7 +18,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         self,
         **kwargs,
     ):
-        super().__init__(target_dialect="bigquery", **kwargs)
+        super().__init__(**kwargs)
 
     def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
         sql = None

@@ -4,7 +4,7 @@
 import logging
 
 from ..create_omop_db import CreateOmopDb
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryCreateOmopDb(CreateOmopDb, BigQueryEtlBase):
@@ -12,7 +12,7 @@ class BigQueryCreateOmopDb(CreateOmopDb, BigQueryEtlBase):
         self,
         **kwargs,
     ):
-        super().__init__(target_dialect="bigquery", **kwargs)
+        super().__init__(**kwargs)
 
     def _run_cdm_ddl_query(self, ddl_part: str) -> None:
         """Runs a specific ddl query"""

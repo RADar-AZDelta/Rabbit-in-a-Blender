@@ -1,0 +1,5 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+--ALTER TABLE {{omop_database_catalog}}.{{omop_database_schema}}.{{vocabulary_table}} NOCHECK CONSTRAINT all;
+TRUNCATE TABLE {{omop_database_catalog}}.{{omop_database_schema}}.{{vocabulary_table}}; --cannot use truncate with FK constraints!!!!!!!
+--ALTER TABLE {{omop_database_catalog}}.{{omop_database_schema}}.{{vocabulary_table}} CHECK CONSTRAINT all;

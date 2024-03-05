@@ -36,6 +36,16 @@ from .etl.bigquery import (
     BigQueryEtl,
     BigQueryImportVocabularies,
 )
+from .etl.sql_server import (
+    # SqlServerAchilles,
+    # SqlServerCleanup,
+    # SqlServerCreateCdmFolders,
+    SqlServerCreateOmopDb,
+    SqlServerEtl,
+    # SqlServerDataQuality,
+    # SqlServerDataQualityDashboard,
+    SqlServerImportVocabularies,
+)
 
 
 class SafeConfigParser(ConfigParser):
@@ -64,29 +74,55 @@ class Cli:
                 db_engine = config.safe_get("RiaB", "db_engine")
                 if not db_engine:
                     raise Exception("Config file holds no db_engine option!")
+                db_engine = db_engine.lower()
 
-                bigquery_kwargs = None
-                match db_engine.lower():
+                match db_engine:
                     case "bigquery":
                         bigquery_kwargs = {
                             "credentials_file": config.safe_get(db_engine, "credentials_file"),
                             "location": config.safe_get(db_engine, "location"),
                             "project_raw": config.safe_get(db_engine, "project_raw"),
-                            "dataset_work": config.safe_get(db_engine, "dataset_work"),
-                            "dataset_omop": config.safe_get(db_engine, "dataset_omop"),
-                            "dataset_dqd": config.safe_get(db_engine, "dataset_dqd"),
-                            "dataset_achilles": config.safe_get(db_engine, "dataset_achilles"),
+                            "dataset_work": config.safe_get(db_engine, "dataset_work", "work"),
+                            "dataset_omop": config.safe_get(db_engine, "dataset_omop", "omop"),
+                            "dataset_dqd": config.safe_get(db_engine, "dataset_dqd", "dqd"),
+                            "dataset_achilles": config.safe_get(db_engine, "dataset_achilles", "achilles"),
                             "bucket": config.safe_get(db_engine, "bucket"),
+                        }
+                    case "sql_server":
+                        sqlserver_kwargs = {
+                            "server": config.safe_get(db_engine, "server"),
+                            "user": config.safe_get(db_engine, "user"),
+                            "password": config.safe_get(db_engine, "password"),
+                            "port": config.safe_get(db_engine, "port"),
+                            "omop_database_catalog": config.safe_get(db_engine, "omop_database_catalog", "omop"),
+                            "omop_database_schema": config.safe_get(db_engine, "omop_database_schema", "dbo"),
+                            "work_database_catalog": config.safe_get(db_engine, "work_database_catalog", "work"),
+                            "work_database_schema": config.safe_get(db_engine, "work_database_schema", "dbo"),
+                            "dqd_database_catalog": config.safe_get(db_engine, "dqd_database_catalog", "dqd"),
+                            "dqd_database_schema": config.safe_get(db_engine, "dqd_database_schema", "dbo"),
+                            "achilles_database_catalog": config.safe_get(
+                                db_engine, "achilles_database_catalog", "achilles"
+                            ),
+                            "achilles_database_schema": config.safe_get(db_engine, "achilles_database_schema", "dbo"),
                         }
                     case _:
                         raise ValueError("Not a supported database engine: '{db_engine}'")
 
                 if args.print_etl_flow:
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             etl = BigQueryEtl(
-                                db_engine=db_engine.lower(),
+                                db_engine=db_engine,
                                 **bigquery_kwargs,
+                            )
+                            logging.info(
+                                "Resolved ETL tables foreign keys dependency graph: \n%s",
+                                etl.print_cdm_tables_fks_dependencies_tree(),
+                            )
+                        case "sql_server":
+                            etl = SqlServerEtl(
+                                db_engine=db_engine,
+                                **sqlserver_kwargs,
                             )
                             logging.info(
                                 "Resolved ETL tables foreign keys dependency graph: \n%s",
@@ -96,46 +132,54 @@ class Cli:
                             raise ValueError("Not a supported database engine")
                 elif args.create_db:  # create OMOP CDM Database
                     create_omop_db: Optional[CreateOmopDb] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             create_omop_db = BigQueryCreateOmopDb(
-                                db_engine=db_engine.lower(),
-                                cdm_folder_path=args.run_etl or args.create_folders,
+                                db_engine=db_engine,
                                 **bigquery_kwargs,
                             )
-                            create_omop_db.run()
+                        case "sql_server":
+                            create_omop_db = SqlServerCreateOmopDb(
+                                db_engine=db_engine,
+                                **sqlserver_kwargs,
+                            )
                         case _:
                             raise ValueError("Not a supported database engine")
+                    create_omop_db.run()
                 elif args.create_folders:  # create the ETL folder structure
                     create_folders: Optional[CreateCdmFolders] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             create_folders = BigQueryCreateCdmFolders(
-                                db_engine=db_engine.lower(),
+                                db_engine=db_engine,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 **bigquery_kwargs,
                             )
-                            create_folders.run()
                         case _:
                             raise ValueError("Not a supported database engine")
+                    create_folders.run()
                 elif args.import_vocabularies:  # impoprt OMOP CDM vocabularies
                     import_vocabularies: Optional[ImportVocabularies] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             import_vocabularies = BigQueryImportVocabularies(
-                                db_engine=db_engine.lower(),
-                                cdm_folder_path=args.run_etl or args.create_folders,
+                                db_engine=db_engine,
                                 **bigquery_kwargs,
                             )
-                            import_vocabularies.run(args.import_vocabularies)
+                        case "sql_server":
+                            import_vocabularies = SqlServerImportVocabularies(
+                                db_engine=db_engine,
+                                **sqlserver_kwargs,
+                            )
                         case _:
                             raise ValueError("Not a supported database engine")
+                    import_vocabularies.run(args.import_vocabularies)
                 elif args.run_etl:  # run ETL
                     etl: Optional[Etl] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             etl = BigQueryEtl(
-                                db_engine=db_engine.lower(),
+                                db_engine=db_engine,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 only_omop_table=args.table,
                                 only_query=args.only_query,
@@ -143,62 +187,62 @@ class Cli:
                                 process_semi_approved_mappings=args.process_semi_approved_mappings,
                                 **bigquery_kwargs,
                             )
-                            etl.run()
                         case _:
                             raise ValueError("Not a supported database engine")
+                    etl.run()
                 elif args.cleanup:  # cleanup OMOP DB
                     cleanup: Optional[Cleanup] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             cleanup = BigQueryCleanup(
-                                db_engine=db_engine.lower(),
+                                db_engine=db_engine,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
                                 **bigquery_kwargs,
                             )
-                            cleanup.run(args.cleanup)
                         case _:
                             raise ValueError("Not a supported database engine")
+                    cleanup.run(args.cleanup)
                 elif args.data_quality:  # check data quality
                     data_quality: Optional[DataQuality] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             data_quality = BigQueryDataQuality(
-                                db_engine=db_engine.lower(),
+                                db_engine=db_engine,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 json_path=args.json,
                                 **bigquery_kwargs,
                             )
-                            data_quality.run()
                         case _:
                             raise ValueError("Not a supported database engine")
+                    data_quality.run()
                 elif args.data_quality_dashboard:  # view data quality results
                     data_quality_dashboard: Optional[DataQualityDashboard] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             data_quality_dashboard = BigQueryDataQualityDashboard(
-                                db_engine=db_engine.lower(),
+                                db_engine=db_engine,
                                 port=args.port if args.port else 8050,
                                 **bigquery_kwargs,
                             )
-                            data_quality_dashboard.run()
                         case _:
                             raise ValueError("Not a supported database engine")
+                    data_quality_dashboard.run()
                 elif args.achilles:  # run descriptive statistics
                     achilles: Optional[Achilles] = None
-                    match db_engine.lower():
+                    match db_engine:
                         case "bigquery":
                             achilles = BigQueryAchilles(
-                                db_engine=db_engine.lower(),
+                                db_engine=db_engine,
                                 scratch_database_schema=args.bigquery_dataset_id_work,
                                 results_database_schema=args.bigquery_dataset_id_omop,
                                 cdm_database_schema=args.bigquery_dataset_id_omop,
                                 temp_emulation_schema=args.bigquery_dataset_id_work,
                                 **bigquery_kwargs,
                             )
-                            achilles.run()
                         case _:
                             raise ValueError("Not a supported database engine")
+                    achilles.run()
                 else:
                     raise Exception("Unknown ETL command!")
 

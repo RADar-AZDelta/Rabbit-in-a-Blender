@@ -11,7 +11,7 @@ import polars as pl
 from google.cloud.exceptions import NotFound
 
 from ..etl import Etl
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryEtl(Etl, BigQueryEtlBase):
@@ -546,7 +546,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         )
         self._gcp.run_query_job(sql)
 
-    def _check_usagi_fk_domains(self, omop_table: str, concept_id_column: str, domains: list[str]) -> bool:
+    def _check_usagi_fk_domains(self, omop_table: str, concept_id_column: str, domains: list[str]) -> None:
         """Checks the usagi fk domain of the concept id column.
 
         Args:

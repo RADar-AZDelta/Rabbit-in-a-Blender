@@ -1,6 +1,7 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-CREATE TABLE IF NOT EXISTS {{dataset_dqd}}.dqdashboard_runs
+DROP TABLE IF EXISTS {{dataset_dqd}}.dqdashboard_runs; 
+CREATE TABLE {{dataset_dqd}}.dqdashboard_runs
 (
   id                        STRING NOT NULL, 
   startTimestamp            TIMESTAMP NOT NULL,
@@ -25,7 +26,8 @@ CREATE TABLE IF NOT EXISTS {{dataset_dqd}}.dqdashboard_runs
 )
 CLUSTER BY startTimestamp;
 
-CREATE TABLE IF NOT EXISTS {{dataset_dqd}}.dqdashboard_results
+DROP TABLE IF EXISTS {{dataset_dqd}}.dqdashboard_results; 
+CREATE TABLE {{dataset_dqd}}.dqdashboard_results
 (
   run_id                STRING NOT NULL,
   checkid               STRING NOT NULL,
