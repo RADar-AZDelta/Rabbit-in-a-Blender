@@ -7,7 +7,7 @@ from pathlib import Path
 import google.cloud.bigquery as bq
 
 from ..import_vocabularies import ImportVocabularies
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):

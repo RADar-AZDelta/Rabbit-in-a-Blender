@@ -20,11 +20,11 @@
 
         //"--create-db"
         
-        //"--import-vocabularies", "~/vocabulary-2022-07-28.zip"
+        "--import-vocabularies", "~/vocabulary-2022-07-28.zip"
         
         //"--create-folders", "~/tmp/radar_omop-cdm/"
         
-        "--run-etl", "~/git/radar_omop-cdm/"
+        //"--run-etl", "~/git/radar_omop-cdm/"
           // ,"--table", "cdm_source"
           // ,"--table", "metadata"
           // ,"--table", "vocabulary"
@@ -32,7 +32,7 @@
           // ,"--table", "care_site"
           //,"--table", "provider"
           //,"--table", "visit_occurrence"
-          ,"--table", "observation"
+          //,"--table", "observation"
           //,"--only-query", "measurement/labo.sql.jinja"
           //,"--skip-usagi-and-custom-concept-upload"
           //,"--process-semi-approved-mappings"
@@ -50,7 +50,7 @@
       ],
       "console": "integratedTerminal",
       "justMyCode": false,
-      "python": "${command:python.interpreterPath}",
+      "python": "${workspaceFolder}/.venv/bin/python",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src"
       }    
@@ -62,7 +62,7 @@
       "program": "${file}",
       "console": "integratedTerminal",
       "justMyCode": false,
-      "python": "${command:python.interpreterPath}"
+      "python": "${workspaceFolder}/.venv/bin/python"
     }
   ]
 }

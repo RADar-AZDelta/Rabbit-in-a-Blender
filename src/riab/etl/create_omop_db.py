@@ -13,12 +13,9 @@ class CreateOmopDb(EtlBase, ABC):
 
     def __init__(
         self,
-        target_dialect: str,
         **kwargs,
     ):
         super().__init__(**kwargs)
-
-        self.target_dialect = target_dialect
 
     def run(self) -> None:
         """Create OMOP tables in the database and define indexes/partitions/clusterings"""

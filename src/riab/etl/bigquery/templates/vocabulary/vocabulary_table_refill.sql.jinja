@@ -4,4 +4,3 @@ TRUNCATE TABLE {{dataset_omop}}.{{vocabulary_table}};
 INSERT INTO {{dataset_omop}}.{{vocabulary_table}}
 SELECT *
 FROM {{dataset_work}}.{{vocabulary_table}};
-DROP TABLE {{dataset_work}}.{{vocabulary_table}};

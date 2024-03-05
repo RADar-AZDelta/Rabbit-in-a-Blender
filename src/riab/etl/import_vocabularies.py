@@ -26,8 +26,35 @@ class ImportVocabularies(EtlBase, ABC):
 
     def run(self, path_to_zip_file: str):
         """import vocabularies, as zip-file downloaded from athena.ohdsi.org, into"""
-        with zipfile.ZipFile(path_to_zip_file, "r") as zip_ref:
-            with tempfile.TemporaryDirectory(prefix="omop_vocabularies_") as temp_dir_path:
+        vocabulary_tables = [
+            "concept",
+            "concept_ancestor",
+            "concept_class",
+            "concept_relationship",
+            "concept_synonym",
+            "domain",
+            "drug_strength",
+            "relationship",
+            "vocabulary",
+        ]
+
+        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+            logging.info("Deleting vocabulary upload tables.")
+            futures = [
+                executor.submit(
+                    self._clear_vocabulary_upload_table,
+                    vocabulary_table,
+                )
+                for vocabulary_table in vocabulary_tables
+            ]
+            # wait(futures, return_when=ALL_COMPLETED)
+            for result in as_completed(futures):
+                result.result()
+
+            with (
+                zipfile.ZipFile(path_to_zip_file, "r") as zip_ref,
+                tempfile.TemporaryDirectory(prefix="omop_vocabularies_") as temp_dir_path,
+            ):
                 logging.info(
                     "Extracting vocabularies zip file '%s' to temporary dir '%s'",
                     path_to_zip_file,
@@ -35,56 +62,31 @@ class ImportVocabularies(EtlBase, ABC):
                 )
                 zip_ref.extractall(temp_dir_path)
 
-                with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
-                    vocabulary_tables = [
-                        "concept",
-                        "concept_ancestor",
-                        "concept_class",
-                        "concept_relationship",
-                        "concept_synonym",
-                        "domain",
-                        "drug_strength",
-                        "relationship",
-                        "vocabulary",
-                    ]
+                logging.info("Uploading vocabulary CSV's")
+                futures = [
+                    executor.submit(
+                        self._convert_csv_to_parquet_and_upload,
+                        vocabulary_table,
+                        Path(temp_dir_path)
+                        / f"{vocabulary_table.upper()}.csv",  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
+                    )
+                    for vocabulary_table in vocabulary_tables
+                ]
+                # wait(futures, return_when=ALL_COMPLETED)
+                for result in as_completed(futures):
+                    result.result()
 
-                    logging.info("Deleting vocabulary upload tables.")
-                    futures = [
-                        executor.submit(
-                            self._clear_vocabulary_upload_table,
-                            vocabulary_table,
-                        )
-                        for vocabulary_table in vocabulary_tables
-                    ]
-                    # wait(futures, return_when=ALL_COMPLETED)
-                    for result in as_completed(futures):
-                        result.result()
-
-                    logging.info("Uploading vocabulary CSV's")
-                    futures = [
-                        executor.submit(
-                            self._convert_csv_to_parquet_and_upload,
-                            vocabulary_table,
-                            Path(temp_dir_path)
-                            / f"{vocabulary_table.upper()}.csv",  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
-                        )
-                        for vocabulary_table in vocabulary_tables
-                    ]
-                    # wait(futures, return_when=ALL_COMPLETED)
-                    for result in as_completed(futures):
-                        result.result()
-
-                    logging.info("Creating vocabulary tables.")
-                    futures = [
-                        executor.submit(
-                            self._refill_vocabulary_table,
-                            vocabulary_table,
-                        )
-                        for vocabulary_table in vocabulary_tables
-                    ]
-                    # wait(futures, return_when=ALL_COMPLETED)
-                    for result in as_completed(futures):
-                        result.result()
+            logging.info("Refill vocabulary tables.")
+            futures = [
+                executor.submit(
+                    self._refill_vocabulary_table,
+                    vocabulary_table,
+                )
+                for vocabulary_table in vocabulary_tables
+            ]
+            # wait(futures, return_when=ALL_COMPLETED)
+            for result in as_completed(futures):
+                result.result()
 
     def _convert_csv_to_parquet_and_upload(self, vocabulary_table: str, csv_file: Path):
         """
@@ -125,7 +127,9 @@ class ImportVocabularies(EtlBase, ABC):
             pl.DataFrame: The CSV converted in an data frame
         """
         polars_schema = self._get_polars_schema_for_cdm_table(vocabulary_table)
-        df_vocabulary_table = pl.read_csv(csv_file, separator="\t", try_parse_dates=True, schema=polars_schema)
+        df_vocabulary_table = pl.read_csv(
+            csv_file, separator="\t", try_parse_dates=True, schema=polars_schema, encoding="utf-8"
+        )
 
         date_columns = self._df_omop_fields.filter(
             (pl.col("cdmTableName").str.to_lowercase() == vocabulary_table) & (pl.col("cdmDatatype") == "date")

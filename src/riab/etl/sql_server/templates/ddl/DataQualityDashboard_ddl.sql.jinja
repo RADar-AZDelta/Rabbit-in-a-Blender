@@ -1,0 +1,58 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+IF OBJECT_ID(N'{{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs', N'U') IS NOT NULL
+	DROP TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs; 
+CREATE TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs
+(
+  id                        VARCHAR(255) NOT NULL, 
+  startTimestamp            DATETIME NOT NULL,
+  endTimestamp              DATETIME,
+  executionTime             VARCHAR(255),
+  countTotal                INTEGER,
+  countThresholdFailed      INTEGER,
+  countErrorFailed          INTEGER,
+  countOverallFailed        INTEGER,
+  countPassed               INTEGER,
+  percentPassed             INTEGER,
+  percentFailed             INTEGER,
+  countTotalPlausibility    INTEGER,
+  countTotalConformance     INTEGER,
+  countTotalCompleteness    INTEGER,
+  countFailedPlausibility   INTEGER,
+  countFailedConformance    INTEGER,
+  countFailedCompleteness   INTEGER,
+  countPassedPlausibility   INTEGER, 
+  countPassedConformance    INTEGER,
+  countPassedCompleteness   INTEGER
+);
+ALTER TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs ADD CONSTRAINT xpk_dqdashboard_runs PRIMARY KEY NONCLUSTERED (id);
+
+IF OBJECT_ID(N'{{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results', N'U') IS NOT NULL
+	DROP TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results; 
+CREATE TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results
+(
+  run_id                VARCHAR(255) NOT NULL,
+  checkid               VARCHAR(1024) NOT NULL,
+  num_violated_rows     INTEGER,
+  pct_violated_rows     FLOAT,
+  num_denominator_rows  INTEGER,
+  execution_time        VARCHAR(255),
+  query_text            VARCHAR(8000),
+  check_name            VARCHAR(255),
+  check_level           VARCHAR(255),
+  check_description     VARCHAR(8000),
+  cdm_table_name        VARCHAR(255),
+  cdm_field_name        VARCHAR(255),
+  concept_id            VARCHAR(255),
+  unit_concept_id       VARCHAR(255),
+  sql_file              VARCHAR(255),
+  category              VARCHAR(255),
+  subcategory           VARCHAR(255),
+  context               VARCHAR(255),
+  warning               VARCHAR(8000),
+  error                 VARCHAR(8000),
+  failed                INTEGER,
+  threshold_value       INTEGER,
+  notes_value           VARCHAR(8000)
+);
+ALTER TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results ADD CONSTRAINT xpk_dqdashboard_results PRIMARY KEY NONCLUSTERED (run_id,checkid);

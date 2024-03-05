@@ -1,0 +1,27 @@
+--DDL to create dqdashboard_results table.
+DROP TABLE IF EXISTS {{dataset_dqd}};  
+create table {{dataset_dqd}}
+(
+  num_violated_rows     INT64,
+  pct_violated_rows     FLOAT64,
+  num_denominator_rows  INT64,
+  execution_time        STRING,
+  query_text            STRING,
+  check_name            STRING,
+  check_level           STRING,
+  check_description     STRING,
+  cdm_table_name        STRING,
+  sql_file              STRING,
+  category              STRING,
+  subcategory           STRING,
+  context               STRING,
+  checkid               STRING,
+  is_error              INT64,
+  not_applicable        INT64,
+  failed                INT64,
+  passed                INT64,
+  not_applicable_reason STRING,  
+  threshold_value       INT64,
+  notes_value           STRING,
+  x_row                 STRING
+);

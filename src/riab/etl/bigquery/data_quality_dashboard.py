@@ -7,7 +7,7 @@ import google.cloud.bigquery as bq
 import polars as pl
 
 from ..data_quality_dashboard import DataQualityDashboard
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryDataQualityDashboard(DataQualityDashboard, BigQueryEtlBase):

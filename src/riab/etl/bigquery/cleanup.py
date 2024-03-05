@@ -9,7 +9,7 @@ from google.cloud.exceptions import NotFound
 
 from ..cleanup import Cleanup
 from ..etl_base import EtlBase
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryCleanup(Cleanup, BigQueryEtlBase):

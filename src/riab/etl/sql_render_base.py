@@ -8,18 +8,19 @@ import jpype
 import jpype.imports
 
 
-class SqlRenderBase(ABC):
+class SqlRenderBase(ABC):  # TODO: make this obsolete!!!!
     """
     Base class for the Java SQLRender
     """
 
     def __init__(
         self,
-        target_dialect: str,
+        db_engine: str,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.target_dialect = target_dialect
+
+        self._db_engine = db_engine
 
         self.path_to_replacement_patterns = str(
             Path(__file__).parent.parent.resolve() / "libs" / "SqlRender" / "inst" / "csv" / "replacementPatterns.csv"
@@ -51,6 +52,6 @@ class SqlRenderBase(ABC):
         sql = str(SqlRender.renderSql(sql, list(parameters.keys()), list(parameters.values())))
 
         sql = str(
-            SqlTranslate.translateSqlWithPath(sql, self.target_dialect, None, None, self.path_to_replacement_patterns)
+            SqlTranslate.translateSqlWithPath(sql, self._db_engine, None, None, self.path_to_replacement_patterns)
         )
         return sql

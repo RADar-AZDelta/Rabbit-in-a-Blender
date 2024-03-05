@@ -1,5 +1,6 @@
 achilles.sql
 riab.ini
+bcp_*.err
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

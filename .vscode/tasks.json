@@ -6,8 +6,7 @@
         {
             "label": "Generate SQL queries",
             "type": "shell",
-            "command": "bash .vscode/tasks/terraform_init.sh",
-            "group": "test",
+            "command": "python tasks/generate_queries.py",
             "presentation": {
                 "reveal": "always"
             }

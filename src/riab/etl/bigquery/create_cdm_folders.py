@@ -4,7 +4,7 @@
 import polars as pl
 
 from ..create_cdm_folders import CreateCdmFolders
-from .bigquery_etl_base import BigQueryEtlBase
+from .etl_base import BigQueryEtlBase
 
 
 class BigQueryCreateCdmFolders(CreateCdmFolders, BigQueryEtlBase):

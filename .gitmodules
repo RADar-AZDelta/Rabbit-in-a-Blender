@@ -1,16 +1,16 @@
 [submodule "DataQualityDashboard"]
 	path = src/riab/libs/DataQualityDashboard
 	url = ssh://git@github.com/OHDSI/DataQualityDashboard.git
-	branch = main
+	tag = v2.6.0
 [submodule "SqlRender"]
 	path = src/riab/libs/SqlRender
 	url = ssh://git@github.com/OHDSI/SqlRender.git
-	branch = main
+	tag = v1.14.0
 [submodule "Achilles"]
 	path = src/riab/libs/Achilles
 	url = ssh://git@github.com/OHDSI/Achilles.git
-	branch = main
+	tag = v1.7.2
 [submodule "CommonDataModel"]
 	path = src/riab/libs/CommonDataModel
 	url = ssh://git@github.com/OHDSI/CommonDataModel.git
-	branch = main
+	tag = v5.4.1
