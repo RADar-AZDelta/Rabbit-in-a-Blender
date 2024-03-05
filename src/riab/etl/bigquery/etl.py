@@ -568,6 +568,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql)
         ar_table = rows.to_arrow()
         if len(ar_table):
+            df = pl.from_arrow(ar_table)
             raise Exception(
-                f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!"
+                f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
             )

@@ -3,6 +3,7 @@
 
 # pylint: disable=unsubscriptable-object
 """Holds the ETL abstract class"""
+
 import logging
 import os
 import tempfile
@@ -633,8 +634,7 @@ class Etl(EtlBase):
         }
         df = pl.read_csv(
             str(concept_csv_file), try_parse_dates=True, missing_utf8_is_empty_string=True, dtypes=polars_schema
-        )
-        df = df.with_columns(
+        ).select(
             "concept_id",
             "concept_name",
             "domain_id",
@@ -666,7 +666,7 @@ class Etl(EtlBase):
             "conceptName": pl.Utf8,  # type: ignore
             "domainId": pl.Utf8,  # type: ignore
         }
-        df = pl.read_csv(str(usagi_csv_file), dtypes=polars_schema).with_columns(
+        df = pl.read_csv(str(usagi_csv_file), dtypes=polars_schema).select(
             "sourceCode",
             "sourceName",
             "mappingStatus",

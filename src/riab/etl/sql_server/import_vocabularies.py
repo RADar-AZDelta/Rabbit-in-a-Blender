@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -61,7 +62,7 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
 
         logging.debug("Loading '%s' into vocabulary table %s", csv_file + ".bak", vocabulary_table)
         args = [
-            "bcp",
+            "bcp" + (".exe" if os.name == "nt" else ""),
             f"{self._omop_database_schema}.{vocabulary_table}",
             "in",
             csv_file + ".bak",

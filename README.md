@@ -56,7 +56,7 @@ Examples:
     - Add only one usagi-entry, mapping sourceCode *C12* to targetConceptId = *1792776* (standard code for atezolizumab), the second mapping of *C12* to custom concept with concept_code = *C12* is done automatically.
 
 For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
-
+A SQL Server backend is in development for usage in the Federated Health Innovation Network (FHIN) project.
 
 ETL flow
 ========
@@ -145,6 +145,30 @@ bucket=gs://my_omop_bucket/upload
 ; The Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
 
 [sql_server]
+server=127.0.0.1
+; The SQL Server host
+port=1433
+; The SQL Server port (defaults to 1433)
+user=sa
+; The SQL Server user
+password=?????
+; The SQL Server password
+omop_database_catalog=omop
+; The SQL Server database catalog that holds the OMOP tables
+omop_database_schema=dbo
+; The SQL Server database schema that holds the OMOP tables
+work_database_catalog=work
+; The SQL Server database catalog that holds the RiaB's housekeeping tables
+work_database_schema=dbo
+; The SQL Server database schema that holds the RiaB's housekeeping tables
+dqd_database_catalog=dqd
+; The SQL Server database catalog that holds the data quality tables
+dqd_database_schema=dbo
+; The SQL Server database schema that holds the data quality tables
+achilles_database_catalog=achilles
+; The SQL Server database catalog that holds the data achilles tables
+achilles_database_schama=dbo
+; The SQL Server database schema that holds the data achilles tables
 ```
 
 CLI Usage
@@ -297,21 +321,15 @@ There are 2 ways to [authenticate](https://cloud.google.com/docs/authentication/
 
     More info can also be found in the [Python API for GCP authentication](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview)
 
+SQL Server
+==========
 
-TODO
-========
-
-* improve documentation
-* fix visits and observation period to be data driven (based on other clinical tables in OMOP)
-* add concept_relationship and concept_ancestor tables for custom concepts to framework
-* generate ERA tables (drug_era, dose_era and condition_era)
-* improve error logging: check for duplicate concept codes in custom concept files
+RiaB as a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
 
 Authors
 ========
 
 * [Lammertyn Pieter-Jan](https://github.com/pjlammertyn)
-* [Dupulthys Stijn](https://github.com/stijndupulthys)
 * [De Jaeger Peter](https://github.com/peterdejaeger)
 
 License
