@@ -563,6 +563,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
             domains=domains,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
         rows = self._gcp.run_query_job(sql)
         ar_table = rows.to_arrow()
