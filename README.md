@@ -98,6 +98,9 @@ The ETL flow for v5.4 is as follows:
 
 Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.
 
+Install python
+========
+usage of [pyenv](https://github.com/pyenv/pyenv) to install the specific version of python
 
 Installation
 ========
@@ -337,7 +340,8 @@ SQL Server
 ==========
 
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
-Filling in the config, SQL user requires the db_ddladmin role (see user=sa; The SQL Server user).
+
+Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see user=sa; The SQL Server user).
 
 Authors
 ========
