@@ -349,7 +349,7 @@ RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql
 
 The creation of different schemes (work, omop, dqd, achilles) is needed.
 
-Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see user=sa; The SQL Server user).
+Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see line user=sa; The SQL Server user).
 
 
 
