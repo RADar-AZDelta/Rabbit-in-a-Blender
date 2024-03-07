@@ -340,12 +340,18 @@ There are 2 ways to [authenticate](https://cloud.google.com/docs/authentication/
 
     More info can also be found in the [Python API for GCP authentication](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview)
 
+The creation of different datasets in needed before config settings.
+
 SQL Server
 ==========
 
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
 
+The creation of different schemes (work, omop, dqd, achilles) is needed.
+
 Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see user=sa; The SQL Server user).
+
+
 
 Authors
 ========
