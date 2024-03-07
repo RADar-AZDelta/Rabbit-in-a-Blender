@@ -107,7 +107,6 @@ pip install Rabbit-in-a-Blender
 ```
 
 Install latest version and check you have the latest version
-========
 
 ```pip uninstall -y Rabbit-in-a-Blender
 # wait a moment
