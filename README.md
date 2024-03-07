@@ -347,6 +347,13 @@ SQL Server
 
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
 
+Added the BCP dependency to the PATH environment variable.
+
+A check on the correct installation of BCP via run on the same terminal als RiAB runs: 
+```
+bcp.exe --version
+```
+
 The creation of different schemes (work, omop, dqd, achilles) is needed.
 
 Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see line user=sa; The SQL Server user).
