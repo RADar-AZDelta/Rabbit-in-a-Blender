@@ -51,7 +51,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             password=self._password,
             host=self._server,
             port=self._port,
-            database=self._work_database_catalog,
+            database=self._work_database_catalog,  # required for Azure SQL
         )
         # self._db_connection = engine.URL.create(
         #     drivername="mssql+pyodbc",
