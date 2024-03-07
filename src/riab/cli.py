@@ -71,7 +71,7 @@ class Cli:
 
                 config = self._read_config_file(args.config)
 
-                db_engine = config.safe_get("RiaB", "db_engine")
+                db_engine = config.safe_get("riab", "db_engine")
                 if not db_engine:
                     raise Exception("Config file holds no db_engine option!")
                 db_engine = db_engine.lower()

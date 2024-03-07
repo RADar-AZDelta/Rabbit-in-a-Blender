@@ -120,7 +120,7 @@ RiaB searches for the ini config file by using the following cascade:
 Below an example of a config:
 
 ```ini
-[RiaB]
+[riab]
 db_engine=bigquery
 
 [bigquery]
