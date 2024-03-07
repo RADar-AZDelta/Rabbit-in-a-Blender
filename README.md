@@ -102,6 +102,10 @@ Install python
 ========
 usage of [pyenv](https://github.com/pyenv/pyenv) to install the specific version of python
 
+```
+pipenv install
+```
+
 Installation
 ========
 
