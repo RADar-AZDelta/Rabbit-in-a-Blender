@@ -239,7 +239,7 @@ riab --create-db
 
 Import your downloaded vocabularies (from [Athena](https://athena.ohdsi.org/vocabulary/list)) zip file:
 ```bash
-riab --import-vocabularies ./vocabulary-2022-07-28.zip
+riab --import-vocabularies ./vocabulary_20240307.zip
 ```
 
 Create the ETL folder structure:
