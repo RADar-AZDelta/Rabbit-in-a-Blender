@@ -98,6 +98,13 @@ The ETL flow for v5.4 is as follows:
 
 Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.
 
+Install python
+========
+usage of [pyenv](https://github.com/pyenv/pyenv) to install the specific version of python
+
+```
+pipenv install
+```
 
 Installation
 ========
@@ -105,6 +112,18 @@ Installation
 ```bash
 pip install Rabbit-in-a-Blender
 ```
+
+Install latest version and check you have the latest version
+
+```pip uninstall -y Rabbit-in-a-Blender
+# wait a moment
+sleep 10
+pip install --no-cache-dir Rabbit-in-a-Blender==0.0.39
+```
+```
+riab --version
+```
+
 
 Config
 ========
@@ -227,7 +246,7 @@ riab --create-db
 
 Import your downloaded vocabularies (from [Athena](https://athena.ohdsi.org/vocabulary/list)) zip file:
 ```bash
-riab --import-vocabularies ./vocabulary-2022-07-28.zip
+riab --import-vocabularies ./vocabulary_20240307.zip
 ```
 
 Create the ETL folder structure:
@@ -321,10 +340,25 @@ There are 2 ways to [authenticate](https://cloud.google.com/docs/authentication/
 
     More info can also be found in the [Python API for GCP authentication](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview)
 
+The creation of different datasets in needed before config settings.
+
 SQL Server
 ==========
 
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
+
+Added the BCP dependency to the PATH environment variable.
+
+A check on the correct installation of BCP via run on the same terminal als RiAB runs: 
+```
+bcp.exe --version
+```
+
+The creation of different schemes (work, omop, dqd, achilles) is needed.
+
+Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see line user=sa; The SQL Server user).
+
+
 
 Authors
 ========
