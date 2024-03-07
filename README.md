@@ -106,11 +106,18 @@ Installation
 pip install Rabbit-in-a-Blender
 ```
 
-Check you have the latest version
+Install latest version and check you have the latest version
+========
+
 ```pip uninstall -y Rabbit-in-a-Blender
 # wait a moment
 sleep 10
-pip install --no-cache-dir Rabbit-in-a-Blender==0.0.39```
+pip install --no-cache-dir Rabbit-in-a-Blender==0.0.39
+```
+```
+riab --version
+```
+
 
 Config
 ========
