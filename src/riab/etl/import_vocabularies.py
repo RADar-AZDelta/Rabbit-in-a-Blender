@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
+import platform
 import tempfile
 import zipfile
 from abc import ABC, abstractmethod
@@ -60,6 +61,11 @@ class ImportVocabularies(EtlBase, ABC):
                     path_to_zip_file,
                     temp_dir_path,
                 )
+                if platform.system() == "Windows":
+                    import win32api
+
+                    temp_dir_path = win32api.GetLongPathName(temp_dir_path)
+
                 zip_ref.extractall(temp_dir_path)
 
                 logging.info("Uploading vocabulary CSV's")

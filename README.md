@@ -118,7 +118,7 @@ Install latest version and check you have the latest version
 ```pip uninstall -y Rabbit-in-a-Blender
 # wait a moment
 sleep 10
-pip install --no-cache-dir Rabbit-in-a-Blender==0.0.40
+pip install --no-cache-dir Rabbit-in-a-Blender==0.0.41
 ```
 ```
 riab --version

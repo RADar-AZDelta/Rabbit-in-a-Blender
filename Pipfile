@@ -26,6 +26,7 @@ dash-bootstrap-components = "*"
 pymssql = "*"
 python-dotenv = "*"
 sqlalchemy = "*"
+pywin32 = {markers = "platform_system == 'Windows'",version = "*"}
 
 [requires]
 python_version = "3.12"

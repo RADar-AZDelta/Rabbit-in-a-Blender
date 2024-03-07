@@ -6,6 +6,7 @@
 
 import logging
 import os
+import platform
 import tempfile
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -356,8 +357,13 @@ class Etl(EtlBase):
         # = ar_temp_table if not ar_table else pa.concat_tables([ar_table, ar_temp_table])
         if df.is_empty():
             return
-        with tempfile.TemporaryDirectory() as temp_dir:
-            parquet_file = Path(temp_dir) / f"{omop_table}__{concept_id_column}_concept.parquet"
+        with tempfile.TemporaryDirectory() as temp_dir_path:
+            if platform.system() == "Windows":
+                import win32api
+
+                temp_dir_path = win32api.GetLongPathName(temp_dir_path)
+
+            parquet_file = Path(temp_dir_path) / f"{omop_table}__{concept_id_column}_concept.parquet"
             # save the one large DataFrame in a Parquet file in a temporary directory
             df.write_parquet(str(parquet_file))
 
@@ -465,8 +471,13 @@ class Etl(EtlBase):
                     omop_table,
                 )
 
-            with tempfile.TemporaryDirectory() as temp_dir:
-                parquet_file = os.path.join(temp_dir, f"{omop_table}__{concept_id_column}_usagi.parquet")
+            with tempfile.TemporaryDirectory() as temp_dir_path:
+                if platform.system() == "Windows":
+                    import win32api
+
+                    temp_dir_path = win32api.GetLongPathName(temp_dir_path)
+
+                parquet_file = os.path.join(temp_dir_path, f"{omop_table}__{concept_id_column}_usagi.parquet")
                 # save the one large Arrow table in a Parquet file in a temporary directory
                 df.write_parquet(parquet_file)
                 # load the Parquet file into the specific usagi upload table

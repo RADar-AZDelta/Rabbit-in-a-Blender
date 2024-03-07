@@ -12,9 +12,9 @@ pip uninstall -y Rabbit-in-a-Blender
 # wait a moment
 sleep 10
 #pip install -i https://test.pypi.org/simple/ Rabbit-in-a-Blender # install from test repo
-pip install --no-cache-dir Rabbit-in-a-Blender==0.0.40
+pip install --no-cache-dir Rabbit-in-a-Blender==0.0.41
 
 
-#git tag -a 0.0.40 -m "0.0.40"
+#git tag -a 0.0.41 -m "0.0.41"
 #git tag
-#git push origin 0.0.40
+#git push origin 0.0.41
