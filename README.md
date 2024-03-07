@@ -337,6 +337,7 @@ SQL Server
 ==========
 
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
+Filling in the config, SQL user requires the db_ddladmin role (see user=sa; The SQL Server user).
 
 Authors
 ========
