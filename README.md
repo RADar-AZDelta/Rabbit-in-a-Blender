@@ -113,18 +113,6 @@ Installation
 pip install Rabbit-in-a-Blender
 ```
 
-Install latest version and check you have the latest version
-
-```pip uninstall -y Rabbit-in-a-Blender
-# wait a moment
-sleep 10
-pip install --no-cache-dir Rabbit-in-a-Blender==0.0.41
-```
-```
-riab --version
-```
-
-
 Config
 ========
 
@@ -198,6 +186,7 @@ CLI Usage
     |---|---
     | -h, --help | Show help message and exit
     | -v, --verbose | Verbose logging (logs are also writen to a log file in the systems tmp folder)
+    | -V, --version | The current installed version
     | --config | Optional path to the ini config file that holds the database engine configuration. Alternatively set the RIAB_CONFIG environment variable, pointing to the ini file. Or place a riab.ini file in the current directory.
 
 <!-- * **Required named arguments:**
