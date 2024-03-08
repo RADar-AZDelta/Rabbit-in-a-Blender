@@ -100,10 +100,10 @@ Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_eve
 
 Install python
 ========
-usage of [pyenv](https://github.com/pyenv/pyenv) to install the specific version of python
+usage of [pyenv](https://github.com/pyenv/pyenv) to install the required version of python (version 3.12)
 
 ```
-pipenv install
+pyenv install 3.12
 ```
 
 Installation
