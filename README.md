@@ -334,19 +334,87 @@ The creation of different datasets in needed before config settings.
 SQL Server
 ==========
 
+## Prerequisites
+
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
 
-Added the BCP dependency to the PATH environment variable.
+Add the BCP dependency to the PATH environment variable.
+
+Install bcp on machine that will run RIAB:
+
+1. Go to website [bcp utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility?view=sql-server-ver16)
+2. Download ODBC driver (x64) and command line util (x64) for windows
+3. Install both
+4. Restart machine, to update PATH environment variables
 
 A check on the correct installation of BCP via run on the same terminal als RiAB runs: 
 ```
 bcp.exe --version
 ```
+## Steps Python
+
+1. (Opt.) Create python virtual environment
+2. Open terminal (in virtual environment)
+3. Install RIAB package:
+    > pip install Rabbit-in-a-Blender --no-cache-dir
+
+## Steps SQL
 
 The creation of different schemes (work, omop, dqd, achilles) is needed.
-
 Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see line user=sa; The SQL Server user).
 
+1. Ensure SQL allows non- Entra ID users
+   1. Open Azure portal
+   2. Go to SQL **server** instance (not database)
+   3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
+2. Connect to Azure SQL Database as an admin
+3. Create SQL User for riab to use
+    > CREATE USER fhin_riab WITH password='...TODO...';
+    >
+    > GO
+    >
+    > EXEC sp_addrolemember 'db_datareader', 'fhin_riab';
+    >
+    > EXEC sp_addrolemember 'db_datawriter', 'fhin_riab';
+    >
+    > EXEC sp_addrolemember 'db_ddladmin', 'fhin_riab';
+4. Create schemas for riab
+    > CREATE SCHEMA raw;
+    >
+    > GO
+    >
+    > CREATE SCHEMA work;
+    >
+    > GO
+    >
+    > CREATE SCHEMA omop;
+    >
+    > GO
+    >
+    > CREATE SCHEMA dqd;
+    >
+    > GO
+    >
+    > CREATE SCHEMA achilles;
+    >
+    > GO
+
+## Steps RIAB
+
+As explained above and here as a summary
+
+1. Create riab.ini file 
+2. Open terminal (in virtual python env)
+3. Change dir to folder where riab.ini exists
+4. Create omop database
+    > riab --create-db
+5. Create vocabs
+    > riab --import-vocabularies ./vocabulary-2022-07-28.zip
+6. Create the ETL folder structure
+    > riab --create-folders ./OMOP_CDM
+7. Run ETL
+8. Cleanup tables
+9. Data quality check
 
 
 Authors
