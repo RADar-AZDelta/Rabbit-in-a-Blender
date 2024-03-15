@@ -45,7 +45,7 @@ class BigQueryAchilles(Achilles, BigQueryEtlBase):
         return "."
 
     def _pre_prep_query(self, sql: str) -> str:
-        return sql.replace("#", f"{self._temp_emulation_schema}.")
+        return sql.replace("#", f"{self._dataset_dqd}.")
 
     def _post_prep_query(self, sql: str) -> str:
         return sql.replace("CREATE TABLE", "CREATE OR REPLACE TABLE")

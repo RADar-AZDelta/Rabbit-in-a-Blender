@@ -257,10 +257,6 @@ class Cli:
                         case "bigquery":
                             achilles = BigQueryAchilles(
                                 db_engine=db_engine,
-                                scratch_database_schema=args.bigquery_dataset_id_work,
-                                results_database_schema=args.bigquery_dataset_id_omop,
-                                cdm_database_schema=args.bigquery_dataset_id_omop,
-                                temp_emulation_schema=args.bigquery_dataset_id_work,
                                 **bigquery_kwargs,
                             )
                         case _:
