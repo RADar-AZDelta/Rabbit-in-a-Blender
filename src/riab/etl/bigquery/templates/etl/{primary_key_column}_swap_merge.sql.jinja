@@ -1,10 +1,10 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-MERGE INTO {{dataset_work}}.{{primary_key_column}}_swap AS T
+MERGE INTO `{{dataset_work}}.{{primary_key_column}}_swap` AS T
 USING (
     WITH cte_max AS (
         SELECT IFNULL(MAX(y), 0) as y
-        FROM {{dataset_work}}.{{primary_key_column}}_swap
+        FROM `{{dataset_work}}.{{primary_key_column}}_swap`
     ),
     swap AS (
         SELECT DISTINCT *
@@ -30,13 +30,13 @@ USING (
                     t.{{column}},
                 {%- endfor %}
                 '{{sql_file}}' as source
-            FROM {{dataset_work}}.{{omop_table}}__upload__{{upload_table}} t      
+            FROM `{{dataset_work}}.{{omop_table}}__upload__{{upload_table}}` t      
             {%- set ns = namespace(ci_counter=0) %}    
-            LEFT OUTER JOIN {{dataset_work}}.{{primary_key_column}}_swap swap on swap.x = t.{{primary_key_column}}
+            LEFT OUTER JOIN `{{dataset_work}}.{{primary_key_column}}_swap` swap on swap.x = t.{{primary_key_column}}
                 {%- set ns = namespace(ci_counter=0) %}  
                 {%- for column in concept_id_columns %}
                     {%- if not column in events and not column in events.values() %}
-            LEFT OUTER JOIN {{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} 
+            LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} 
                         {% if not process_semi_approved_mappings -%}
                 and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
                         {%- else -%}

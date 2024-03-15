@@ -3,6 +3,7 @@
 
 from abc import ABC
 from pathlib import Path
+from threading import Lock
 
 import jpype
 import jpype.imports
@@ -15,12 +16,9 @@ class SqlRenderBase(ABC):  # TODO: make this obsolete!!!!
 
     def __init__(
         self,
-        db_engine: str,
         **kwargs,
     ):
         super().__init__(**kwargs)
-
-        self._db_engine = db_engine
 
         self.path_to_replacement_patterns = str(
             Path(__file__).parent.parent.resolve() / "libs" / "SqlRender" / "inst" / "csv" / "replacementPatterns.csv"
@@ -31,8 +29,9 @@ class SqlRenderBase(ABC):  # TODO: make this obsolete!!!!
             Path(__file__).parent.parent.resolve() / "libs" / "SqlRender" / "inst" / "java" / "SqlRender.jar"
         )
         jpype.startJVM(classpath=[sqlrender_path])  # type: ignore
+        self._lock_translate_sql = Lock()
 
-    def _render_sql(self, sql: str, parameters: dict) -> str:
+    def _render_sql(self, target_dialect: str, sql: str, parameters: dict) -> str:
         """_summary_
 
         Args:
@@ -49,9 +48,27 @@ class SqlRenderBase(ABC):  # TODO: make this obsolete!!!!
             SqlTranslate,
         )
 
-        sql = str(SqlRender.renderSql(sql, list(parameters.keys()), list(parameters.values())))
+        # SqlTranslate.setReplacementPatterns(self.path_to_replacement_patterns)
+        try:
+            rendered_sql = str(
+                SqlRender.renderSql(
+                    jpype.JString(sql),
+                    jpype.JArray(jpype.JString, 1)([jpype.JString(str(s)) for s in parameters.keys()]),
+                    jpype.JArray(jpype.JString, 1)([jpype.JString(str(s)) for s in parameters.values()]),
+                )
+            )
+        except Exception as e:
+            raise Exception(f"Failed to render query!\nQuery:\n{sql}") from e
 
-        sql = str(
-            SqlTranslate.translateSqlWithPath(sql, self._db_engine, None, None, self.path_to_replacement_patterns)
-        )
-        return sql
+        self._lock_translate_sql.acquire()
+        try:
+            translated_sql = str(
+                SqlTranslate.translateSqlWithPath(
+                    rendered_sql, target_dialect, None, None, self.path_to_replacement_patterns
+                )
+            )
+            return translated_sql
+        except Exception as e:
+            raise Exception(f"Failed to translate query!\nRendered query:\n{rendered_sql}") from e
+        finally:
+            self._lock_translate_sql.release()

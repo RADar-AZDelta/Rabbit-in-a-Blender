@@ -380,25 +380,16 @@ class DataQualityDashboard(EtlBase, ABC):
     def run_selected(self, run_id):
         # run = self._get_run(run_id)
         df = self._get_results(run_id)
-        df = (
-            df.with_columns(pl.when((pl.col("failed") == 1)).then("FAILED").otherwise("PASS").alias("status"))
-            .with_columns(pl.col("pct_violated_rows") * 100)
-            .with_columns(
-                pl.when(pl.col("cdm_table_name") is None)
-                .then("")
-                .otherwise(pl.col("cdm_table_name"))  # keep original value
-                .alias("cdm_table_name")
-            )
-            # .with_columns(
-            #     pl.when(pl.col("subcategory") is None)
-            #     .then("")
-            #     .otherwise(pl.col("subcategory")) # keep original value
-            #     .alias("subcategory")
-            # )
-            .sort(
-                ["status", "pct_violated_rows"],
-                descending=[False, True],
-            )
+        df = df.with_columns(
+            [
+                pl.when((pl.col("failed") == 1)).then(pl.lit("FAILED")).otherwise(pl.lit("PASS")).alias("status"),
+                pl.col("pct_violated_rows") * 100,
+                pl.col("cdm_table_name").fill_null(pl.col("cdm_table_name")),
+                pl.col("subcategory").fill_null(pl.lit("")),
+            ]
+        ).sort(
+            ["status", "pct_violated_rows"],
+            descending=[False, True],
         )
 
         verification_plausibility_pass = len(

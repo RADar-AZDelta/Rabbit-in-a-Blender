@@ -1,0 +1,11 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+delete {{omop_database_catalog}}.{{omop_database_schema}}.concept
+where CAST(concept_id as VARCHAR(50)) in (
+    select CAST(conceptId as VARCHAR(50))
+    from {{work_database_catalog}}.{{work_database_schema}}.{{omop_table}}__{{concept_id_column}}_usagi
+    where sourceCode in (
+        select concept_code
+        from {{work_database_catalog}}.{{work_database_schema}}.{{omop_table}}__{{concept_id_column}}_concept
+    )
+) and concept_id >= {{min_custom_concept_id}}

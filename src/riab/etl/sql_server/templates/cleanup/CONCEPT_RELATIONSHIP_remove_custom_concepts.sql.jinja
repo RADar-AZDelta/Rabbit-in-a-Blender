@@ -1,0 +1,4 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+delete from {{omop_database_catalog}}.{{omop_database_schema}}.concept_relationship 
+where concept_id_1 >= {{min_custom_concept_id}} or concept_id_2 >= {{min_custom_concept_id}}

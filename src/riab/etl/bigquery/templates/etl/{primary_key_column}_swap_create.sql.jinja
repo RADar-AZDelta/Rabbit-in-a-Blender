@@ -1,6 +1,6 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-CREATE TABLE IF NOT EXISTS {{dataset_work}}.{{primary_key_column}}_swap 
+CREATE TABLE IF NOT EXISTS `{{dataset_work}}.{{primary_key_column}}_swap` 
 (x STRING,
 {%- for column in concept_id_columns -%}
     {{column}} 

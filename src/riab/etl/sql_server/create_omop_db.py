@@ -26,13 +26,7 @@ class SqlServerCreateOmopDb(CreateOmopDb, SqlServerEtlBase):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
         )
-        # with self._db_connect() as conn:
-        #     cursor = conn.cursor()
-        #     cursor.execute(sql)
-        #     conn.commit()
-        with self._engine.connect() as conn:
-            conn.execute(text(sql))
-            conn.commit()
+        self._run_query(sql)
 
     def _run_source_id_to_omop_id_map_table_ddl_query(self) -> None:
         """Creates the source_id_to_omop_id_map table"""
@@ -42,9 +36,7 @@ class SqlServerCreateOmopDb(CreateOmopDb, SqlServerEtlBase):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
         )
-        with self._engine.connect() as conn:
-            conn.execute(text(sql))
-            conn.commit()
+        self._run_query(sql)
 
     def _run_dqd_ddl_query(self) -> None:
         """Creates the Data Quality Dashboard tables"""
@@ -54,6 +46,4 @@ class SqlServerCreateOmopDb(CreateOmopDb, SqlServerEtlBase):
             dqd_database_catalog=self._dqd_database_catalog,
             dqd_database_schema=self._dqd_database_schema,
         )
-        with self._engine.connect() as conn:
-            conn.execute(text(sql))
-            conn.commit()
+        self._run_query(sql)

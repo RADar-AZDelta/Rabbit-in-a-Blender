@@ -1,6 +1,6 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-TRUNCATE TABLE {{dataset_omop}}.{{vocabulary_table}};
-INSERT INTO {{dataset_omop}}.{{vocabulary_table}}
+TRUNCATE TABLE `{{dataset_omop}}.{{vocabulary_table}}`;
+INSERT INTO `{{dataset_omop}}.{{vocabulary_table}}`
 SELECT *
-FROM {{dataset_work}}.{{vocabulary_table}};
+FROM `{{dataset_work}}.{{vocabulary_table}}`;

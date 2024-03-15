@@ -1,7 +1,7 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-CREATE OR REPLACE TABLE {{dataset_omop}}.{{omop_table}}
-LIKE {{dataset_omop}}.{{omop_table}}
+CREATE OR REPLACE TABLE `{{dataset_omop}}.{{omop_table}}`
+LIKE `{{dataset_omop}}.{{omop_table}}`
 as (
     SELECT DISTINCT 
         {%- set ns = namespace(fk_counter=0) -%}
@@ -123,18 +123,18 @@ as (
         t.{{column}}
             {%- endif %}
         {%- endfor %}            
-    FROM {{dataset_work}}.{{omop_table}} t
+    FROM `{{dataset_work}}.{{omop_table}}` t
     {%- set ns = namespace(fk_counter=0) -%}
     {%- for column in events %}
         {%- for (table, key) in event_tables.items() %}
-    LEFT OUTER JOIN {{dataset_work}}.{{key}}_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+    LEFT OUTER JOIN `{{dataset_work}}.{{key}}_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
             {%- set ns.fk_counter = ns.fk_counter + 1 -%}
         {%- endfor %}
     {%- endfor %}
     {%- if omop_table == "vocabulary" %}
     UNION ALL
     SELECT *
-    FROM {{dataset_omop}}.vocabulary
+    FROM `{{dataset_omop}}.vocabulary`
     where vocabulary_concept_id < {{min_custom_concept_id}}
     {%- endif %}
 )

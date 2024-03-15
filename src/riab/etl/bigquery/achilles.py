@@ -34,7 +34,7 @@ class BigQueryAchilles(Achilles, BigQueryEtlBase):
 
     def _store_analysis_details(self, data_frame: pl.DataFrame):
         table = data_frame.to_arrow()
-        self._upload_arrow_table(table, "achilles_analysis")
+        self._upload_arrow_table(table, self._dataset_achilles, "achilles_analysis")
 
     @property
     def _supports_temp_tables(self) -> bool:

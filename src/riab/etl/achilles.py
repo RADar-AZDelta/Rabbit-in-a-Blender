@@ -262,12 +262,14 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "analysisIds": ",".join([str(id) for id in (analysis_ids or [])]),
         }
         sql = self._render_sql(
+            self._db_engine,
             "delete from @resultsDatabaseSchema.achilles_results where analysis_id in (@analysisIds);",
             parameters,
         )
         self._run_query(sql)
 
         sql = self._render_sql(
+            self._db_engine,
             "delete from @resultsDatabaseSchema.achilles_results_dist where analysis_id in (@analysisIds);",
             parameters,
         )
@@ -283,6 +285,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 "analysisIds": ",".join(result_ids),
             }
             sql = self._render_sql(
+                self._db_engine,
                 "delete from @resultsDatabaseSchema.achilles_results where analysis_id in (@analysisIds);",
                 parameters,
             )
@@ -294,6 +297,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 "analysisIds": ",".join(dist_ids),
             }
             sql = self._render_sql(
+                self._db_engine,
                 "delete from @resultsDatabaseSchema.achilles_results where analysis_id in (@analysisIds);",
                 parameters,
             )
@@ -317,7 +321,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         parameters = {"resultsDatabaseSchema": self._results_database_schema}
 
-        sql = self._render_sql(sql, parameters)
+        sql = self._render_sql(self._db_engine, sql, parameters)
         self._run_query(sql)
 
         data_frame = df_analysis_details.drop(["DISTRIBUTION", "DISTRIBUTED_FIELD"])
@@ -406,7 +410,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "schemaDelim": self._schema_delim,
             "scratchTable": table,
         }
-        rendered_sql = self._render_sql(sql, parameters)
+        rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         self._run_query(rendered_sql)
 
     def _get_source_name(self) -> str:
@@ -414,7 +418,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         parameters = {
             "cdmDatabaseSchema": self._cdm_database_schema,
         }
-        rendered_sql = self._render_sql(sql, parameters)
+        rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         df_result, execution_time = self._run_query(rendered_sql)
         if execution_time == -1 or df_result.is_empty():
             raise Exception("Could not retrieve cdm_source_name from CDM database!")
@@ -448,7 +452,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "achilles_version": self._achilles_version.lstrip("v"),
             "cdmVersion": self._omop_cdm_version.lstrip("v"),
         }
-        rendered_sql = self._render_sql(sql, parameters)
+        rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         rendered_sql = self._post_prep_query(rendered_sql)
         return analysis_id, rendered_sql
 
@@ -459,7 +463,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
     def _render_casted_names(self, row):
         sql = "cast(@fieldName as @fieldType) as @fieldName"
         parameters = {"fieldName": row[0], "fieldType": row[1]}
-        rendered_sql = self._render_sql(sql, parameters)
+        rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         return rendered_sql
 
     def _get_benchmark_offset(self):
@@ -491,6 +495,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "analysisId": str(analysis_id),
         }
         analysis_sql = self._render_sql(
+            self._db_engine,
             "select @castedNames from @scratchDatabaseSchema@schemaDelim@tablePrefix_@analysisId",
             parameters,
         )
@@ -501,7 +506,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         benchmark_selects = ", ".join(iter(df_benchmark_selects["map"]))
 
         parameters = {"benchmarkSelect": benchmark_selects}
-        benchmark_sql = self._render_sql("select @benchmarkSelect", parameters)
+        benchmark_sql = self._render_sql(self._db_engine, "select @benchmarkSelect", parameters)
 
         analysis_sql = " union all ".join([analysis_sql, benchmark_sql])
         return analysis_sql
@@ -559,7 +564,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "fieldNames": ", ".join(iter(results_table["schema"][["FIELD_NAME"][0]])),
             "smallCellCount": str(self._small_cell_count),
         }
-        rendered_sql = self._render_sql(sql, parameters)
+        rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         return rendered_sql
 
     @abstractmethod
@@ -596,6 +601,6 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             "vocabDatabaseSchema": self._results_database_schema,
             "fieldNames": ", ".join(iter(df_results_concept_count_table["FIELD_NAME"])),
         }
-        rendered_sql = self._render_sql(sql, parameters)
+        rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         self._run_query(rendered_sql)
         return rendered_sql

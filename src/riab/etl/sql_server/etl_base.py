@@ -3,7 +3,8 @@
 
 from abc import ABC
 
-from sqlalchemy import create_engine, engine
+import backoff
+from sqlalchemy import create_engine, engine, text
 
 from ..etl_base import EtlBase
 
@@ -90,3 +91,9 @@ class SqlServerEtlBase(EtlBase, ABC):
             # fast_executemany=True,
             use_insertmanyvalues=True,
         )
+
+    @backoff.on_exception(backoff.expo, (Exception), max_time=10, max_tries=3)
+    def _run_query(self, sql: str):
+        with self._engine.connect() as conn:
+            conn.execute(text(sql))
+            conn.commit()

@@ -1,6 +1,6 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-MERGE INTO {{dataset_work}}.{{omop_table}} AS T
+MERGE INTO `{{dataset_work}}.{{omop_table}}` AS T
 USING (
     SELECT * EXCEPT(rn)
     FROM (
@@ -65,11 +65,11 @@ USING (
                     t.{{column}}
                 {%- endif %}
                 {%- endfor %}
-            FROM {{dataset_work}}.{{omop_table}}_upload t
+            FROM `{{dataset_work}}.{{omop_table}}_upload` t
             {%- set ns = namespace(ci_counter=0) -%}
             {%- for column in concept_id_columns %}
                 {%- if not column in events.values() %}
-            LEFT OUTER JOIN {{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}
+            LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}
                     {% if not process_semi_approved_mappings -%}
                 and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
                     {%- else -%}
@@ -79,7 +79,7 @@ USING (
                 {%- endif -%}
             {%- endfor %}
             {%- if pk_auto_numbering %}
-            INNER JOIN {{dataset_work}}.{{primary_key_column}}_swap swap_pk on swap_pk.x = t.{{primary_key_column}}
+            INNER JOIN `{{dataset_work}}.{{primary_key_column}}_swap` swap_pk on swap_pk.x = t.{{primary_key_column}}
                 {%- set ns = namespace(ci_counter=0) -%}
                 {%- for column in concept_id_columns %}
                     {%- if not column in events.values() %}
@@ -96,13 +96,13 @@ USING (
             {%- set ns = namespace(fk_counter=0) -%}
             {%- for column in foreign_key_columns %}
                 {%- if column == 'preceding_visit_occurrence_id' %}
-            LEFT OUTER JOIN {{dataset_work}}.visit_occurrence_id_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+            LEFT OUTER JOIN `{{dataset_work}}.visit_occurrence_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
                 {%- elif column == 'preceding_visit_detail_id' %}
-            LEFT OUTER JOIN {{dataset_work}}.visit_detail_id_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}                
+            LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}                
                 {%- elif column == 'parent_visit_detail_id' %}
-            LEFT OUTER JOIN {{dataset_work}}.visit_detail_id_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}            
+            LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}            
                 {%- else %}
-            LEFT OUTER JOIN {{dataset_work}}.{{column}}_swap swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+            LEFT OUTER JOIN `{{dataset_work}}.{{column}}_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
                 {%- endif -%}
                 {%- set ns.fk_counter = ns.fk_counter + 1 -%}
             {%- endfor %} 

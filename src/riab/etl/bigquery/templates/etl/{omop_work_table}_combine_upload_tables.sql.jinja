@@ -1,6 +1,6 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-CREATE OR REPLACE TABLE {{dataset_work}}.{{omop_table}}_upload AS
+CREATE OR REPLACE TABLE `{{dataset_work}}.{{omop_table}}_upload` AS
 SELECT DISTINCT *
 FROM (
     {%- for upload_table in upload_tables -%}
@@ -14,6 +14,6 @@ FROM (
         {%- endif %}
         {{ column }} 
     {%- endfor %}
-    FROM {{dataset_work}}.{{omop_table}}__upload__{{upload_table}}
+    FROM `{{dataset_work}}.{{omop_table}}__upload__{{upload_table}}`
     {%- endfor %}
 ) t

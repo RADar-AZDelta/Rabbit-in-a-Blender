@@ -3,6 +3,7 @@
 
 # pylint: disable=unsubscriptable-object
 """Holds the BigQuery ETL base class"""
+
 import json
 import logging
 from abc import ABC
@@ -98,7 +99,7 @@ class BigQueryEtlBase(EtlBase, ABC):
         rows = self._gcp.run_query_job(sql)
         return [row.table_name for row in rows]
 
-    def _upload_arrow_table(self, table: pa.Table, table_name: str):
+    def _upload_arrow_table(self, table: pa.Table, dataset: str, table_name: str):
         with TemporaryDirectory(prefix="riab_") as tmp_dir:
             tmp_file = str(Path(tmp_dir) / f"{table_name}.parquet")
             logging.debug("Writing arrow table to parquet file '{tmp_file}'")
@@ -109,7 +110,7 @@ class BigQueryEtlBase(EtlBase, ABC):
             # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table
             self._gcp.batch_load_from_bucket_into_bigquery_table(
                 uri,
-                self._dataset_omop,
+                dataset,
                 table_name,
                 write_disposition=bq.WriteDisposition.WRITE_APPEND,
             )

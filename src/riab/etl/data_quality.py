@@ -11,7 +11,7 @@ from pathlib import Path
 from time import time
 from typing import Any, List, Optional, cast
 
-import pandas as pd
+import polars as pl
 from humanfriendly import format_timespan
 
 from .etl_base import EtlBase
@@ -52,66 +52,64 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
 
         start = time()
 
-        df_check_descriptions = pd.read_csv(
+        df_check_descriptions = pl.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "libs"
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self._omop_cdm_version}_Check_Descriptions.csv"
-            ),
-            converters=StringConverter(),
+                / f"OMOP_CDMv{self._omop_cdm_version}_Check_Descriptions.csv"
+            )
         )
-        # df_check_descriptions = df_check_descriptions.filter(items=[22], axis=0)
 
-        df_table_level = pd.read_csv(
+        df_table_level = pl.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "libs"
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self._omop_cdm_version}_Table_Level.csv"
-            ),
-            converters=StringConverter(),
+                / f"OMOP_CDMv{self._omop_cdm_version}_Table_Level.csv"
+            )
         )
-        df_field_level = pd.read_csv(
+        df_field_level = pl.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "libs"
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self._omop_cdm_version}_Field_Level.csv"
-            ),
-            converters=StringConverter(),
+                / f"OMOP_CDMv{self._omop_cdm_version}_Field_Level.csv"
+            )
         )
-        df_concept_level = pd.read_csv(
+        df_concept_level = pl.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "libs"
                 / "DataQualityDashboard"
                 / "inst"
                 / "csv"
-                / f"OMOP_CDM{self._omop_cdm_version}_Concept_Level.csv"
+                / f"OMOP_CDMv{self._omop_cdm_version}_Concept_Level.csv"
             ),
-            converters=StringConverter(),
+            dtypes={
+                "conceptId": pl.Utf8,  # type: ignore
+            },
         )
 
         # ensure we use only checks that are intended to be run
-        df_table_level = df_table_level[~df_table_level["cdmTableName"].isin(tables_to_exclude)]
-        df_field_level = df_field_level[~df_field_level["cdmTableName"].isin(tables_to_exclude)]
-        df_concept_level = df_concept_level[~df_concept_level["cdmTableName"].isin(tables_to_exclude)]
+        df_table_level = df_table_level.filter(~pl.col("cdmTableName").is_in(tables_to_exclude))
+        df_field_level = df_field_level.filter(~pl.col("cdmTableName").is_in(tables_to_exclude))
+        df_concept_level = df_concept_level.filter(~pl.col("cdmTableName").is_in(tables_to_exclude))
 
         # remove offset from being checked
-        df_field_level = df_field_level[df_field_level["cdmFieldName"] != "offset"]
+        df_field_level = df_field_level.filter(pl.col("cdmFieldName").ne("offset"))
 
         metadata = self._capture_check_metadata()
 
-        check_results = pd.DataFrame([])
-        for index, check in df_check_descriptions.iterrows():
-            check_results = pd.concat(
+        check_results = pl.DataFrame()
+        for index, check in enumerate(df_check_descriptions.iter_rows(named=True)):
+            check_results = pl.concat(
                 [
                     check_results,
                     self._run_check(
@@ -143,9 +141,9 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         dqd_run["id"] = str(uuid.uuid4())
         self._store_dqd_run(dqd_run)
 
-        dqd_results = check_results.copy(deep=True)
-        dqd_results["run_id"] = dqd_run["id"]
-        dqd_results = dqd_results.drop(columns=["_row"])
+        dqd_results = check_results.clone()
+        dqd_results = dqd_results.with_columns(pl.lit(dqd_run["id"]).alias("run_id"))
+        dqd_results = dqd_results.drop("_row")
         self._store_dqd_result(dqd_results)
 
         if self.json_path:
@@ -153,7 +151,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             check_results.columns = [
                 column.upper() if column not in ["checkId", "_row"] else column for column in check_results.columns
             ]
-            check_summary["CheckResults"] = [row.dropna().to_dict() for index, row in check_results.iterrows()]
+            check_summary["CheckResults"] = [self._cleanNullTerms(row) for row in check_results.iter_rows(named=True)]
             with open(
                 self.json_path,
                 "w",
@@ -168,16 +166,27 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             item["DQD_VERSION"] = self.data_quality_dashboard_version
         return metadata
 
+    def _cleanNullTerms(self, d: dict):
+        clean = {}
+        for k, v in d.items():
+            if isinstance(v, dict):
+                nested = self._cleanNullTerms(v)
+                if len(nested.keys()) > 0:
+                    clean[k] = nested
+            elif v is not None:
+                clean[k] = v
+        return clean
+
     def _run_check(
         self,
         check: Any,
         row: int,
-        df_table_level: pd.DataFrame,
-        df_field_level: pd.DataFrame,
-        df_concept_level: pd.DataFrame,
-    ) -> pd.DataFrame:
+        df_table_level: pl.DataFrame,
+        df_field_level: pl.DataFrame,
+        df_concept_level: pl.DataFrame,
+    ) -> pl.DataFrame:
         data_frame = None
-        match check.checkLevel:
+        match check["checkLevel"]:
             case "TABLE":
                 data_frame = df_table_level
             case "FIELD":
@@ -185,9 +194,16 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             case "CONCEPT":
                 data_frame = df_concept_level
             case _:
-                raise Exception(f"Unknown check level: {check.checkLevel}")
+                raise Exception(f"Unknown check level: {check["checkLevel"]}")
 
-        data_frame = pd.DataFrame(data_frame[data_frame.eval(check.evaluationFilter)])
+        try:
+            data_frame = data_frame.filter(pl.sql_expr(check["evaluationFilter"]))
+        except Exception:
+            # fallback to pandas eval
+            pd_df = data_frame.to_pandas()
+            import pandas as pd
+
+            data_frame = pl.from_pandas(pd.DataFrame(pd_df[pd_df.eval(check["evaluationFilter"])]))
 
         check_results = []
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
@@ -198,13 +214,40 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                     f"{int(row) + 1}.{cast(int, index) + 1}",
                     item,
                 )
-                for index, item in data_frame.iterrows()
+                for index, item in enumerate(data_frame.iter_rows(named=True))
             ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 check_result = result.result()
                 check_results.append(check_result)
-        return pd.DataFrame(check_results).sort_values(by=["_row"])
+
+        schema = {
+            "run_id": pl.Utf8,
+            "checkid": pl.Utf8,
+            "num_violated_rows": pl.Int64,
+            "pct_violated_rows": pl.Float64,
+            "num_denominator_rows": pl.Int64,
+            "execution_time": pl.Utf8,
+            "query_text": pl.Utf8,
+            "check_name": pl.Utf8,
+            "check_level": pl.Utf8,
+            "check_description": pl.Utf8,
+            "cdm_table_name": pl.Utf8,
+            "cdm_field_name": pl.Utf8,
+            "concept_id": pl.Utf8,
+            "unit_concept_id": pl.Utf8,
+            "sql_file": pl.Utf8,
+            "category": pl.Utf8,
+            "subcategory": pl.Utf8,
+            "context": pl.Utf8,
+            "warning": pl.Utf8,
+            "error": pl.Utf8,
+            "failed": pl.Int64,
+            "threshold_value": pl.Int64,
+            "notes_value": pl.Utf8,
+            "_row": pl.Utf8,
+        }
+        return pl.from_dicts(check_results, schema=schema).sort("_row")
 
     @abstractmethod
     def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
@@ -219,25 +262,25 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         """
         pass
 
-    def _summarize_check_results(self, check_results: pd.DataFrame) -> Any:
-        countTotal = len(check_results.index)
-        countThresholdFailed = len(check_results[check_results["failed"].eq(1) & check_results["error"].isna()].index)
-        countErrorFailed = len(check_results[~check_results["error"].isna()].index)
-        countOverallFailed = len(check_results[check_results["failed"] == 1].index)
+    def _summarize_check_results(self, check_results: pl.DataFrame) -> Any:
+        countTotal = len(check_results)
+        countThresholdFailed = len(check_results.filter(pl.col("failed").eq(1) & pl.col("error").is_null()))
+        countErrorFailed = len(check_results.filter(~pl.col("error").is_null()))
+        countOverallFailed = len(check_results.filter(pl.col("failed").eq(1)))
         countPassed = countTotal - countOverallFailed
         percentPassed = round((countPassed / countTotal) * 100)
         percentFailed = round((countOverallFailed / countTotal) * 100)
-        countTotalPlausibility = len(check_results[check_results["category"] == "Plausibility"].index)
-        countTotalConformance = len(check_results[check_results["category"] == "Conformance"].index)
-        countTotalCompleteness = len(check_results[check_results["category"] == "Completeness"].index)
+        countTotalPlausibility = len(check_results.filter(pl.col("category") == "Plausibility"))
+        countTotalConformance = len(check_results.filter(pl.col("category") == "Conformance"))
+        countTotalCompleteness = len(check_results.filter(pl.col("category") == "Completeness"))
         countFailedPlausibility = len(
-            check_results[check_results["failed"].eq(1) & check_results["category"] == "Plausibility"].index
+            check_results.filter(pl.col("failed").eq(1) & (pl.col("category") == "Plausibility"))
         )
         countFailedConformance = len(
-            check_results[check_results["failed"].eq(1) & check_results["category"] == "Conformance"].index
+            check_results.filter(pl.col("failed").eq(1) & (pl.col("category") == "Conformance"))
         )
         countFailedCompleteness = len(
-            check_results[check_results["failed"].eq(1) & check_results["category"] == "Completeness"].index
+            check_results.filter(pl.col("failed").eq(1) & (pl.col("category") == "Completeness"))
         )
 
         check_summary = {
@@ -267,8 +310,8 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         item: Any,
         result: Any,
     ) -> Any:
-        threshold_field = f"{check.checkName}Threshold"
-        notes_field = f"{check.checkName}Notes"
+        threshold_field = f"{check["checkName"]}Threshold"
+        notes_field = f"{check["checkName"]}Notes"
         check_threshold: dict[str, Any] = {"failed": 0}
 
         if hasattr(item, threshold_field):
@@ -276,7 +319,8 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                 check_threshold["threshold_value"] = float(item[threshold_field])
             except ValueError:
                 check_threshold["threshold_value"] = 0
-            check_threshold["notes_value"] = item[notes_field]
+            if hasattr(item, notes_field):
+                check_threshold["notes_value"] = item[notes_field]
 
         if ("threshold_value" not in check_threshold) or (check_threshold["threshold_value"] == 0):
             if result["num_violated_rows"] and result["num_violated_rows"] > 0:
@@ -303,17 +347,17 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             "num_denominator_rows": result["num_denominator_rows"] if result else None,
             "execution_time": f"{execution_time:.6f} secs",
             "query_text": sql,
-            "check_name": check.checkName,
-            "check_level": check.checkLevel,
-            "check_description": check.checkDescription,
+            "check_name": check["checkName"],
+            "check_level": check["checkLevel"],
+            "check_description": check["checkDescription"],
             "cdm_table_name": item.cdmTableName if hasattr(item, "cdmTableName") else None,
             "cdm_field_name": item.cdmFieldName if hasattr(item, "cdmFieldName") else None,
             "concept_id": item.conceptTd if hasattr(item, "conceptTd") else None,
             "unit_concept_id": item.unitConceptId if hasattr(item, "unitConceptId") else None,
-            "sql_file": check.sqlFile,
-            "category": check.kahnCategory,
-            "subcategory": check.kahnSubcategory,
-            "context": check.kahnContext,
+            "sql_file": check["sqlFile"],
+            "category": check["kahnCategory"],
+            "subcategory": check["kahnSubcategory"],
+            "context": check["kahnContext"],
             # "warning": warning,
             "error": exception,
             "checkId": self._get_check_id(check, item),
@@ -328,7 +372,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         return check_result
 
     def _get_check_id(self, check: Any, item: Any):
-        id = [check.checkLevel.lower(), check.checkName.lower()]
+        id = [check["checkLevel"].lower(), check["checkName"].lower()]
         if hasattr(item, "cdmTableName"):
             id.append(item.cdmTableName.lower())
         if hasattr(item, "cdmFieldName"):
@@ -344,7 +388,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         pass
 
     @abstractmethod
-    def _store_dqd_result(self, dqd_result: pd.DataFrame):
+    def _store_dqd_result(self, dqd_result: pl.DataFrame):
         pass
 
     def _render_sqlfile(self, sql_file: str, parameters: dict):
@@ -361,6 +405,6 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         ) as file:
             sql = file.read()
 
-        sql = self._render_sql(sql, parameters)
+        rendered_sql = self._render_sql(self._db_engine, sql, parameters)
 
-        return sql
+        return rendered_sql

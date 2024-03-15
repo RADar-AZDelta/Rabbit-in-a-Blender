@@ -1,5 +1,5 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-UPDATE {{dataset_omop}}.source_to_concept_map T
+UPDATE `{{dataset_omop}}.source_to_concept_map` T
 SET invalid_reason = 'D'
 where valid_start_date < @etl_start

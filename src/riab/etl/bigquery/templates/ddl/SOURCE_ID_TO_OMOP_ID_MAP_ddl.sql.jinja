@@ -1,7 +1,7 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-DROP TABLE IF EXISTS {{dataset_omop}}.source_id_to_omop_id_map; 
-create table {{dataset_omop}}.source_id_to_omop_id_map (
+DROP TABLE IF EXISTS `{{dataset_omop}}.source_id_to_omop_id_map`; 
+create table `{{dataset_omop}}.source_id_to_omop_id_map` (
     omop_table STRING not null,
     omop_id INT64 not null,
     source STRING,

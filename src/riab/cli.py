@@ -39,7 +39,7 @@ from .etl.bigquery import (
 from .etl.sql_server import (
     # SqlServerAchilles,
     # SqlServerCleanup,
-    # SqlServerCreateCdmFolders,
+    SqlServerCreateCdmFolders,
     SqlServerCreateOmopDb,
     SqlServerEtl,
     # SqlServerDataQuality,
@@ -155,6 +155,12 @@ class Cli:
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 **bigquery_kwargs,
                             )
+                        case "sql_server":
+                            create_folders = SqlServerCreateCdmFolders(
+                                db_engine=db_engine,
+                                cdm_folder_path=args.run_etl or args.create_folders,
+                                **sqlserver_kwargs,
+                            )
                         case _:
                             raise ValueError("Not a supported database engine")
                     create_folders.run()
@@ -187,6 +193,16 @@ class Cli:
                                 process_semi_approved_mappings=args.process_semi_approved_mappings,
                                 **bigquery_kwargs,
                             )
+                        case "sql_server":
+                            etl = SqlServerEtl(
+                                db_engine=db_engine,
+                                cdm_folder_path=args.run_etl or args.create_folders,
+                                only_omop_table=args.table,
+                                only_query=args.only_query,
+                                skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
+                                process_semi_approved_mappings=args.process_semi_approved_mappings,
+                                **sqlserver_kwargs,
+                            )
                         case _:
                             raise ValueError("Not a supported database engine")
                     etl.run()
@@ -200,6 +216,13 @@ class Cli:
                                 clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
                                 **bigquery_kwargs,
                             )
+                        # case "sql_server":
+                        #     cleanup = SqlServerCleanup(
+                        #         db_engine=db_engine,
+                        #         cdm_folder_path=args.run_etl or args.create_folders,
+                        #         clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
+                        #         **sqlserver_kwargs,
+                        #     )
                         case _:
                             raise ValueError("Not a supported database engine")
                     cleanup.run(args.cleanup)

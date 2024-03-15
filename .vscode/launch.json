@@ -20,31 +20,31 @@
 
         //"--create-db"
         
-        "--import-vocabularies", "~/vocabulary-2022-07-28.zip"
+        //"--import-vocabularies", "~/vocabulary_20240307.zip"
         
         //"--create-folders", "~/tmp/radar_omop-cdm/"
         
         //"--run-etl", "~/git/radar_omop-cdm/"
-          // ,"--table", "cdm_source"
-          // ,"--table", "metadata"
-          // ,"--table", "vocabulary"
-          // ,"--table", "location"
-          // ,"--table", "care_site"
-          //,"--table", "provider"
-          //,"--table", "visit_occurrence"
-          //,"--table", "observation"
+        //   ,"--table", "condition_occurrence"
+        //   ,"--table", "metadata"
+        //   ,"--table", "vocabulary"
+        //   ,"--table", "location"
+        //   ,"--table", "care_site"
+        //   ,"--table", "provider"
+        //   ,"--table", "visit_occurrence"
+        //   ,"--table", "observation"
           //,"--only-query", "measurement/labo.sql.jinja"
           //,"--skip-usagi-and-custom-concept-upload"
           //,"--process-semi-approved-mappings"
 
-        //"--cleanup", "all"
+        //"--cleanup"//, "all"
           //,"--clear-auto-generated-custom-concept-ids"
 
         //"--data-quality"
         //  ,"--json", "dqd_result.json"
 
-        //"--data-quality-dashboard"
-        //  ,"--port", "9999"
+        "--data-quality-dashboard"
+          ,"--port", "9999"
 
         //"--achilles"
       ],

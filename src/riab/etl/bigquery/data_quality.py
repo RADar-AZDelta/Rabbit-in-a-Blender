@@ -6,7 +6,7 @@ import traceback
 from time import time
 from typing import Any, List
 
-import pandas as pd
+import polars as pl
 import pyarrow as pa
 
 from ..data_quality import DataQuality
@@ -20,19 +20,18 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
     ):
         super().__init__(**kwargs)
 
-    def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
+    def _run_check_query(self, check: Any, row: str, parameters: Any) -> Any:
         sql = None
         result = None
         exception: str | None = None
         execution_time = -1
         try:
-            parameters: dict = item.to_dict()
-
             parameters["cohort"] = "TRUE" if hasattr(parameters, "cohortDefinitionId") else "FALSE"
             parameters["cdmDatabaseSchema"] = f"{self._dataset_omop}"
             parameters["vocabDatabaseSchema"] = f"{self._dataset_omop}"
+            parameters["schema"] = f"{self._dataset_omop}"
 
-            sql = self._render_sqlfile(check.sqlFile, parameters)
+            sql = self._render_sqlfile(check["sqlFile"], parameters)
 
             start = time()
             rows = self._gcp.run_query_job(sql)
@@ -45,7 +44,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
             # if __debug__:
             #     breakpoint()
 
-        return self._process_check(check, row, item, sql, result, execution_time, exception)
+        return self._process_check(check, row, parameters, sql, result, execution_time, exception)
 
     def _get_cdm_sources(self) -> List[Any]:
         """Merges the uploaded custom concepts in the OMOP concept table.
@@ -55,15 +54,23 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         """
         template = self._template_env.from_string("select * from {{dataset_omop}}.cdm_source;")
         sql = template.render(
-            dataset_id_omop=self._dataset_omop,
+            dataset_omop=self._dataset_omop,
         )
         rows = self._gcp.run_query_job(sql)
         return [dict(row.items()) for row in rows]
 
     def _store_dqd_run(self, dqd_run: dict):
         table = pa.Table.from_pylist([dqd_run])
-        self._upload_arrow_table(table, "dqdashboard_runs")
+        # df = pl.from_dicts([dqd_run])
+        self._upload_arrow_table(table, self._dataset_dqd, "dqdashboard_runs")
 
-    def _store_dqd_result(self, dqd_result: pd.DataFrame):
-        table = pa.Table.from_pandas(dqd_result)
-        self._upload_arrow_table(table, "dqdashboard_results")
+    def _store_dqd_result(self, dqd_result: pl.DataFrame):
+        dqd_result.with_columns(
+            [
+                pl.col("num_violated_rows").replace(None, 0).alias("num_violated_rows"),
+                pl.col("num_denominator_rows").replace(None, 0).alias("num_denominator_rows"),
+                pl.col("threshold_value").replace(None, 0).alias("threshold_value"),
+            ]
+        )
+        table = dqd_result.to_arrow()
+        self._upload_arrow_table(table, self._dataset_dqd, "dqdashboard_results")

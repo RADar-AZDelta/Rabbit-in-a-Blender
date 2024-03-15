@@ -1,0 +1,5 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+select *
+from `{{dataset_dqd}}.dqdashboard_results`
+where run_id = @id

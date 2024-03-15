@@ -117,9 +117,7 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
 
         self._lock_upload_table.acquire()
         try:
-            with self._engine.connect() as conn:
-                conn.execute(text(sql))
-                conn.commit()
+            self._run_query(sql)
         except Exception as ex:
             raise ex
         finally:
@@ -132,9 +130,7 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             vocabulary_table=vocabulary_table,
         )
-        with self._engine.connect() as conn:
-            conn.execute(text(sql))
-            conn.commit()
+        self._run_query(sql)
 
     def _refill_vocabulary_table(self, vocabulary_table: str) -> None:
         """Recreates a specific standardised vocabulary table from the upload table
@@ -172,9 +168,7 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
         )
         self._lock_upload_table.acquire()
         try:
-            with self._engine.connect() as conn:
-                conn.execute(text(sql))
-                conn.commit()
+            self._run_query(sql)
         except Exception as ex:
             raise ex
         finally:

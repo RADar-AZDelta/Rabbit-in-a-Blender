@@ -38,4 +38,4 @@ SELECT
     {%- endif -%}
     {{" "}}AS {{ column.cdmFieldName }}
 {%- endfor %}
-FROM {{project_raw}}.raw_dataset.raw_{{ omop_table }} raw
+FROM `{{ project_raw }}.raw_dataset.raw_{{ omop_table }}` raw

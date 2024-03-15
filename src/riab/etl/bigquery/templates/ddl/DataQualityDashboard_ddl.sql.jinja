@@ -1,10 +1,10 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-DROP TABLE IF EXISTS {{dataset_dqd}}.dqdashboard_runs; 
-CREATE TABLE {{dataset_dqd}}.dqdashboard_runs
+DROP TABLE IF EXISTS `{{dataset_dqd}}.dqdashboard_runs`; 
+CREATE TABLE `{{dataset_dqd}}.dqdashboard_runs`
 (
-  id                        STRING NOT NULL, 
-  startTimestamp            TIMESTAMP NOT NULL,
+  id                        STRING, {# NOT NULL, #} 
+  startTimestamp            TIMESTAMP, {# NOT NULL, #} 
   endTimestamp              TIMESTAMP,
   executionTime             STRING,
   countTotal                INT64,
@@ -26,11 +26,11 @@ CREATE TABLE {{dataset_dqd}}.dqdashboard_runs
 )
 CLUSTER BY startTimestamp;
 
-DROP TABLE IF EXISTS {{dataset_dqd}}.dqdashboard_results; 
-CREATE TABLE {{dataset_dqd}}.dqdashboard_results
+DROP TABLE IF EXISTS `{{dataset_dqd}}.dqdashboard_results`; 
+CREATE TABLE `{{dataset_dqd}}.dqdashboard_results`
 (
-  run_id                STRING NOT NULL,
-  checkid               STRING NOT NULL,
+  run_id                STRING, {# NOT NULL, #} 
+  checkid               STRING, {# NOT NULL, #} 
   num_violated_rows     INT64,
   pct_violated_rows     FLOAT64,
   num_denominator_rows  INT64,

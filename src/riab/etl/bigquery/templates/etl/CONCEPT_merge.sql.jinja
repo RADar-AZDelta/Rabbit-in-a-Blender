@@ -1,10 +1,10 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-MERGE INTO {{dataset_omop}}.concept AS T
+MERGE INTO `{{dataset_omop}}.concept` AS T
 USING (
     SELECT DISTINCT swap.y as concept_id, t.* EXCEPT(concept_id)
-    FROM {{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept t
-    INNER JOIN {{dataset_work}}.concept_id_swap swap 
+    FROM `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept` t
+    INNER JOIN `{{dataset_work}}.concept_id_swap` swap 
         on swap.x = concat('{{concept_id_column}}__', t.concept_code)
 ) AS S
 ON S.concept_id = T.concept_id

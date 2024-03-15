@@ -41,8 +41,8 @@ def modify_bigquery_cdm_ddl(sql: str) -> str:
         sql,
     )
     sql = re.sub(
-        r"(create table {{dataset_omop}}).(.*).(\([\S\s.]+?\);)",
-        r"DROP TABLE IF EXISTS {{dataset_omop}}.\2; \n\1.\2 \3",
+        r"(create table )({{dataset_omop}}).(.*).(\([\S\s.]+?\);)",
+        r"DROP TABLE IF EXISTS `{{dataset_omop}}.\3`; \n\1`\2.\3` \4",
         sql,
     )
     # sql = re.sub(r".(?<!not )null", r"", sql)
@@ -66,8 +66,8 @@ def modify_bigquery_cdm_ddl(sql: str) -> str:
         clustering_fields = json.load(file)
     for table, fields in clustering_fields.items():
         sql = re.sub(
-            rf"(create table if not exists\s+{{{{dataset_omop}}}}.{table})\s\((.*?\))(\s*);",
-            rf"\1 (\2 cluster by {', '.join(fields)};",
+            rf"(create table\s+`{{{{dataset_omop}}}}.{table}`)\s(\([\S\s]*?\))(\s*);",
+            rf"\1 \2\ncluster by {', '.join(fields)};",
             sql,
             flags=re.DOTALL,
         )
@@ -164,6 +164,16 @@ def modify_bigquery_dqd_ddl(sql: str) -> str:
     sql = re.sub(
         r"@tableName",
         r"{{dataset_dqd}}",
+        sql,
+    )
+    sql = re.sub(
+        r"DROP TABLE IF EXISTS {{dataset_dqd}};",
+        r"DROP TABLE IF EXISTS `{{dataset_dqd}}`;",
+        sql,
+    )
+    sql = re.sub(
+        r"create table {{dataset_dqd}}",
+        r"create table `{{dataset_dqd}}`",
         sql,
     )
     return sql
