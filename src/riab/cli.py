@@ -12,7 +12,7 @@ from importlib import metadata
 from os import environ as env
 from os import getcwd, linesep, path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import Optional, Sequence
+from typing import Optional, Sequence, cast
 
 from dotenv import load_dotenv
 
@@ -74,7 +74,14 @@ class Cli:
                 db_engine = config.safe_get("riab", "db_engine")
                 if not db_engine:
                     raise Exception("Config file holds no db_engine option!")
-                db_engine = db_engine.lower()
+
+                etl_kwargs = {
+                    "db_engine": db_engine.lower(),
+                    "max_parallel_tables": int(cast(str, config.safe_get("riab", "max_parallel_tables", "9"))),
+                    "max_worker_threads_per_table": int(
+                        cast(str, config.safe_get("riab", "max_worker_threads_per_table", "16"))
+                    ),
+                }
 
                 match db_engine:
                     case "bigquery":
@@ -112,7 +119,7 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             etl = BigQueryEtl(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 **bigquery_kwargs,
                             )
                             logging.info(
@@ -121,7 +128,7 @@ class Cli:
                             )
                         case "sql_server":
                             etl = SqlServerEtl(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 **sqlserver_kwargs,
                             )
                             logging.info(
@@ -135,12 +142,12 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             create_omop_db = BigQueryCreateOmopDb(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 **bigquery_kwargs,
                             )
                         case "sql_server":
                             create_omop_db = SqlServerCreateOmopDb(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 **sqlserver_kwargs,
                             )
                         case _:
@@ -151,13 +158,13 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             create_folders = BigQueryCreateCdmFolders(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 **bigquery_kwargs,
                             )
                         case "sql_server":
                             create_folders = SqlServerCreateCdmFolders(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 **sqlserver_kwargs,
                             )
@@ -169,12 +176,12 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             import_vocabularies = BigQueryImportVocabularies(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 **bigquery_kwargs,
                             )
                         case "sql_server":
                             import_vocabularies = SqlServerImportVocabularies(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 **sqlserver_kwargs,
                             )
                         case _:
@@ -185,22 +192,24 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             etl = BigQueryEtl(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 only_omop_table=args.table,
                                 only_query=args.only_query,
                                 skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
                                 process_semi_approved_mappings=args.process_semi_approved_mappings,
+                                skip_event_fks_step=args.skip_event_fks_step,
                                 **bigquery_kwargs,
                             )
                         case "sql_server":
                             etl = SqlServerEtl(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 only_omop_table=args.table,
                                 only_query=args.only_query,
                                 skip_usagi_and_custom_concept_upload=args.skip_usagi_and_custom_concept_upload,
                                 process_semi_approved_mappings=args.process_semi_approved_mappings,
+                                skip_event_fks_step=args.skip_event_fks_step,
                                 **sqlserver_kwargs,
                             )
                         case _:
@@ -211,14 +220,14 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             cleanup = BigQueryCleanup(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
                                 **bigquery_kwargs,
                             )
                         # case "sql_server":
                         #     cleanup = SqlServerCleanup(
-                        #         db_engine=db_engine,
+                        #         **etl_kwargs,
                         #         cdm_folder_path=args.run_etl or args.create_folders,
                         #         clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
                         #         **sqlserver_kwargs,
@@ -231,7 +240,7 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             data_quality = BigQueryDataQuality(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 cdm_folder_path=args.run_etl or args.create_folders,
                                 json_path=args.json,
                                 **bigquery_kwargs,
@@ -244,7 +253,7 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             data_quality_dashboard = BigQueryDataQualityDashboard(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 port=args.port if args.port else 8050,
                                 **bigquery_kwargs,
                             )
@@ -256,7 +265,7 @@ class Cli:
                     match db_engine:
                         case "bigquery":
                             achilles = BigQueryAchilles(
-                                db_engine=db_engine,
+                                **etl_kwargs,
                                 **bigquery_kwargs,
                             )
                         case _:
@@ -476,6 +485,12 @@ ______      _     _     _ _     _                ______ _                _
     def _create_etl_command_argument_group(self, parser: ArgumentParser):
         argument_group = parser.add_argument_group("Run ETL specific command options (-r [PATH], --run-etl [PATH])")
 
+        argument_group.add_argument(
+            "-se",
+            "--skip-event-fks-step",
+            help="""Skip the event foreign keys ETL step.""",
+            action="store_true",
+        )
         argument_group.add_argument(
             "-sa",
             "--process-semi-approved-mappings",

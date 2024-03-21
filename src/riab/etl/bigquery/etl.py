@@ -201,24 +201,6 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             f"{omop_table}__{concept_id_column}_usagi",
         )
 
-    def _add_custom_concepts_to_usagi(self, omop_table: str, concept_id_column: str) -> None:
-        """The custom concepts are added to the upload Usagi table with status 'APPROVED'.
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        template = self._template_env.get_template(
-            "etl/{omop_table}__{concept_id_column}_usagi_add_custom_concepts.sql.jinja"
-        )
-        sql = template.render(
-            dataset_work=self._dataset_work,
-            omop_table=omop_table,
-            concept_id_column=concept_id_column,
-            dataset_omop=self._dataset_omop,
-        )
-        self._gcp.run_query_job(sql)
-
     def _update_custom_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
         The concept_id column in the Usagi upload table is swapped by the generated custom concept_id (above 2.000.000.000).
@@ -229,25 +211,6 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
         template = self._template_env.get_template(
             "etl/{omop_table}__{concept_id_column}_usagi_update_custom_concepts.sql.jinja"
-        )
-        sql = template.render(
-            dataset_work=self._dataset_work,
-            omop_table=omop_table,
-            concept_id_column=concept_id_column,
-        )
-        self._gcp.run_query_job(sql)
-
-    def _cast_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
-        """Because we swapped the concept_id column (that for custom concepts is initially loaded with
-        the concept_code, and that's a string) in the Usagi upload table with the generated custom
-        concept_id (above 2.000.000.000), we need to cast it from string to an integer.
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        template = self._template_env.get_template(
-            "etl/{omop_table}__{concept_id_column}_usagi_cast_concepts.sql.jinja"
         )
         sql = template.render(
             dataset_work=self._dataset_work,
@@ -275,9 +238,11 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql_doubles)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            raise Exception(
-                f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck usagi CSV's for column '{concept_id_column}' of table '{omop_table}'\n{ar_table.to_pylist()}"
-            )
+            df = pl.from_arrow(ar_table)
+            with pl.Config(fmt_str_lengths=1000):
+                raise Exception(
+                    f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck for duplicate mappings in the Usagi CSV's and custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}"
+                )
 
         template = self._template_env.get_template("etl/SOURCE_TO_CONCEPT_MAP_merge.sql.jinja")
         sql = template.render(
@@ -395,32 +360,49 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         )
         self._gcp.run_query_job(sql)
 
-    def _combine_upload_tables(
+    def _check_for_duplicate_rows(
         self,
         omop_table: str,
-        upload_tables: List[str],
         columns: List[str],
+        upload_tables: List[str],
+        primary_key_column: Optional[str],
+        concept_id_columns: List[str],
+        events: Any,
     ):
-        """Combine the data of the upload tables into one table.
+        """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
         Args:
-            omop_table_name (str): Name of the OMOP table
-            upload_tables (List[Path]): Thelist of upload tables
-            columns (List[str]): List of columns of the OMOP table
-        """
-        template = self._template_env.get_template("etl/{omop_work_table}_combine_upload_tables.sql.jinja")
-        sql = template.render(
-            dataset_work=self._dataset_work,
+            omop_table (str): OMOP table.
+            columns (List[str]): List of columns of the OMOP table.
+            upload_tables (List[str]): List of the upload tables to execute.
+            primary_key_column (str): The name of the primary key column.
+            concept_id_columns (List[str]): List of concept columns.
+            events (Any): Object that holds the events of the the OMOP table.
+        """  # noqa: E501 # pylint: disable=line-too-long
+        template = self._template_env.get_template("etl/{omop_work_table}_merge_check_for_duplicate_rows.sql.jinja")
+        sql_doubles = template.render(
             omop_table=omop_table,
-            upload_tables=upload_tables,
+            dataset_work=self._dataset_work,
+            primary_key_column=primary_key_column,
+            concept_id_columns=concept_id_columns,
             columns=columns,
+            upload_tables=upload_tables,
+            events=events,
         )
-        self._gcp.run_query_job(sql)
+        rows = self._gcp.run_query_job(sql_doubles)
+        ar_table = rows.to_arrow()
+        if len(ar_table):
+            df = pl.from_arrow(ar_table)
+            with pl.Config(fmt_str_lengths=1000):
+                logging.warning(
+                    f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\nQuery to get the duplicates:\n{sql_doubles}\n\n{df}"
+                )
 
-    def _merge_into_omop_work_table(
+    def _merge_into_work_table(
         self,
         omop_table: str,
         columns: List[str],
+        upload_tables: List[str],
         required_columns: List[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
@@ -440,21 +422,6 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template("etl/{omop_work_table}_merge_check_for_duplicate_rows.sql.jinja")
-        sql_doubles = template.render(
-            omop_table=omop_table,
-            dataset_work=self._dataset_work,
-            primary_key_column=primary_key_column,
-            concept_id_columns=concept_id_columns,
-            events=events,
-        )
-        rows = self._gcp.run_query_job(sql_doubles)
-        ar_table = rows.to_arrow()
-        if len(ar_table):
-            raise Exception(
-                f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\nQuery to get the duplicates:\n{sql_doubles}"
-            )
-
         template = self._template_env.get_template("etl/{omop_work_table}_merge.sql.jinja")
         sql = template.render(
             dataset_omop=self._dataset_omop,
@@ -468,6 +435,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             pk_auto_numbering=pk_auto_numbering,
             events=events,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
+            upload_tables=upload_tables,
         )
         self._gcp.run_query_job(sql)
 
@@ -490,7 +458,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
 
         event_tables = {}
         try:
-            if len(events) > 0:  # we have event columns
+            if not self._skip_event_fks_step and len(events) > 0:  # we have event columns
                 template = self._template_env.get_template("etl/{omop_table}_get_event_tables.sql.jinja")
                 sql = template.render(
                     omop_table=omop_table,

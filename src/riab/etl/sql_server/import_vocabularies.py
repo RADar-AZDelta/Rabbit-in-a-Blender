@@ -9,7 +9,6 @@ from pathlib import Path
 from threading import Lock
 
 import polars as pl
-from sqlalchemy import text
 
 from ..import_vocabularies import ImportVocabularies
 from .etl_base import SqlServerEtlBase

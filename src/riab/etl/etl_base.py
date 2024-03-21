@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: gpl3+
 
 """Holds the ETL abstract base class"""
+
 import json
 import logging
 import time
@@ -28,7 +29,8 @@ class EtlBase(ABC):
         db_engine: str,
         cdm_folder_path: str | None = None,
         omop_cdm_version: str = "5.4",
-        max_workers=16,
+        max_parallel_tables: int = 9,
+        max_worker_threads_per_table: int = 16,
     ):
         """Constructor
         Base class constructor for the ETL commands
@@ -41,7 +43,8 @@ class EtlBase(ABC):
         self._cdm_folder_path = Path(cdm_folder_path).resolve() if cdm_folder_path else None
         self._db_engine = db_engine
         self._omop_cdm_version = omop_cdm_version
-        self._max_workers = max_workers
+        self._max_parallel_tables = max_parallel_tables
+        self._max_worker_threads_per_table = max_worker_threads_per_table
 
         self._cdm_tables_fks_dependencies_resolved: list[list[str]] = []
 

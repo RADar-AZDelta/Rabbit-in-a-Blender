@@ -12,7 +12,7 @@ USING (
         ,CURRENT_DATE() as valid_start_date
         ,DATE(2099, 12, 31) as valid_end_date
         ,cast(NULL as string) as invalid_reason
-    FROM `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted` t
+    FROM `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi` t
     INNER JOIN `{{dataset_omop}}.concept` c on c.concept_id = t.conceptId
 {% if not process_semi_approved_mappings -%}
     where t.mappingStatus = 'APPROVED'

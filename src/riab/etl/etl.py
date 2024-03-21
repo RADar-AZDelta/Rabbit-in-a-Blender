@@ -31,6 +31,7 @@ class Etl(EtlBase):
         only_query: Optional[str] = None,
         skip_usagi_and_custom_concept_upload: Optional[bool] = None,
         process_semi_approved_mappings: Optional[bool] = None,
+        skip_event_fks_step: Optional[bool] = None,
         **kwargs,
     ):
         """Constructor
@@ -48,6 +49,7 @@ class Etl(EtlBase):
         self._only_query: Optional[Path] = Path(only_query) if only_query else None
         self._skip_usagi_and_custom_concept_upload = skip_usagi_and_custom_concept_upload
         self._process_semi_approved_mappings = process_semi_approved_mappings
+        self._skip_event_fks_step = skip_event_fks_step
 
         self._lock_custom_concepts = Lock()
         self._lock_source_value_to_concept_id_mapping = Lock()
@@ -91,10 +93,10 @@ class Etl(EtlBase):
             for omop_table in self._only_omop_table:
                 self._process_folder_to_work(omop_table)
                 self._process_work_to_omop(omop_table)
-
-            for table_with_events in self._omop_event_fields:
-                if table_with_events not in self._only_omop_table:
-                    self._process_work_to_omop(table_with_events)
+            if not self._skip_event_fks_step:
+                for table_with_events in self._omop_event_fields:
+                    if table_with_events not in self._only_omop_table:
+                        self._process_work_to_omop(table_with_events)
         else:
             etl_flow = self._cdm_tables_fks_dependencies_resolved.copy()
             self._do_folder_to_work_etl_flow(etl_flow)
@@ -121,7 +123,7 @@ class Etl(EtlBase):
             elt_flow (Any): The tree structure of the tabbel to tun in parallel and the dependent tables
         """
         tables = elt_flow.pop(0)
-        with ThreadPoolExecutor(max_workers=len(tables)) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_parallel_tables) as executor:
             futures = [executor.submit(self._process_folder_to_work, omop_table) for omop_table in tables]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
@@ -202,7 +204,7 @@ class Etl(EtlBase):
         if self._only_query:
             self._run_upload_query(sql_files[0], omop_table)
         else:
-            with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+            with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
                 # upload an apply the custom concept CSV's
                 futures = [
                     executor.submit(
@@ -238,21 +240,28 @@ class Etl(EtlBase):
                 primary_key_column=cast(str, primary_key_column),
             )
 
-        # usefull to combine all upload results into one large table
-        self._combine_upload_tables(
-            omop_table,
-            upload_tables=upload_tables,
-            columns=columns,
-        )
-
         # merge everything in the destination OMOP work table
         logging.info(
-            "Merging the upload queries into the omop work table '%s'",
+            "Check for duplicate rows",
             omop_table,
         )
-        self._merge_into_omop_work_table(
+        self._check_for_duplicate_rows(
             omop_table=omop_table,
             columns=columns,
+            upload_tables=upload_tables,
+            primary_key_column=primary_key_column,
+            concept_id_columns=concept_columns,
+            events=events,
+        )
+
+        logging.info(
+            "Merging the upload queries into the omop table '%s'",
+            omop_table,
+        )
+        self._merge_into_work_table(
+            omop_table=omop_table,
+            columns=columns,
+            upload_tables=upload_tables,
             required_columns=required_columns,
             primary_key_column=primary_key_column,
             pk_auto_numbering=pk_auto_numbering,
@@ -287,22 +296,6 @@ class Etl(EtlBase):
 
         # load the results of the query in the tempopary work table
         self._query_into_upload_table(upload_table, select_query)
-
-    @abstractmethod
-    def _combine_upload_tables(
-        self,
-        omop_table: str,
-        upload_tables: List[str],
-        columns: List[str],
-    ):
-        """Combine the data of the upload tables into one table.
-
-        Args:
-            omop_table_name (str): Name of the OMOP table
-            upload_tables (List[str]): The list of upload tables
-            columns (List[str]): The list of columns
-        """
-        pass
 
     def _upload_custom_concepts(self, omop_table: str, concept_id_column: str):
         """Processes all the CSV files (ending with _concept.csv) under the 'custom' subfolder of the '{concept_id_column}' folder.
@@ -422,12 +415,6 @@ class Etl(EtlBase):
         self._create_usagi_upload_table(omop_table, concept_id_column)
 
         if not len(usagi_csv_files):
-            logging.debug(
-                "Change type to INT64 in usagi table for column '%s' of table '%s'",
-                concept_id_column,
-                omop_table,
-            )
-            self._cast_concepts_in_usagi(omop_table, concept_id_column)
             logging.info(
                 "No Usagi CSV's found for column '%s' of table '%s'",
                 concept_id_column,
@@ -440,9 +427,15 @@ class Etl(EtlBase):
             logging.info("Creating concept_id swap from Usagi file '%s'", str(usagi_csv_file))
             # convert the CSV to an Arrow table
             df_temp = self._convert_usagi_csv_to_polars_dataframe(usagi_csv_file)
+            # only get the APPOVED concepts
 
             df_duplicates = (
-                df_temp.group_by("sourceCode", "conceptId")
+                df_temp.filter(
+                    pl.col("mappingStatus").is_in(
+                        ["APPROVED", "SEMI-APPROVED"] if self._process_semi_approved_mappings else ["APPROVED"]
+                    )
+                )
+                .group_by("sourceCode", "conceptId")
                 .agg(count=pl.col("sourceCode").len())
                 .filter(pl.col("count") > 1)
                 .sort("count", descending=True)
@@ -459,7 +452,12 @@ class Etl(EtlBase):
 
         if not df.is_empty():
             df_duplicates = (
-                df.group_by("sourceCode", "conceptId")
+                df.filter(
+                    pl.col("mappingStatus").is_in(
+                        ["APPROVED", "SEMI-APPROVED"] if self._process_semi_approved_mappings else ["APPROVED"]
+                    )
+                )
+                .group_by("sourceCode", "conceptId")
                 .agg(count=pl.col("sourceCode").len())
                 .filter(pl.col("count") > 1)
                 .sort("count", descending=True)
@@ -497,23 +495,6 @@ class Etl(EtlBase):
                 omop_table,
             )
             self._update_custom_concepts_in_usagi(omop_table, concept_id_column)
-
-        logging.debug(
-            "Change type to INT64 in usagi table for column '%s' of table '%s'",
-            concept_id_column,
-            omop_table,
-        )
-        self._cast_concepts_in_usagi(omop_table, concept_id_column)
-
-        if len(concept_csv_files):
-            logging.info(
-                "Adding the custom concepts to the usagi table for column '%s' of table '%s'",
-                concept_id_column,
-                omop_table,
-            )
-            # add the custom concepts with the concept id's and names using the previously filled up swap table
-            # custom concepts will recieve the mapping status 'APPROVED'
-            self._add_custom_concepts_to_usagi(omop_table, concept_id_column)
 
         logging.info(
             "Merging mapped concepts into SOURCE_TO_CONCEPT_MAP table for column '%s' of table '%s'",
@@ -594,10 +575,33 @@ class Etl(EtlBase):
         )
 
     @abstractmethod
-    def _merge_into_omop_work_table(
+    def _check_for_duplicate_rows(
         self,
         omop_table: str,
         columns: List[str],
+        upload_tables: List[str],
+        primary_key_column: Optional[str],
+        concept_id_columns: List[str],
+        events: Any,
+    ):
+        """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+
+        Args:
+            omop_table (str): OMOP table.
+            columns (List[str]): List of columns of the OMOP table.
+            upload_tables (List[str]): List of the upload tables to execute.
+            primary_key_column (str): The name of the primary key column.
+            concept_id_columns (List[str]): List of concept columns.
+            events (Any): Object that holds the events of the the OMOP table.
+        """  # noqa: E501 # pylint: disable=line-too-long
+        pass
+
+    @abstractmethod
+    def _merge_into_work_table(
+        self,
+        omop_table: str,
+        columns: List[str],
+        upload_tables: List[str],
         required_columns: List[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
@@ -608,11 +612,9 @@ class Etl(EtlBase):
         """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
         Args:
-            sql_files (List[Path]): The sql files holding the query on the raw data.
             omop_table (str): OMOP table.
             columns (List[str]): List of columns of the OMOP table.
             required_columns (List[str]): List of required columns of the OMOP table.
-            pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
             primary_key_column (str): The name of the primary key column.
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
             foreign_key_columns (Any): List of foreign key columns.
@@ -632,7 +634,7 @@ class Etl(EtlBase):
         """
         logging.debug("Converting Concept csv '%s' to polars dataframe", str(concept_csv_file))
         polars_schema: dict[str, pl.DataType] = {
-            "concept_id": pl.Utf8,  # type: ignore
+            "concept_id": pl.Int64,  # type: ignore
             "concept_name": pl.Utf8,  # type: ignore
             "domain_id": pl.Utf8,  # type: ignore
             "vocabulary_id": pl.Utf8,  # type: ignore
@@ -643,20 +645,23 @@ class Etl(EtlBase):
             "valid_end_date": pl.Date,  # type: ignore
             "invalid_reason": pl.Utf8,  # type: ignore
         }
-        df = pl.read_csv(
-            str(concept_csv_file), try_parse_dates=True, missing_utf8_is_empty_string=True, dtypes=polars_schema
-        ).select(
-            "concept_id",
-            "concept_name",
-            "domain_id",
-            "vocabulary_id",
-            "concept_class_id",
-            "standard_concept",
-            "concept_code",
-            "valid_start_date",
-            "valid_end_date",
-            "invalid_reason",
-        )
+        try:
+            df = pl.read_csv(
+                str(concept_csv_file), try_parse_dates=True, missing_utf8_is_empty_string=True, dtypes=polars_schema
+            ).select(
+                "concept_id",
+                "concept_name",
+                "domain_id",
+                "vocabulary_id",
+                "concept_class_id",
+                "standard_concept",
+                "concept_code",
+                "valid_start_date",
+                "valid_end_date",
+                "invalid_reason",
+            )
+        except Exception as e:
+            raise Exception(f"Failed converting concept csv '{concept_csv_file}' to parquet") from e
         return df
 
     def _convert_usagi_csv_to_polars_dataframe(self, usagi_csv_file: Path) -> pl.DataFrame:
@@ -673,7 +678,7 @@ class Etl(EtlBase):
             "sourceCode": pl.Utf8,  # type: ignore
             "sourceName": pl.Utf8,  # type: ignore
             "mappingStatus": pl.Utf8,  # type: ignore
-            "conceptId": pl.Utf8,  # type: ignore
+            "conceptId": pl.Int64,  # type: ignore
             "conceptName": pl.Utf8,  # type: ignore
             "domainId": pl.Utf8,  # type: ignore
         }
@@ -800,31 +805,9 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _add_custom_concepts_to_usagi(self, omop_table: str, concept_id_column: str) -> None:
-        """The custom concepts are added to the upload Usagi table with status 'APPROVED'.
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
     def _update_custom_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
         The concept_id column in the Usagi upload table is swapped by the generated custom concept_id (above 2.000.000.000).
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _cast_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
-        """Because we swapped the concept_id column (that for custom concepts is initially loaded with
-        the concept_code, and that's a string) in the Usagi upload table with the generated custom
-        concept_id (above 2.000.000.000), we need to cast it from string to an integer.
 
         Args:
             omop_table (str): The omop table

@@ -3,7 +3,7 @@
 delete `{{dataset_omop}}.vocabulary`
 where vocabulary_concept_id in (
     select conceptId
-    from `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi_casted`
+    from `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi`
     where sourceCode in (
         select concept_code
         from `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept`

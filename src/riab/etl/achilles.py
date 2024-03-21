@@ -150,7 +150,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         main_analysis_ids = list(df_analysis_details["ANALYSIS_ID"])
 
         main_sqls = []
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [executor.submit(self._get_analysis_sql, id) for id in main_analysis_ids]
             for result in as_completed(futures):
                 analysis_id, sql = result.result()
@@ -159,7 +159,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         achilles_sql.extend([main_sql["sql"] for main_sql in main_sqls])
 
         benchmark = []
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [
                 executor.submit(self._execute_analysis, main_sql["sql"], main_sql["analysis_id"])
                 for main_sql in main_sqls
@@ -196,7 +196,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         achilles_sql.extend(merge_sqls)
 
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [executor.submit(self._run_query, sql) for sql in merge_sqls]
             for result in as_completed(futures):
                 result.result()
@@ -383,7 +383,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
             for id in results_table["analysis_ids"]
         ]
 
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [
                 executor.submit(
                     self._drop_scratch_table,
@@ -515,7 +515,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         casted_names = ", ".join(iter(df_casted_names["map"]))
 
         detail_sqls = []
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = []
             for analysis_id in results_table["analysis_ids"]:
                 benchmark = df_benchmark.filter((pl.col("ANALYSIS_ID") == analysis_id))

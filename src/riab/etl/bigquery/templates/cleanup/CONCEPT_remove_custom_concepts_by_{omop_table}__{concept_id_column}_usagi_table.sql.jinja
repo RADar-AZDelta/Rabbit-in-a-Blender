@@ -1,8 +1,8 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
 delete `{{dataset_omop}}.concept`
-where CAST(concept_id as STRING) in (
-    select CAST(conceptId as STRING)
+where concept_id in (
+    select conceptId
     from `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi`
     where sourceCode in (
         select concept_code

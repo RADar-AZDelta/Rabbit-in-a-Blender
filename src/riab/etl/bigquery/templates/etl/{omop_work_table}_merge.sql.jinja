@@ -2,6 +2,15 @@
 {#- SPDX-License-Identifier: gpl3+ -#}
 MERGE INTO `{{dataset_work}}.{{omop_table}}` AS T
 USING (
+    WITH cte_uploaded_tables AS (
+        {%- for upload_table in upload_tables -%}
+            {%- if not loop.first %}
+        UNION ALL
+            {%- endif %}
+        SELECT *
+        FROM `{{dataset_work}}.{{omop_table}}__upload__{{upload_table}}`
+        {%- endfor %}
+    )
     SELECT * EXCEPT(rn)
     FROM (
         SELECT *
@@ -25,7 +34,7 @@ USING (
             {%- endfor %}
             ) AS rn
         FROM (
-            SELECT DISTINCT
+            SELECT 
                 {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
                 {%- for column in columns -%}
                     {%- if not loop.first -%}
@@ -65,11 +74,11 @@ USING (
                     t.{{column}}
                 {%- endif %}
                 {%- endfor %}
-            FROM `{{dataset_work}}.{{omop_table}}_upload` t
+            FROM cte_uploaded_tables t
             {%- set ns = namespace(ci_counter=0) -%}
             {%- for column in concept_id_columns %}
                 {%- if not column in events.values() %}
-            LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi_casted` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}
+            LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}
                     {% if not process_semi_approved_mappings -%}
                 and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
                     {%- else -%}

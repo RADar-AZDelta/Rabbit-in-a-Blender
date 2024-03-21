@@ -32,43 +32,22 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
         super().__init__(**kwargs)
 
-    def _combine_upload_tables(
+    def _check_for_duplicate_rows(
         self,
         omop_table: str,
+        columns: List[str],
         upload_tables: List[str],
-        columns: List[str],
-    ):
-        """Combine the data of the upload tables into one table.
-
-        Args:
-            omop_table_name (str): Name of the OMOP table
-            upload_tables (List[str]): The list of upload tables
-            columns (List[str]): The list of columns
-        """
-        pass
-
-    def _merge_into_omop_work_table(
-        self,
-        omop_table: str,
-        columns: List[str],
-        required_columns: List[str],
         primary_key_column: Optional[str],
-        pk_auto_numbering: bool,
-        foreign_key_columns: Any,
         concept_id_columns: List[str],
         events: Any,
     ):
         """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
         Args:
-            sql_files (List[Path]): The sql files holding the query on the raw data.
             omop_table (str): OMOP table.
             columns (List[str]): List of columns of the OMOP table.
-            required_columns (List[str]): List of required columns of the OMOP table.
-            pk_swap_table_name (str): The name of the swap table to convert the source value of the primary key to an auto number.
+            upload_tables (List[str]): List of the upload tables to execute.
             primary_key_column (str): The name of the primary key column.
-            pk_auto_numbering (bool): Is the primary key a generated incremental number?
-            foreign_key_columns (Any): List of foreign key columns.
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
@@ -175,29 +154,9 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         """
         pass
 
-    def _add_custom_concepts_to_usagi(self, omop_table: str, concept_id_column: str) -> None:
-        """The custom concepts are added to the upload Usagi table with status 'APPROVED'.
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
     def _update_custom_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
         The concept_id column in the Usagi upload table is swapped by the generated custom concept_id (above 2.000.000.000).
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    def _cast_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
-        """Because we swapped the concept_id column (that for custom concepts is initially loaded with
-        the concept_code, and that's a string) in the Usagi upload table with the generated custom
-        concept_id (above 2.000.000.000), we need to cast it from string to an integer.
 
         Args:
             omop_table (str): The omop table

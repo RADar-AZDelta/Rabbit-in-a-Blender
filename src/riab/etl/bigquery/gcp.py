@@ -129,12 +129,12 @@ class Gcp:
                 (query_job.slot_millis or 0) / 1000,
                 cost,
             )
-            if execution_time > 60:
-                logging.warning(
-                    "Long query time (%.2f seconds) for query: %s",
-                    execution_time,
-                    query,
-                )
+            # if execution_time > 60:
+            #     logging.warning(
+            #         "Long query time (%.2f seconds) for query: %s",
+            #         execution_time,
+            #         query,
+            #     )
             return result, execution_time
         except Exception as ex:
             logging.debug("FAILED QUERY: %s\nWith parameters: %s", query, str(query_parameters))

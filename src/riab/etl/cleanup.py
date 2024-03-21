@@ -33,7 +33,7 @@ class Cleanup(EtlBase, ABC):
         All local vocabularies are removed from the 'vocabulary' table in the omop dataset.\n
         """  # noqa: E501 # pylint: disable=line-too-long
         work_tables = self._get_work_tables()
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             # custom cleanup
             if cleanup_table == "all":
                 logging.info("Truncate omop table 'source_to_concept_map'")
@@ -147,36 +147,41 @@ class Cleanup(EtlBase, ABC):
         self._remove_source_to_concept_map_using_usagi_table(omop_table, concept_id_column)
 
     def _cleanup_custom_concept_tables(self, table_name: str, cleanup_table: str):
-        omop_table = table_name.split("__")[0]
-        concept_id_column = table_name.split("__")[1].removesuffix("_concept")
-        logging.info(
-            "Removing custom concepts from '%s' based on values from '%s' CSV",
-            "concept",
-            f"{omop_table}__{concept_id_column}_concept",
-        )
-        self._remove_custom_concepts_from_concept_table_using_usagi_table(omop_table, concept_id_column)
-
-        logging.info(
-            "Removing custom concepts from '%s' based on values from '%s' CSV",
-            "concept_relationship",
-            f"{omop_table}__{concept_id_column}_usagi",
-        )
-        self._remove_custom_concepts_from_concept_relationship_table_using_usagi_table(omop_table, concept_id_column)
-
-        logging.info(
-            "Removing custom concepts from '%s' based on values from '%s' CSV",
-            "concept_ancestor",
-            f"{omop_table}__{concept_id_column}_usagi",
-        )
-        self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(omop_table, concept_id_column)
-
-        if cleanup_table == "vocabulary":
+        try:
+            omop_table = table_name.split("__")[0]
+            concept_id_column = table_name.split("__")[1].removesuffix("_concept")
             logging.info(
                 "Removing custom concepts from '%s' based on values from '%s' CSV",
-                "vocabulary",
+                "concept",
+                f"{omop_table}__{concept_id_column}_concept",
+            )
+            self._remove_custom_concepts_from_concept_table_using_usagi_table(omop_table, concept_id_column)
+
+            logging.info(
+                "Removing custom concepts from '%s' based on values from '%s' CSV",
+                "concept_relationship",
                 f"{omop_table}__{concept_id_column}_usagi",
             )
-            self._remove_custom_concepts_from_vocabulary_table_using_usagi_table(omop_table, concept_id_column)
+            self._remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
+                omop_table, concept_id_column
+            )
+
+            logging.info(
+                "Removing custom concepts from '%s' based on values from '%s' CSV",
+                "concept_ancestor",
+                f"{omop_table}__{concept_id_column}_usagi",
+            )
+            self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(omop_table, concept_id_column)
+
+            if cleanup_table == "vocabulary":
+                logging.info(
+                    "Removing custom concepts from '%s' based on values from '%s' CSV",
+                    "vocabulary",
+                    f"{omop_table}__{concept_id_column}_usagi",
+                )
+                self._remove_custom_concepts_from_vocabulary_table_using_usagi_table(omop_table, concept_id_column)
+        except Exception as e:
+            logging.warn(e)
 
     @abstractmethod
     def _custom_db_engine_cleanup(self, table: str) -> None:

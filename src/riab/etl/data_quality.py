@@ -206,7 +206,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             data_frame = pl.from_pandas(pd.DataFrame(pd_df[pd_df.eval(check["evaluationFilter"])]))
 
         check_results = []
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [
                 executor.submit(
                     self._run_check_query,

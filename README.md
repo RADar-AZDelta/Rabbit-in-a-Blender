@@ -104,6 +104,7 @@ usage of [pyenv](https://github.com/pyenv/pyenv) to install the required version
 
 ```
 pyenv install 3.12
+pyenv local 3.12 # use version 3.12 of python for the current user
 ```
 
 Installation
@@ -129,6 +130,16 @@ Below an example of a config:
 ```ini
 [riab]
 db_engine=bigquery
+; Required
+; What database are you using? (bigquery or sql_server)
+max_parallel_tables=9
+; Optional
+; The number of tables, that RiaB will process in parallel. On a server with a performant db_engine (like BigQuery), this number can be high. On slower machines/database set this to a low number to avoid overwhelming the database or server. (if you have problems importing the vocabularies, try lowering this number to 1 or 2)
+; The default value is 9
+max_worker_threads_per_table=16
+; Optional
+; The number of worker threads that RiaB will use, per table, to run stuff in parallel. On a server with a performant db_engine (like BigQuery), this number can be high. On slower machines/database set this to a low number to avoid overwhelming the database or server.
+; The default value is 16
 
 [bigquery]
 credentials_file=service_account.json
@@ -156,7 +167,7 @@ server=127.0.0.1
 ; The SQL Server host
 port=1433
 ; The SQL Server port (defaults to 1433)
-user=sa
+user=riab
 ; The SQL Server user
 password=?????
 ; The SQL Server password
@@ -214,6 +225,7 @@ CLI Usage
     | -q [PATH], --only-query [PATH] | Do ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql) 
     | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
     | -sa, --process-semi-approved-mappings | In addition to 'APPROVED' as mapping status, 'SEMI-APPROVED' will be processed as valid Usagi concept mappings.
+    | -se, --skip-event-fks-step | Skip the event foreign keys ETL step.
 
 * **Data quality specific command options (-dq, --data-quality):**
     |  command | help  
@@ -264,6 +276,7 @@ Run ETL for a specified sql file in the CDM folder structure. (ex: measurement/l
 ```bash
 riab --run-etl ./OMOP-CDM \
   --skip-usagi-and-custom-concept-upload \
+  --skip-event-fks-step \
   --only-query measurement/lab_measurements.sql
 ```
 
@@ -334,19 +347,66 @@ The creation of different datasets in needed before config settings.
 SQL Server
 ==========
 
+### Prerequisites
+
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
 
-Added the BCP dependency to the PATH environment variable.
+Add the BCP dependency to the PATH environment variable.
 
-A check on the correct installation of BCP via run on the same terminal als RiAB runs: 
+Install bcp on machine that will run RIAB:
+
+1. Go to website [bcp utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility?view=sql-server-ver16)
+2. Download ODBC driver (x64) and command line util (x64) for windows
+3. Install both
+4. Restart machine, to update PATH environment variables
+
+Validate that you can run the BCP command: 
 ```
 bcp.exe --version
 ```
 
-The creation of different schemes (work, omop, dqd, achilles) is needed.
+### SQL Server rights
 
-Filling in the config, SQL user requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see line user=sa; The SQL Server user).
+The SQL user (configured in the riab.ini configuration file) requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see line user=riab). Ask your Database Adminstrator (DBA), to create the user and grant the required rights.
 
+
+```sql
+CREATE USER riab WITH password='?????';
+EXEC sp_addrolemember 'db_datareader', 'riab';
+EXEC sp_addrolemember 'db_datawriter', 'riab';
+EXEC sp_addrolemember 'db_ddladmin', 'riab';
+```
+
+### SQL Server databases and schemes
+
+
+The creation of different database [schemas](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/create-a-database-schema) or [databases](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql) (work, omop, dqd, achilles) is needed.
+
+```sql
+CREATE DATABASE omop; 
+--dbo is default schema for a new database
+CREATE DATABASE work;
+CREATE DATABASE dqd;
+CREATE DATABASE achilles;
+```
+
+or
+
+```sql
+CREATE DATABASE omop;
+USE omop;
+CREATE SCHEMA omop;
+CREATE SCHEMA work;
+CREATE SCHEMA dqd;
+CREATE SCHEMA achilles;
+```
+
+### Azure SQL Server
+
+Ensure SQL allows non- Entra ID users
+   1. Open Azure portal
+   2. Go to SQL **server** instance (not database)
+   3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
 
 
 Authors

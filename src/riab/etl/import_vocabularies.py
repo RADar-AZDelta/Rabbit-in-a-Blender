@@ -39,7 +39,7 @@ class ImportVocabularies(EtlBase, ABC):
             "vocabulary",
         ]
 
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_parallel_tables) as executor:
             logging.info("Deleting vocabulary upload tables.")
             futures = [
                 executor.submit(
