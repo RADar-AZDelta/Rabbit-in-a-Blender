@@ -398,7 +398,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                     f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\nQuery to get the duplicates:\n{sql_doubles}\n\n{df}"
                 )
 
-    def _merge_into_work_table(
+    def _merge_into_omop_table(
         self,
         omop_table: str,
         columns: List[str],
@@ -410,7 +410,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         concept_id_columns: List[str],
         events: Any,
     ):
-        """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+        """The one shot merge of the uploaded query result from the omop table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+        If the OMOP table has event columns, the merge will happen to a work table, and when all tables are done, a seperate ETL step will merge the work table into the OMOP table, with its event columns filled in.
+        This is because event columns can point to almost any OMOP table, so first all tables must be done, before we can fill in the event columns.
 
         Args:
             omop_table (str): OMOP table.
@@ -422,7 +424,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template("etl/{omop_work_table}_merge.sql.jinja")
+        template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
         sql = template.render(
             dataset_omop=self._dataset_omop,
             omop_table=omop_table,
@@ -436,17 +438,18 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             events=events,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
             upload_tables=upload_tables,
+            min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
         )
         self._gcp.run_query_job(sql)
 
-    def _merge_into_omop_table(
+    def _merge_event_columns(
         self,
         omop_table: str,
         columns: List[str],
         primary_key_column: Optional[str],
         events: dict[str, str],
     ):
-        """The one shot merge of OMOP work table into the destination OMOP table applying the events.
+        """The one shot merge of OMOP table (that has event columns) applying the events.
 
         Args:
             sql_file (str): The sql file holding the query on the raw data.
@@ -470,7 +473,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                     (table, self._get_pk(table)) for table in (row.event_table for row in rows) if table
                 )
 
-            template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
+            template = self._template_env.get_template("etl/{omop_table}_apply_event_columns.sql.jinja")
             sql = template.render(
                 dataset_omop=self._dataset_omop,
                 omop_table=omop_table,
@@ -479,7 +482,6 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 primary_key_column=primary_key_column,
                 events=events,
                 event_tables=event_tables,
-                min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
             )
             self._gcp.run_query_job(sql)
         except Exception as e:
@@ -504,7 +506,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
 
         cluster_fields = self._clustering_fields[omop_table] if omop_table in self._clustering_fields else []
 
-        template = self._template_env.get_template("etl/create_omop_work_table.sql.jinja")
+        template = self._template_env.get_template("etl/{omop_work}_ddl.sql.jinja")
         sql = template.render(
             dataset_work=self._dataset_work,
             omop_table=omop_table,

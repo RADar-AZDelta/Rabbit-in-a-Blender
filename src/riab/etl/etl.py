@@ -83,56 +83,51 @@ class Etl(EtlBase):
 
         if self._only_query:
             omop_table = self._only_query.parts[0]
-            self._process_folder_to_work(omop_table)
-            self._process_work_to_omop(omop_table)
-            for table_with_events in self._omop_event_fields:
-                if table_with_events == self._only_omop_table:
-                    continue
-                self._process_work_to_omop(table_with_events)
+            self._process_omop_table(omop_table)
+            self._fill_in_event_columns_for_omop_table(omop_table)
         elif self._only_omop_table:
             for omop_table in self._only_omop_table:
-                self._process_folder_to_work(omop_table)
-                self._process_work_to_omop(omop_table)
-            if not self._skip_event_fks_step:
-                for table_with_events in self._omop_event_fields:
-                    if table_with_events not in self._only_omop_table:
-                        self._process_work_to_omop(table_with_events)
+                self._process_omop_table(omop_table)
+                self._fill_in_event_columns_for_omop_table(omop_table)
         else:
             etl_flow = self._cdm_tables_fks_dependencies_resolved.copy()
-            self._do_folder_to_work_etl_flow(etl_flow)
+            self._process_all_omop_tables(etl_flow)
 
-            self._do_parallel_work_to_omop()
+            self._fill_in_event_columns_for_all_omop_tables()
 
             # cleanup old source to concept maps by setting the invalid_reason to deleted
             # (we only do this when running a full ETL = all OMOP tables)
             self._source_to_concept_map_update_invalid_reason(etl_start)
             self._source_id_to_omop_id_map_update_invalid_reason(etl_start)
 
-    def _do_parallel_work_to_omop(self):
+    def _fill_in_event_columns_for_all_omop_tables(self):
         """Parallelize the mapping of the event columns to the correct foreign keys and fills up the final OMOP tables"""  # noqa: E501 # pylint: disable=line-too-long
         with ThreadPoolExecutor(max_workers=len(self._omop_etl_tables)) as executor:
-            futures = [executor.submit(self._process_work_to_omop, omop_table) for omop_table in self._omop_etl_tables]
+            futures = [
+                executor.submit(self._fill_in_event_columns_for_omop_table, omop_table)
+                for omop_table in self._omop_etl_tables
+            ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
 
-    def _do_folder_to_work_etl_flow(self, elt_flow: list[list[str]]):
-        """Recursive function that parallelizes the processing of ETL folders
+    def _process_all_omop_tables(self, elt_flow: list[list[str]]):
+        """Recursive function that parallelizes the processing of ETL tables
 
         Args:
             elt_flow (Any): The tree structure of the tabbel to tun in parallel and the dependent tables
         """
         tables = elt_flow.pop(0)
         with ThreadPoolExecutor(max_workers=self._max_parallel_tables) as executor:
-            futures = [executor.submit(self._process_folder_to_work, omop_table) for omop_table in tables]
+            futures = [executor.submit(self._process_omop_table, omop_table) for omop_table in tables]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
 
         if len(elt_flow):
-            self._do_folder_to_work_etl_flow(elt_flow)
+            self._process_all_omop_tables(elt_flow)
 
-    def _process_folder_to_work(self, omop_table: str):
+    def _process_omop_table(self, omop_table: str):
         """ETL method for one OMOP table
 
         Args:
@@ -152,8 +147,9 @@ class Etl(EtlBase):
 
         events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}
 
-        # create the OMOP work table based on the DDL, but with the event_id columns of type STRING
-        self._create_omop_work_table(omop_table, events)
+        # create the OMOP work table (only if the table has event columns) based on the DDL, but with the event_id columns of type STRING
+        if events:
+            self._create_omop_work_table(omop_table, events)
 
         # get all the columns from the destination OMOP table
         columns = self._get_omop_column_names(omop_table)
@@ -242,7 +238,7 @@ class Etl(EtlBase):
 
         # merge everything in the destination OMOP work table
         logging.info(
-            "Check for duplicate rows",
+            "Check for duplicate rows in uploaded data for table '%s'",
             omop_table,
         )
         self._check_for_duplicate_rows(
@@ -258,7 +254,7 @@ class Etl(EtlBase):
             "Merging the upload queries into the omop table '%s'",
             omop_table,
         )
-        self._merge_into_work_table(
+        self._merge_into_omop_table(
             omop_table=omop_table,
             columns=columns,
             upload_tables=upload_tables,
@@ -510,7 +506,7 @@ class Etl(EtlBase):
         finally:
             self._lock_source_value_to_concept_id_mapping.release()
 
-    def _process_work_to_omop(self, omop_table: str):
+    def _fill_in_event_columns_for_omop_table(self, omop_table: str):
         """Maps the event columns to the correct foreign keys and fills up the final OMOP tables
 
         Args:
@@ -518,6 +514,8 @@ class Etl(EtlBase):
             omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
         """
         events = self._omop_event_fields.get(omop_table, {})
+        if not events:
+            return
 
         # get all the columns from the destination OMOP table
         columns = self._get_omop_column_names(omop_table)
@@ -530,7 +528,7 @@ class Etl(EtlBase):
             omop_table,
             omop_table,
         )
-        self._merge_into_omop_table(
+        self._merge_event_columns(
             omop_table=omop_table,
             columns=columns,
             primary_key_column=primary_key_column,
@@ -597,7 +595,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _merge_into_work_table(
+    def _merge_into_omop_table(
         self,
         omop_table: str,
         columns: List[str],
@@ -609,7 +607,9 @@ class Etl(EtlBase):
         concept_id_columns: List[str],
         events: Any,
     ):
-        """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+        """The one shot merge of the uploaded query result from the omop table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+        If the OMOP table has event columns, the merge will happen to a work table, and when all tables are done, a seperate ETL step will merge the work table into the OMOP table, with its event columns filled in.
+        This is because event columns can point to almost any OMOP table, so first all tables must be done, before we can fill in the event columns.
 
         Args:
             omop_table (str): OMOP table.
@@ -895,14 +895,14 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _merge_into_omop_table(
+    def _merge_event_columns(
         self,
         omop_table: str,
         columns: List[str],
         primary_key_column: Optional[str],
         events: Any,
     ):
-        """The one shot merge of OMOP work table into the destination OMOP table applying the events.
+        """The one shot merge of OMOP table (that has event columns) applying the events.
 
         Args:
             sql_file (str): The sql file holding the query on the raw data.

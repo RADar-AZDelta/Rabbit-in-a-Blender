@@ -237,14 +237,14 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         """
         pass
 
-    def _merge_into_omop_table(
+    def _merge_event_columns(
         self,
         omop_table: str,
         columns: List[str],
         primary_key_column: Optional[str],
         events: Any,
     ):
-        """The one shot merge of OMOP work table into the destination OMOP table applying the events.
+        """The one shot merge of OMOP table (that has event columns) applying the events.
 
         Args:
             sql_file (str): The sql file holding the query on the raw data.
