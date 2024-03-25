@@ -1,4 +1,4 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-delete from {{omop_database_catalog}}.{{omop_database_schema}}.concept_ancestor 
+delete from [{{omop_database_catalog}}].[{{omop_database_schema}}].[concept_ancestor]
 where ancestor_concept_id >= {{min_custom_concept_id}} or descendant_concept_id >= {{min_custom_concept_id}}

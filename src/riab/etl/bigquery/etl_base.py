@@ -85,20 +85,6 @@ class BigQueryEtlBase(EtlBase, ABC):
                 self.__clustering_fields = json.load(file)
         return self.__clustering_fields
 
-    def _get_all_work_table_names(self, dataset: str) -> List[str]:
-        """Get all table names from a specific dataset in Big Query
-
-        Args:
-            dataset (str): dataset (format: PROJECT_ID.DATASET_ID)
-
-        Returns:
-            List[str]: list of table names
-        """
-        template = self._template_env.get_template("all_work_table_names.sql.jinja")
-        sql = template.render(dataset=dataset)
-        rows = self._gcp.run_query_job(sql)
-        return [row.table_name for row in rows]
-
     def _upload_arrow_table(self, table: pa.Table, dataset: str, table_name: str):
         with TemporaryDirectory(prefix="riab_") as tmp_dir:
             tmp_file = str(Path(tmp_dir) / f"{table_name}.parquet")

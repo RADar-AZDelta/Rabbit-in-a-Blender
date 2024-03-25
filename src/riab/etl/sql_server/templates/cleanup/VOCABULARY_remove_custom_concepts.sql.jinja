@@ -1,4 +1,4 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-delete from {{omop_database_catalog}}.{{omop_database_schema}}.vocabulary 
+delete from [{{omop_database_catalog}}].[{{omop_database_schema}}].[vocabulary]
 where vocabulary_concept_id >= {{min_custom_concept_id}}

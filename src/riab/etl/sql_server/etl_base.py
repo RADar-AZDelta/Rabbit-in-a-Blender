@@ -1,10 +1,14 @@
 # Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
+import logging
+import re
 from abc import ABC
+from pathlib import Path
+from typing import Sequence
 
 import backoff
-from sqlalchemy import create_engine, engine, text
+from sqlalchemy import CursorResult, Row, create_engine, engine, text
 
 from ..etl_base import EtlBase
 
@@ -93,7 +97,15 @@ class SqlServerEtlBase(EtlBase, ABC):
         )
 
     @backoff.on_exception(backoff.expo, (Exception), max_time=10, max_tries=3)
-    def _run_query(self, sql: str):
-        with self._engine.connect() as conn:
-            conn.execute(text(sql))
-            conn.commit()
+    def _run_query(self, sql: str) -> Sequence[Row] | None:
+        try:
+            rows = None
+            with self._engine.connect() as conn:
+                with conn.execute(text(sql)) as result:
+                    if isinstance(result, CursorResult) and not result._soft_closed:
+                        rows = result.all()
+                    conn.commit()
+                    return rows
+        except Exception as ex:
+            logging.debug("FAILED QUERY: %s", sql)
+            raise ex

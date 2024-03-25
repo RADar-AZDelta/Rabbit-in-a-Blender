@@ -1,11 +1,11 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-MERGE INTO {{omop_database_catalog}}.{{omop_database_schema}}.source_to_concept_map AS T
+MERGE INTO [{{omop_database_catalog}}].[{{omop_database_schema}}].[source_to_concept_map] AS T
 USING (
     SELECT
         t.sourceCode as source_code
         ,t.conceptId as target_concept_id
-    FROM {{work_database_catalog}}.{{work_database_schema}}.{{omop_table}}__{{concept_id_column}}_usagi t
+    FROM [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] t
 ) AS S
 ON S.source_code = T.source_code 
     and S.target_concept_id = T.target_concept_id

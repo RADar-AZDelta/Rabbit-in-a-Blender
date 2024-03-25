@@ -1,0 +1,7 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+use [{{work_database_catalog}}];
+select t.name as table_name
+from sys.tables t
+where schema_name(t.schema_id) = '{{work_database_schema}}' 
+order by table_name;

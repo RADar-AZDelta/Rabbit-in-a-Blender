@@ -119,7 +119,7 @@ class Cleanup(EtlBase, ABC):
                 result.result()
 
             # truncate omop tables
-            omop_tables_to_delete = [
+            omop_tables_to_truncate = [
                 table_name
                 for table_name in self._omop_cdm_tables
                 if cleanup_table == "all" or table_name == cleanup_table
@@ -130,7 +130,7 @@ class Cleanup(EtlBase, ABC):
                     self._truncate_omop_table,
                     table_name,
                 )
-                for table_name in omop_tables_to_delete
+                for table_name in omop_tables_to_truncate
             ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):

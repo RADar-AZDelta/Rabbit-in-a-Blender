@@ -27,8 +27,10 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         Returns:
             List[str]: List of all the work tables
         """
-        work_tables = self._get_all_work_table_names(self._dataset_work)
-        return work_tables
+        template = self._template_env.get_template("cleanup/all_work_table_names.sql.jinja")
+        sql = template.render(dataset=self._dataset_work)
+        rows = self._gcp.run_query_job(sql)
+        return [row.table_name for row in rows]
 
     def _truncate_omop_table(self, table_name: str) -> None:
         """Remove all rows from an OMOP table

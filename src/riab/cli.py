@@ -38,7 +38,7 @@ from .etl.bigquery import (
 )
 from .etl.sql_server import (
     # SqlServerAchilles,
-    # SqlServerCleanup,
+    SqlServerCleanup,
     SqlServerCreateCdmFolders,
     SqlServerCreateOmopDb,
     SqlServerEtl,
@@ -225,13 +225,13 @@ class Cli:
                                 clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
                                 **bigquery_kwargs,
                             )
-                        # case "sql_server":
-                        #     cleanup = SqlServerCleanup(
-                        #         **etl_kwargs,
-                        #         cdm_folder_path=args.run_etl or args.create_folders,
-                        #         clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
-                        #         **sqlserver_kwargs,
-                        #     )
+                        case "sql_server":
+                            cleanup = SqlServerCleanup(
+                                **etl_kwargs,
+                                cdm_folder_path=args.run_etl or args.create_folders,
+                                clear_auto_generated_custom_concept_ids=args.clear_auto_generated_custom_concept_ids,
+                                **sqlserver_kwargs,
+                            )
                         case _:
                             raise ValueError("Not a supported database engine")
                     cleanup.run(args.cleanup)

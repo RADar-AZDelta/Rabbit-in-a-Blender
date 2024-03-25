@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: gpl3+
 
 # from .achilles import SqlServerAchilles
-# from .cleanup import SqlServerCleanup
+from .cleanup import SqlServerCleanup
 from .create_cdm_folders import SqlServerCreateCdmFolders
 from .create_omop_db import SqlServerCreateOmopDb
 

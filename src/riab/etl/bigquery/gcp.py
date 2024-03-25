@@ -7,6 +7,7 @@ Google Cloud Provider class with usefull methods for ETL"""
 # pylint: disable=no-member
 import logging
 import math
+import os
 import time
 from pathlib import Path
 from threading import Lock
@@ -186,7 +187,8 @@ class Gcp:
         scheme, netloc, path, params, query, fragment = urlparse(bucket_uri)
         bucket = self._cs_client.bucket(netloc)
         filename_w_ext = Path(source_file_path).name
-        blob = bucket.blob(f"{path.lstrip('/')}/{filename_w_ext}")
+        blob_name = os.path.join(path.lstrip("/"), filename_w_ext)
+        blob = bucket.blob(blob_name)
         blob.upload_from_filename(str(source_file_path))
         return f"{bucket_uri}/{filename_w_ext}"  # urljoin doesn't work with protocol gs
 
