@@ -66,7 +66,11 @@ class ImportVocabularies(EtlBase, ABC):
 
                     temp_dir_path = win32api.GetLongPathName(temp_dir_path)
 
-                zip_ref.extractall(temp_dir_path)
+                # unzip each file from the archive in parallel
+                futures = [executor.submit(zip_ref.extract, m, temp_dir_path) for m in zip_ref.namelist()]
+                # wait(futures, return_when=ALL_COMPLETED)
+                for result in as_completed(futures):
+                    result.result()
 
                 logging.info("Uploading vocabulary CSV's")
                 futures = [
