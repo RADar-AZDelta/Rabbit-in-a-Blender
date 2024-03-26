@@ -89,7 +89,6 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
         Args:
             vocabulary_table (str): The standardised vocabulary table
         """
-        logging.debug("Remove the table contraints from vocabulary table %s", vocabulary_table)
         with open(
             str(
                 Path(__file__).parent.resolve()
@@ -101,35 +100,38 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
             encoding="UTF8",
         ) as file:
             ddl = file.read()
-        matches = re.finditer(
-            rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*)(FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{vocabulary_table.upper()} \()(.*)(\);)",
-            ddl,
+        matches = list(
+            re.finditer(
+                rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{vocabulary_table.upper()} \()(.*)(\);)",
+                ddl,
+            )
         )
-        modified_ddl = "\n".join(
-            [f"{match.group(1)}{match.group(2)} DROP CONSTRAINT {match.group(4)};" for match in matches]
-        )
-        template = self._template_env.from_string(modified_ddl)
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-        )
-
-        self._lock_upload_table.acquire()
-        try:
-            self._run_query(sql)
-        except Exception as ex:
-            raise ex
-        finally:
-            self._lock_upload_table.release()
-
-        logging.debug("Truncate vocabulary table %s", vocabulary_table)
-        template = self._template_env.get_template("vocabulary/vocabulary_table_truncate.sql.jinja")
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-            vocabulary_table=vocabulary_table,
-        )
-        self._run_query(sql)
+        constraints_to_drop = [
+            f"IF (OBJECT_ID('{match.group(4)}') IS NOT NULL)\n{match.group(1)}{match.group(2)} DROP CONSTRAINT {match.group(4)};"
+            for match in matches
+        ]
+        if len(constraints_to_drop):
+            self._lock_upload_table.acquire()
+            try:
+                logging.debug("Remove the table contraints from vocabulary table %s", vocabulary_table)
+                modified_ddl = "\n".join(constraints_to_drop)
+                template = self._template_env.from_string(modified_ddl)
+                sql = template.render(
+                    omop_database_catalog=self._omop_database_catalog,
+                    omop_database_schema=self._omop_database_schema,
+                )
+                logging.debug("Truncate vocabulary table %s", vocabulary_table)
+                template = self._template_env.get_template("vocabulary/vocabulary_table_truncate.sql.jinja")
+                sql2 = template.render(
+                    omop_database_catalog=self._omop_database_catalog,
+                    omop_database_schema=self._omop_database_schema,
+                    vocabulary_table=vocabulary_table,
+                )
+                self._run_query(f"use {self._omop_database_catalog};\n" + sql + "\n\n" + sql2)
+            except Exception as ex:
+                raise ex
+            finally:
+                self._lock_upload_table.release()
 
     def _refill_vocabulary_table(self, vocabulary_table: str) -> None:
         """Recreates a specific standardised vocabulary table from the upload table
@@ -137,7 +139,6 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
         Args:
             vocabulary_table (str): The standardised vocabulary table
         """
-        logging.debug("Recreating constraints in vocabulary table %s", vocabulary_table)
         with open(
             str(
                 Path(__file__).parent.resolve()
@@ -150,25 +151,28 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
         ) as file:
             ddl = file.read()
 
-        matches = re.finditer(
-            rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*)(FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{vocabulary_table.upper()} \()(.*)(\);)",
-            ddl,
+        matches = list(
+            re.finditer(
+                rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{vocabulary_table.upper()} \()(.*)(\);)",
+                ddl,
+            )
         )
-        modified_ddl = "\n".join(
-            [
-                f"{match.group(1)}{match.group(2)}{match.group(3)}{match.group(4)}{match.group(5)}{match.group(6)}{match.group(7)}{match.group(8)}{match.group(9)}"
-                for match in matches
-            ]
-        )
-        template = self._template_env.from_string(modified_ddl)
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-        )
-        self._lock_upload_table.acquire()
-        try:
-            self._run_query(sql)
-        except Exception as ex:
-            raise ex
-        finally:
-            self._lock_upload_table.release()
+        constraints_to_add = [
+            f"{match.group(1)}{match.group(2)}{match.group(3)}{match.group(4)} {match.group(5)}{match.group(6)}{match.group(7)}{match.group(8)}{match.group(9)}"
+            for match in matches
+        ]
+        if len(constraints_to_add):
+            logging.debug("Recreating constraints in vocabulary table %s", vocabulary_table)
+            modified_ddl = "\n".join(constraints_to_add)
+            template = self._template_env.from_string(modified_ddl)
+            sql = template.render(
+                omop_database_catalog=self._omop_database_catalog,
+                omop_database_schema=self._omop_database_schema,
+            )
+            self._lock_upload_table.acquire()
+            try:
+                self._run_query(sql)
+            except Exception as ex:
+                raise ex
+            finally:
+                self._lock_upload_table.release()

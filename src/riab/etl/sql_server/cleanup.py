@@ -40,7 +40,6 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         Args:
             table_name (str): Omop table to truncate
         """
-        logging.debug("Remove the table contraints from omop table %s", table_name)
         with open(
             str(
                 Path(__file__).parent.resolve()
@@ -54,26 +53,28 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             ddl = file.read()
         matches = list(
             re.finditer(
-                rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*)(FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{table_name.upper()} \()(.*)(\);)",
+                rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{table_name.upper()} \()(.*)(\);)",
                 ddl,
             )
         )
         constraints_to_drop = [
-            f"{match.group(1)}{match.group(2)} DROP CONSTRAINT {match.group(4)};" for match in matches
+            f"IF (OBJECT_ID('{match.group(4)}') IS NOT NULL)\n{match.group(1)}{match.group(2)} DROP CONSTRAINT {match.group(4)};"
+            for match in matches
         ]
         constraints_to_add = [
-            f"{match.group(1)} {match.group(2)} {match.group(3)} {match.group(4)} {match.group(5)} {match.group(6)} {match.group(7)} {match.group(8)} {match.group(9)}"
+            f"{match.group(1)}{match.group(2)}{match.group(3)}{match.group(4)} {match.group(5)}{match.group(6)}{match.group(7)}{match.group(8)}{match.group(9)}"
             for match in matches
         ]
 
         if len(constraints_to_drop):
+            logging.debug("Remove the table contraints from omop table %s", table_name)
             modified_ddl = "\n".join(constraints_to_drop)
             template = self._template_env.from_string(modified_ddl)
             sql = template.render(
                 omop_database_catalog=self._omop_database_catalog,
                 omop_database_schema=self._omop_database_schema,
             )
-            self._run_query(sql)
+            self._run_query(f"use {self._omop_database_catalog};\n" + sql)
 
         logging.debug("Truncate omop table %s", table_name)
         template = self._template_env.get_template("cleanup/truncate.sql.jinja")
@@ -85,13 +86,14 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         self._run_query(sql)
 
         if len(constraints_to_add):
+            logging.debug("Adding the table contraints to omop table %s", table_name)
             modified_ddl = "\n".join(constraints_to_add)
             template = self._template_env.from_string(modified_ddl)
             sql = template.render(
                 omop_database_catalog=self._omop_database_catalog,
                 omop_database_schema=self._omop_database_schema,
             )
-            self._run_query(sql)
+            self._run_query(f"use {self._omop_database_catalog};\n" + sql)
 
     def _remove_custom_concepts_from_concept_table(self) -> None:
         """Remove the custom concepts from the OMOP concept table"""
