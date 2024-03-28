@@ -100,9 +100,28 @@ class Etl(EtlBase):
             self._source_to_concept_map_update_invalid_reason(etl_start)
             self._source_id_to_omop_id_map_update_invalid_reason(etl_start)
 
+    @abstractmethod
+    def _pre_etl(self, etl_tables: list[str]):
+        """Stuff to do before the ETL (ex remove constraints on omop tables)
+
+
+        Args:
+            etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
+        """
+        pass
+
+    @abstractmethod
+    def _post_etl(self, etl_tables: list[str]):
+        """Stuff to do after the ETL (ex add constraints on omop tables)
+
+        Args:
+            etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
+        """
+        pass
+
     def _fill_in_event_columns_for_all_omop_tables(self):
         """Parallelize the mapping of the event columns to the correct foreign keys and fills up the final OMOP tables"""  # noqa: E501 # pylint: disable=line-too-long
-        with ThreadPoolExecutor(max_workers=len(self._omop_etl_tables)) as executor:
+        with ThreadPoolExecutor(max_workers=self._max_parallel_tables) as executor:
             futures = [
                 executor.submit(self._fill_in_event_columns_for_omop_table, omop_table)
                 for omop_table in self._omop_etl_tables
@@ -164,7 +183,7 @@ class Etl(EtlBase):
         pk_auto_numbering = self._is_pk_auto_numbering(omop_table)
 
         if not self._skip_usagi_and_custom_concept_upload:
-            with ThreadPoolExecutor(max_workers=len(concept_columns)) as executor:
+            with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
                 # upload an apply the custom concept CSV's
                 futures = [
                     executor.submit(

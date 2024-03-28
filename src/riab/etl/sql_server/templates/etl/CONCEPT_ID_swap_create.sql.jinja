@@ -1,0 +1,6 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+USE  [{{work_database_catalog}}];
+IF NOT EXISTS (SELECT 1 FROM sys.tables t INNER JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE t.name = 'concept_id_swap' AND s.name = '{{work_database_schema}}')
+CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[concept_id_swap]
+(x varchar(65), y integer);

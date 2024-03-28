@@ -1,0 +1,59 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+WITH cte_uploaded_tables AS (
+    {%- for upload_table in upload_tables -%}
+        {%- if not loop.first %}
+    UNION ALL
+        {%- endif %}
+    SELECT DISTINCT *, '{{upload_table}}' as upload_table
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__upload__{{upload_table}}]
+    {%- endfor %}
+)
+SELECT TOP 100
+    STRING_AGG(upload_table, ", ") as upload_tables
+{%- if omop_table == 'fact_relationship' %}
+    , fact_id_1
+    , fact_id_2
+{%- elif omop_table == 'death' -%}
+    , person_id
+{%- elif omop_table == 'cdm_source' -%}
+    , cdm_source_name
+{%- elif primary_key_column -%}
+    {{primary_key_column}}
+{%- endif %}
+{%- for column in concept_id_columns -%}
+    {%- if not column in events.values() %}
+    , {{column}}
+    {%- endif -%} 
+{%- endfor -%}
+{%- for column in events -%}
+    {%- if omop_table != 'fact_relationship' %}
+    , {{column}}
+    {%- endif -%}
+{%- endfor %}
+    , count(*)
+FROM cte_uploaded_tables
+GROUP BY 
+{%- if omop_table == 'fact_relationship' %}
+    fact_id_1
+    , fact_id_2
+{%- elif omop_table == 'death' %}
+    person_id
+{%- elif omop_table == 'cdm_source' %}
+    cdm_source_name
+{%- elif primary_key_column %}
+    {{primary_key_column}}
+{%- endif -%}
+{%- for column in concept_id_columns -%}
+    {%- if not column in events.values() %}
+    , {{column}}
+    {%- else %}
+    , {{column}}
+    {%- endif -%} 
+{%- endfor -%}
+{%- for column in events -%}
+    {%- if omop_table != 'fact_relationship' %}
+    , {{column}}
+    {%- endif -%}
+{%- endfor %}
+HAVING COUNT(*) > 1

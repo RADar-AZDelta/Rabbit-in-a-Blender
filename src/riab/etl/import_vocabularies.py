@@ -27,6 +27,9 @@ class ImportVocabularies(EtlBase, ABC):
 
     def run(self, path_to_zip_file: str):
         """import vocabularies, as zip-file downloaded from athena.ohdsi.org, into"""
+
+        self._pre_load()
+
         vocabulary_tables = [
             "concept",
             "concept_ancestor",
@@ -98,6 +101,18 @@ class ImportVocabularies(EtlBase, ABC):
             for result in as_completed(futures):
                 result.result()
 
+        self._post_load()
+
+    @abstractmethod
+    def _pre_load(self):
+        """Stuff to do before the load (ex remove constraints from omop tables)"""
+        pass
+
+    @abstractmethod
+    def _post_load(self):
+        """Stuff to do after the load (ex re-add constraints to omop tables)"""
+        pass
+
     def _convert_csv_to_parquet_and_upload(self, vocabulary_table: str, csv_file: Path):
         """
         Convert a CSV file to parquet and upload it to the vocabulary upload table.
@@ -150,6 +165,15 @@ class ImportVocabularies(EtlBase, ABC):
         return df_vocabulary_table
 
     @abstractmethod
+    def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
+        """Removes a specific standardised vocabulary table
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+        """
+        pass
+
+    @abstractmethod
     def _load_vocabulary_parquet_in_upload_table(
         self,
         vocabulary_table: str,
@@ -160,15 +184,6 @@ class ImportVocabularies(EtlBase, ABC):
         Args:
             vocabulary_table (str): The standardised vocabulary table
             parquet_file (Path): Path to the CSV file
-        """
-        pass
-
-    @abstractmethod
-    def _clear_vocabulary_upload_table(self, vocabulary_table: str) -> None:
-        """Removes a specific standardised vocabulary table
-
-        Args:
-            vocabulary_table (str): The standardised vocabulary table
         """
         pass
 

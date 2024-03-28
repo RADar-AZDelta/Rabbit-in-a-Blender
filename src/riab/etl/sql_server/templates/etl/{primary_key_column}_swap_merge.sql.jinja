@@ -1,0 +1,94 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+WITH cte_max AS (
+    SELECT COALESCE(MAX(y), 0) as y
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{primary_key_column}}_swap]
+),
+swap AS (
+    SELECT DISTINCT *
+    from (
+    {%- for sql_file in sql_files -%}
+        {%- set upload_table = upload_tables[loop.index0] -%}
+        {%- if not loop.first %}
+
+        UNION ALL
+
+        {%- endif %}
+        SELECT t.{{primary_key_column}} as x,
+            {%- set ns = namespace(ci_counter=0) -%}
+            {%- for column in concept_id_columns %}
+                {%- if not column in events.values() %}
+            swap_ci{{ns.ci_counter}}.conceptId as {{column}},
+                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+                {%- else %}
+            t.{{column}},
+                {%- endif -%}
+            {%- endfor -%} 
+            {%- for column in events %}
+                t.{{column}},
+            {%- endfor %}
+            '{{sql_file}}' as source
+        FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__upload__{{upload_table}}] t      
+        {%- set ns = namespace(ci_counter=0) %}    
+        LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{primary_key_column}}_swap] swap on swap.x = t.{{primary_key_column}}
+            {%- set ns = namespace(ci_counter=0) %}  
+            {%- for column in concept_id_columns %}
+                {%- if not column in events and not column in events.values() %}
+        LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{column.lower()}}_usagi] swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} 
+                    {% if not process_semi_approved_mappings -%}
+            and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
+                    {%- else -%}
+            and swap_ci{{ns.ci_counter}}.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
+                    {%- endif -%}                  
+                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+                {%- endif -%}
+            {%- endfor %}
+        where swap.x is null    
+    {%- endfor %} 
+    ) t
+)
+MERGE INTO [{{work_database_catalog}}].[{{work_database_schema}}].[{{primary_key_column}}_swap] AS T
+USING (
+    SELECT
+        s.x,
+        {%- for column in concept_id_columns %}
+        s.{{column}},
+        {%- endfor %} 
+        {%- for column in events -%}
+        s.{{column}},
+        {%- endfor %}
+        s.source,
+        ROW_NUMBER() OVER() + cte_max.y as y
+    FROM swap s
+    INNER JOIN cte_max on 1=1
+) AS S
+ON S.x = T.x
+{%- for column in concept_id_columns %}
+    {% if not column in events.values() -%}
+    and S.{{column}} = T.{{column}}
+    {%- else -%}
+    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    {%- endif -%} 
+{%- endfor %} 
+WHEN NOT MATCHED THEN
+    INSERT (
+        x
+    {%- for column in concept_id_columns %}
+        ,{{column}}
+    {%- endfor %} 
+    {%- for column in events -%}
+        ,{{column}}
+    {%- endfor %}    
+        ,source
+        ,y
+    ) VALUES (
+        S.x
+    {%- for column in concept_id_columns %}
+        ,S.{{column}}
+    {%- endfor %} 
+    {%- for column in events -%}
+        ,S.{{column}}
+    {%- endfor %}    
+        ,S.source
+        ,S.y
+    )

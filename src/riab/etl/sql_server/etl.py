@@ -1,9 +1,12 @@
 # Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
+import logging
 from datetime import date
 from pathlib import Path
 from typing import Any, List, Optional
+
+import polars as pl
 
 from ..etl import Etl
 from .etl_base import SqlServerEtlBase
@@ -32,26 +35,35 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
         super().__init__(**kwargs)
 
-    def _check_for_duplicate_rows(
-        self,
-        omop_table: str,
-        columns: List[str],
-        upload_tables: List[str],
-        primary_key_column: Optional[str],
-        concept_id_columns: List[str],
-        events: Any,
-    ):
-        """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+    def _pre_etl(self, etl_tables: list[str]):
+        """Stuff to do before the ETL (ex remove constraints on omop tables)
 
         Args:
-            omop_table (str): OMOP table.
-            columns (List[str]): List of columns of the OMOP table.
-            upload_tables (List[str]): List of the upload tables to execute.
-            primary_key_column (str): The name of the primary key column.
-            concept_id_columns (List[str]): List of concept columns.
-            events (Any): Object that holds the events of the the OMOP table.
-        """  # noqa: E501 # pylint: disable=line-too-long
-        pass
+            etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
+        """
+        if self._disable_fk_constriants:
+            return
+
+        if not len(etl_tables):
+            self._remove_all_constraints()
+        else:
+            for table in etl_tables:
+                self._remove_constraints(table)
+
+    def _post_etl(self, etl_tables: list[str]):
+        """Stuff to do after the ETL (ex add constraints on omop tables)
+
+        Args:
+            etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
+        """
+        if self._disable_fk_constriants:
+            return
+
+        if not len(etl_tables):
+            self._add_all_constraints()
+        else:
+            for table in etl_tables:
+                self._add_constraints(table)
 
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
         """Cleanup old source to concept maps by setting the invalid_reason to deleted
@@ -60,7 +72,12 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         Args:
             etl_start (date): The start data of the ETL.
         """
-        pass
+        template = self._template_env.get_template("etl/SOURCE_TO_CONCEPT_MAP_update_invalid_reason.sql.jinja")
+        sql = template.render(
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+        )
+        self._run_query(sql, {"etl_start": etl_start})
 
     def _source_id_to_omop_id_map_update_invalid_reason(self, etl_start: date) -> None:
         """Cleanup old source id's to omop id's maps by setting the invalid_reason to deleted
@@ -69,7 +86,12 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         Args:
             etl_start (date): The start data of the ETL.
         """
-        pass
+        template = self._template_env.get_template("etl/SOURCE_ID_TO_OMOP_ID_MAP_update_invalid_reason.sql.jinja")
+        sql = template.render(
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+        )
+        self._run_query(sql, {"etl_start": etl_start})
 
     def _clear_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the custom concept upload table (holds the contents of the custom concept CSV's)
@@ -78,7 +100,13 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template("etl/{omop_work}_drop_table.sql.jinja")
+        ddl = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            work_table=f"{omop_table}__{concept_id_column}_concept",
+        )
+        self._run_query(ddl)
 
     def _create_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the custom concept upload table (holds the contents of the custom concept CSV's)
@@ -87,11 +115,23 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template("etl/{omop_table}__{concept_id_column}_concept_create.sql.jinja")
+        ddl = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        self._run_query(ddl)
 
     def _create_custom_concept_id_swap_table(self) -> None:
         """Creates the custom concept id swap tabel (swaps between source value and the concept id)"""
-        pass
+        template = self._template_env.get_template("etl/CONCEPT_ID_swap_create.sql.jinja")
+        ddl = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+        )
+        self._run_query(ddl)
 
     def _load_custom_concepts_parquet_in_upload_table(
         self, parquet_file: Path, omop_table: str, concept_id_column: str
@@ -104,7 +144,12 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        self._upload_parquet(
+            self._work_database_catalog,
+            self._work_database_schema,
+            f"{omop_table}__{concept_id_column}_concept",
+            parquet_file,
+        )
 
     def _give_custom_concepts_an_unique_id_above_2bilj(self, omop_table: str, concept_id_column: str) -> None:
         """Give the custom concepts an unique id (above 2.000.000.000) and store those id's
@@ -114,7 +159,15 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template("etl/CONCEPT_ID_swap_merge.sql.jinja")
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+            min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
+        )
+        self._run_query(sql)
 
     def _merge_custom_concepts_with_the_omop_concepts(self, omop_table: str, concept_id_column: str) -> None:
         """Merges the uploaded custom concepts in the OMOP concept table.
@@ -123,7 +176,16 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template("etl/CONCEPT_merge.sql.jinja")
+        sql = template.render(
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        self._run_query(sql)
 
     def _clear_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the usagi upload table (holds the contents of the usagi CSV's)
@@ -132,7 +194,13 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template("etl/{omop_work}_drop_table.sql.jinja")
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            work_table=f"{omop_table}__{concept_id_column}_usagi",
+        )
+        self._run_query(sql)
 
     def _create_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the Usagi upload table (holds the contents of the Usagi CSV's)
@@ -141,7 +209,14 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template("etl/{omop_table}__{concept_id_column}_usagi_create.sql.jinja")
+        ddl = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        self._run_query(ddl)
 
     def _load_usagi_parquet_in_upload_table(self, parquet_file: str, omop_table: str, concept_id_column: str) -> None:
         """The Usagi CSV's are converted to a parquet file.
@@ -152,7 +227,12 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        self._upload_parquet(
+            self._work_database_catalog,
+            self._work_database_schema,
+            f"{omop_table}__{concept_id_column}_usagi",
+            Path(parquet_file),
+        )
 
     def _update_custom_concepts_in_usagi(self, omop_table: str, concept_id_column: str) -> None:
         """This method updates the Usagi upload table with with the generated custom concept ids (above 2.000.000.000).
@@ -162,7 +242,17 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template(
+            "etl/{omop_table}__{concept_id_column}_usagi_update_custom_concepts.sql.jinja"
+        )
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
+        )
+        self._run_query(sql)
 
     def _store_usagi_source_value_to_concept_id_mapping(self, omop_table: str, concept_id_column: str) -> None:
         """Fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the uploaded Usagi CSV's
@@ -171,7 +261,53 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The omop table
             concept_id_column (str): The conept id column
         """
-        pass
+        template = self._template_env.get_template("etl/SOURCE_TO_CONCEPT_MAP_check_for_duplicates.sql.jinja")
+        sql_doubles = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
+        )
+        rows = self._run_query(sql_doubles)
+        if rows:
+            df = pl.from_dicts(rows)
+            with pl.Config(fmt_str_lengths=1000):
+                raise Exception(
+                    f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck for duplicate mappings in the Usagi CSV's and custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}"
+                )
+
+        template = self._template_env.get_template("etl/SOURCE_TO_CONCEPT_MAP_merge.sql.jinja")
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
+        )
+        self._run_query(sql)
+
+    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, primary_key_column: str) -> None:
+        """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
+
+        Args:
+            omop_table (str): The omop table
+            primary_key_column (str): The primary key column
+        """
+        template = self._template_env.get_template("etl/SOURCE_ID_TO_OMOP_ID_MAP_merge.sql.jinja")
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            primary_key_column=primary_key_column,
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+        )
+        self._run_query(sql)
 
     def _get_query_from_sql_file(self, sql_file: Path, omop_table: str) -> str:
         """Reads the query from file. If it is a Jinja template, it renders the template.
@@ -183,7 +319,20 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         Returns:
             str: The query (if it is a Jinja template, the rendered query)
         """
-        pass
+        with open(sql_file, encoding="UTF8") as file:
+            select_query = file.read()
+            if Path(sql_file).suffix == ".jinja":
+                template = self._template_env.from_string(select_query)
+                select_query = template.render(
+                    raw_database_catalog=self._raw_database_catalog,
+                    raw_database_schema=self._raw_database_schema,
+                    work_database_catalog=self._work_database_catalog,
+                    work_database_schema=self._work_database_schema,
+                    omop_database_catalog=self._omop_database_catalog,
+                    omop_database_schema=self._omop_database_schema,
+                    omop_table=omop_table,
+                )
+        return select_query
 
     def _query_into_upload_table(self, upload_table: str, select_query: str) -> None:
         """This method inserts the results from our custom SQL queries the the work OMOP upload table.
@@ -192,7 +341,14 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             upload_table (str): The work omop table
             select_query (str): The query
         """
-        pass
+        template = self._template_env.get_template("etl/{omop_table}_{sql_file}_insert.sql.jinja")
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            upload_table=upload_table,
+            select_query=select_query,
+        )
+        self._run_query(sql)
 
     def _create_pk_auto_numbering_swap_table(
         self, primary_key_column: str, concept_id_columns: List[str], events: Any
@@ -204,7 +360,16 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_columns (List[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
         """
-        pass
+        template = self._template_env.get_template("etl/{primary_key_column}_swap_create.sql.jinja")
+        ddl = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            primary_key_column=primary_key_column,
+            # foreign_key_columns=vars(foreign_key_columns),
+            concept_id_columns=concept_id_columns,
+            events=events,
+        )
+        self._run_query(ddl)
 
     def _execute_pk_auto_numbering_swap_query(
         self,
@@ -226,23 +391,117 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             sql_files (List[str]): List of upload SQL files
             upload_tables (List[str]): List of upload tables
         """
-        pass
+        template = self._template_env.get_template("etl/{primary_key_column}_swap_merge.sql.jinja")
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            primary_key_column=primary_key_column,
+            concept_id_columns=concept_id_columns,
+            omop_table=omop_table,
+            events=events,
+            sql_files=sql_files,
+            upload_tables=upload_tables,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
+        )
+        self._run_query(sql)
 
-    def _create_omop_work_table(self, omop_table: str, events: Any) -> None:
-        """Creates the OMOP work table (if it does'nt yet exists) based on the DDL.
+    def _check_for_duplicate_rows(
+        self,
+        omop_table: str,
+        columns: List[str],
+        upload_tables: List[str],
+        primary_key_column: Optional[str],
+        concept_id_columns: List[str],
+        events: Any,
+    ):
+        """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
         Args:
-            omop_table (str): The OMOP table
+            omop_table (str): OMOP table.
+            columns (List[str]): List of columns of the OMOP table.
+            upload_tables (List[str]): List of the upload tables to execute.
+            primary_key_column (str): The name of the primary key column.
+            concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
-        """
-        pass
+        """  # noqa: E501 # pylint: disable=line-too-long
+        template = self._template_env.get_template("etl/{omop_work_table}_merge_check_for_duplicate_rows.sql.jinja")
+        sql_doubles = template.render(
+            omop_table=omop_table,
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            primary_key_column=primary_key_column,
+            concept_id_columns=concept_id_columns,
+            columns=columns,
+            upload_tables=upload_tables,
+            events=events,
+        )
+        rows = self._run_query(sql_doubles)
+        if rows:
+            df = pl.from_dicts(rows)
+            with pl.Config(fmt_str_lengths=1000):
+                logging.warning(
+                    f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\nQuery to get the duplicates:\n{sql_doubles}\n\n{df}"
+                )
+
+    def _merge_into_omop_table(
+        self,
+        omop_table: str,
+        columns: List[str],
+        upload_tables: List[str],
+        required_columns: List[str],
+        primary_key_column: Optional[str],
+        pk_auto_numbering: bool,
+        foreign_key_columns: Any,
+        concept_id_columns: List[str],
+        events: Any,
+    ):
+        """The one shot merge of the uploaded query result from the omop table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
+        If the OMOP table has event columns, the merge will happen to a work table, and when all tables are done, a seperate ETL step will merge the work table into the OMOP table, with its event columns filled in.
+        This is because event columns can point to almost any OMOP table, so first all tables must be done, before we can fill in the event columns.
+
+        Args:
+            omop_table (str): OMOP table.
+            columns (List[str]): List of columns of the OMOP table.
+            required_columns (List[str]): List of required columns of the OMOP table.
+            primary_key_column (str): The name of the primary key column.
+            pk_auto_numbering (bool): Is the primary key a generated incremental number?
+            foreign_key_columns (Any): List of foreign key columns.
+            concept_id_columns (List[str]): List of concept columns.
+            events (Any): Object that holds the events of the the OMOP table.
+        """  # noqa: E501 # pylint: disable=line-too-long
+
+        if events:
+            self._remove_constraints(omop_table)
+
+        template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
+        sql = template.render(
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+            omop_table=omop_table,
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            columns=columns,
+            required_columns=required_columns,
+            primary_key_column=primary_key_column,
+            foreign_key_columns=foreign_key_columns,
+            concept_id_columns=concept_id_columns,
+            pk_auto_numbering=pk_auto_numbering,
+            events=events,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
+            upload_tables=upload_tables,
+            min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
+        )
+        self._run_query(sql)
+
+        if events:
+            self._add_constraints(omop_table)
 
     def _merge_event_columns(
         self,
         omop_table: str,
         columns: List[str],
         primary_key_column: Optional[str],
-        events: Any,
+        events: dict[str, str],
     ):
         """The one shot merge of OMOP table (that has event columns) applying the events.
 
@@ -253,16 +512,59 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        pass
+        event_tables = {}
+        try:
+            if not self._skip_event_fks_step and len(events) > 0:  # we have event columns
+                template = self._template_env.get_template("etl/{omop_table}_get_event_tables.sql.jinja")
+                sql = template.render(
+                    omop_table=omop_table,
+                    work_database_catalog=self._work_database_catalog,
+                    work_database_schema=self._work_database_schema,
+                    events=events,
+                )
+                rows = self._run_query(sql)
+                event_tables = dict(
+                    (table, self._get_pk(table)) for table in (row.event_table for row in rows) if table
+                )
 
-    def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, primary_key_column: str) -> None:
-        """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
+            template = self._template_env.get_template("etl/{omop_table}_apply_event_columns.sql.jinja")
+            sql = template.render(
+                omop_database_catalog=self._omop_database_catalog,
+                omop_database_schema=self._omop_database_schema,
+                omop_table=omop_table,
+                work_database_catalog=self._work_database_catalog,
+                work_database_schema=self._work_database_schema,
+                columns=columns,
+                primary_key_column=primary_key_column,
+                events=events,
+                event_tables=event_tables,
+            )
+            self._run_query(sql)
+        except Exception as e:
+            if isinstance(e.__cause__, NotFound):  # chained exception!!!
+                logging.debug(
+                    "Table %s not found in work dataset, continue without merge for this table",
+                    omop_table,
+                )
+
+    def _create_omop_work_table(self, omop_table: str, events: Any) -> None:
+        """Creates the OMOP work table (if it does'nt yet exists) based on the DDL.
 
         Args:
-            omop_table (str): The omop table
-            primary_key_column (str): The primary key column
+            omop_table (str): The OMOP table
+            events (Any): Object that holds the events of the the OMOP table.
         """
-        pass
+        columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
+
+        template = self._template_env.get_template("etl/{omop_work}_ddl.sql.jinja")
+        sql = template.render(
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+            omop_table=omop_table,
+            columns=columns,
+            events=events,
+        )
+        self._run_query(sql)
 
     def _check_usagi_fk_domains(self, omop_table: str, concept_id_column: str, domains: list[str]) -> None:
         """Checks the usagi fk domain of the concept id column.
@@ -272,4 +574,22 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_column (str): The conept id column
             domains (list[str]): The allowed domains
         """
-        pass
+        template = self._template_env.get_template(
+            "etl/{omop_table}__{concept_id_column}_usagi_fk_domain_check.sql.jinja"
+        )
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+            domains=domains,
+            process_semi_approved_mappings=self._process_semi_approved_mappings,
+        )
+        rows = self._run_query(sql)
+        if rows:
+            df = pl.from_dicts(rows)
+            raise Exception(
+                f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
+            )

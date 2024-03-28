@@ -1,0 +1,19 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+select u.*, c.domain_id
+from [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] u
+inner join [{{omop_database_catalog}}].[{{omop_database_schema}}].[concept] c on c.concept_id = cast(u.conceptId as integer)
+  and c.concept_id <> 0 
+  and lower(c.domain_id) not in (
+  {%- for domain in domains -%}
+    {%- if not loop.first -%}
+        {{', '}}
+    {%- endif -%}
+    '{{domain}}'
+  {%- endfor -%}) 
+{% if not process_semi_approved_mappings -%}
+where u.mappingStatus = "APPROVED"
+{%- else -%}
+where u.mappingStatus in ("APPROVED", "SEMI-APPROVED")
+{%- endif %} 
+limit 100

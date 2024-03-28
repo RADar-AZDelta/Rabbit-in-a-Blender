@@ -1,0 +1,24 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+select top 100 source_code, target_concept_id, count(*) as nbr_of_rows
+from (
+    SELECT DISTINCT
+        t.sourceCode as source_code
+        ,0 as source_concept_id
+        ,'' as source_vocabulary_id
+        ,t.sourceName as source_code_description
+        ,t.conceptId as target_concept_id
+        ,c.vocabulary_id as target_vocabulary_id
+        ,GETDATE() as valid_start_date
+        ,CAST('2099-12-31' AS DATE) as valid_end_date
+        ,NULL as invalid_reason
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] t
+    INNER JOIN [{{omop_database_catalog}}].[{{omop_database_schema}}].[concept] c on c.concept_id = t.conceptId
+{%- if not process_semi_approved_mappings %}
+    where t.mappingStatus = 'APPROVED'
+{%- else %}
+    where t.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
+{%- endif %}     
+) t
+group by source_code, target_concept_id
+having count(*) > 1;

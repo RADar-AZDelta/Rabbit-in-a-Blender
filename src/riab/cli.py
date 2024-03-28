@@ -101,6 +101,8 @@ class Cli:
                             "user": config.safe_get(db_engine, "user"),
                             "password": config.safe_get(db_engine, "password"),
                             "port": config.safe_get(db_engine, "port"),
+                            "raw_database_catalog": config.safe_get(db_engine, "raw_database_catalog", "raw"),
+                            "raw_database_schema": config.safe_get(db_engine, "raw_database_schema", "dbo"),
                             "omop_database_catalog": config.safe_get(db_engine, "omop_database_catalog", "omop"),
                             "omop_database_schema": config.safe_get(db_engine, "omop_database_schema", "dbo"),
                             "work_database_catalog": config.safe_get(db_engine, "work_database_catalog", "work"),
@@ -111,6 +113,10 @@ class Cli:
                                 db_engine, "achilles_database_catalog", "achilles"
                             ),
                             "achilles_database_schema": config.safe_get(db_engine, "achilles_database_schema", "dbo"),
+                            "disable_fk_constriants": config.safe_get(
+                                db_engine, "disable_fk_constriants", "true"
+                            ).lower()
+                            in ["true", "1", "yes"],
                         }
                     case _:
                         raise ValueError("Not a supported database engine: '{db_engine}'")

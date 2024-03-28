@@ -1,0 +1,50 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+MERGE INTO [{{omop_database_catalog}}].[{{omop_database_schema}}].[concept] AS T
+USING (
+    SELECT DISTINCT swap.y as concept_id
+        ,t.concept_name
+        ,t.domain_id
+        ,t.vocabulary_id
+        ,t.concept_class_id
+        ,t.standard_concept
+        ,t.concept_code
+        ,t.valid_start_date
+        ,t.valid_end_date
+        ,t.invalid_reason
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept] t
+    INNER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[concept_id_swap] swap
+        on swap.x = concat('{{concept_id_column}}__', t.concept_code)
+) AS S
+ON S.concept_id = T.concept_id
+WHEN MATCHED THEN
+    UPDATE SET T.concept_name = S.concept_name
+        ,T.domain_id = S.domain_id
+        ,T.vocabulary_id = S.vocabulary_id
+        ,T.concept_class_id = S.concept_class_id
+        ,T.standard_concept = S.standard_concept
+        ,T.concept_code = S.concept_code
+        ,T.valid_start_date = S.valid_start_date
+        ,T.valid_end_date = S.valid_end_date
+        ,T.invalid_reason = S.invalid_reason
+WHEN NOT MATCHED THEN
+    INSERT (concept_id
+        ,concept_name
+        ,domain_id
+        ,vocabulary_id
+        ,concept_class_id
+        ,standard_concept
+        ,concept_code
+        ,valid_start_date
+        ,valid_end_date
+        ,invalid_reason) 
+    VALUES (S.concept_id
+        ,S.concept_name
+        ,S.domain_id
+        ,S.vocabulary_id
+        ,S.concept_class_id
+        ,S.standard_concept
+        ,S.concept_code
+        ,S.valid_start_date
+        ,S.valid_end_date
+        ,S.invalid_reason);

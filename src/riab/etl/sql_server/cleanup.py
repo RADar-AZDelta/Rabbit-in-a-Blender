@@ -21,6 +21,34 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
 
         self._lock_source_to_concept_map_cleanup = Lock()
 
+    def _pre_cleanup(self, cleanup_table: str = "all"):
+        """Stuff to do before the cleanup (ex remove constraints from omop tables)
+
+        Args:
+            cleanup_table (str, optional): _description_. Defaults to "all".
+        """
+        if self._disable_fk_constriants:
+            return
+
+        if cleanup_table == "all":
+            self._remove_all_constraints()
+        else:
+            self._remove_constraints(cleanup_table)
+
+    def _post_cleanup(self, cleanup_table: str = "all"):
+        """Stuff to do after the cleanup (ex re-add constraints to omop tables)
+
+        Args:
+            cleanup_table (str, optional): Defaults to "all".
+        """
+        if self._disable_fk_constriants:
+            return
+
+        if cleanup_table == "all":
+            self._add_all_constraints()
+        # else:
+        #     self._add_constraints(cleanup_table) #we will only readd the constraints after the ETL because for example if you have peron data, and you delete the provider data, this will throw a fk constraint error!
+
     def _get_work_tables(self) -> List[str]:
         """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
 
@@ -35,47 +63,6 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         return [row.table_name for row in rows]
 
     def _truncate_omop_table(self, table_name: str) -> None:
-        """Remove all rows from an OMOP table
-
-        Args:
-            table_name (str): Omop table to truncate
-        """
-        with open(
-            str(
-                Path(__file__).parent.resolve()
-                / "templates"
-                / "ddl"
-                / f"OMOPCDM_{self._db_engine}_{self._omop_cdm_version}_constraints.sql.jinja"
-            ),
-            "r",
-            encoding="UTF8",
-        ) as file:
-            ddl = file.read()
-        matches = list(
-            re.finditer(
-                rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{table_name.upper()} \()(.*)(\);)",
-                ddl,
-            )
-        )
-        constraints_to_drop = [
-            f"IF (OBJECT_ID('{match.group(4)}') IS NOT NULL)\n{match.group(1)}{match.group(2)} DROP CONSTRAINT {match.group(4)};"
-            for match in matches
-        ]
-        constraints_to_add = [
-            f"{match.group(1)}{match.group(2)}{match.group(3)}{match.group(4)} {match.group(5)}{match.group(6)}{match.group(7)}{match.group(8)}{match.group(9)}"
-            for match in matches
-        ]
-
-        if len(constraints_to_drop):
-            logging.debug("Remove the table contraints from omop table %s", table_name)
-            modified_ddl = "\n".join(constraints_to_drop)
-            template = self._template_env.from_string(modified_ddl)
-            sql = template.render(
-                omop_database_catalog=self._omop_database_catalog,
-                omop_database_schema=self._omop_database_schema,
-            )
-            self._run_query(f"use {self._omop_database_catalog};\n" + sql)
-
         logging.debug("Truncate omop table %s", table_name)
         template = self._template_env.get_template("cleanup/truncate.sql.jinja")
         sql = template.render(
@@ -84,16 +71,6 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             table_name=table_name,
         )
         self._run_query(sql)
-
-        if len(constraints_to_add):
-            logging.debug("Adding the table contraints to omop table %s", table_name)
-            modified_ddl = "\n".join(constraints_to_add)
-            template = self._template_env.from_string(modified_ddl)
-            sql = template.render(
-                omop_database_catalog=self._omop_database_catalog,
-                omop_database_schema=self._omop_database_schema,
-            )
-            self._run_query(f"use {self._omop_database_catalog};\n" + sql)
 
     def _remove_custom_concepts_from_concept_table(self) -> None:
         """Remove the custom concepts from the OMOP concept table"""

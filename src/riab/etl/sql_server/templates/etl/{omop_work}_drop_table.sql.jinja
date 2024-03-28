@@ -1,0 +1,5 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+USE  [{{work_database_catalog}}];
+IF EXISTS (SELECT 1 FROM sys.tables t INNER JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE t.name = '{{work_table}}' AND s.name = '{{work_database_schema}}')
+DROP TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{work_table}}];

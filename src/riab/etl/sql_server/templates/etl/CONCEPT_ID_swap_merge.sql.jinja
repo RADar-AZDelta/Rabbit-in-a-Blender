@@ -1,0 +1,18 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+WITH cte_max AS (
+    SELECT COALESCE(MAX(y), {{min_custom_concept_id}}) as y
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[concept_id_swap]
+)
+MERGE INTO [{{work_database_catalog}}].[{{work_database_schema}}].[concept_id_swap] AS T
+USING (
+    SELECT distinct concat('{{concept_id_column}}__', t.concept_code) as x, RANK() OVER(ORDER BY t.concept_code) + cte_max.y as y
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept] t
+    INNER JOIN cte_max on 1=1
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[concept_id_swap] swap
+        on swap.x = concat('{{concept_id_column}}__', t.concept_code)
+    where swap.x is null
+) AS S
+ON S.x = T.x
+WHEN NOT MATCHED THEN
+    INSERT (x, y) VALUES (S.x, S.y);

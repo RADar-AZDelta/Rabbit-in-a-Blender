@@ -1,0 +1,21 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+USE  [{{work_database_catalog}}];
+IF NOT EXISTS (SELECT 1 FROM sys.tables t INNER JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE t.name = '{{primary_key_column}}_swap' AND s.name = '{{work_database_schema}}')
+CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{primary_key_column}}_swap]  
+(x varchar(50),
+{%- for column in concept_id_columns -%}
+    {{column}} 
+    {% if not column in events.values() -%}
+        integer,
+    {# {{column}}_source_value STRING, #}
+    {%- else -%}
+        varchar(50),
+    {%- endif -%}
+{%- endfor -%}
+{%- for column in events %}
+    {{column}} varchar(50),
+{%- endfor -%}
+    source varchar(50),
+    y integer
+);

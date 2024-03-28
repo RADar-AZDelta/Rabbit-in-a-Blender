@@ -37,6 +37,22 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         """  # noqa: E501 # pylint: disable=line-too-long
         super().__init__(**kwargs)
 
+    def _pre_etl(self, etl_tables: list[str]):
+        """Stuff to do before the ETL (ex remove constraints on omop tables)
+
+        Args:
+            etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
+        """
+        pass
+
+    def _post_etl(self, etl_tables: list[str]):
+        """Stuff to do after the ETL (ex add constraints on omop tables)
+
+        Args:
+            etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
+        """
+        pass
+
     def _source_to_concept_map_update_invalid_reason(self, etl_start: date) -> None:
         """Cleanup old source to concept maps by setting the invalid_reason to deleted
         for all source to concept maps with a valid_start_date before the ETL start date.
@@ -300,12 +316,12 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             select_query (str): The query
         """
         template = self._template_env.get_template("etl/{omop_table}_{sql_file}_insert.sql.jinja")
-        ddl = template.render(
+        sql = template.render(
             dataset_work=self._dataset_work,
             upload_table=upload_table,
             select_query=select_query,
         )
-        self._gcp.run_query_job(ddl)
+        self._gcp.run_query_job(sql)
 
     def _create_pk_auto_numbering_swap_table(
         self, primary_key_column: str, concept_id_columns: List[str], events: Any
@@ -458,7 +474,6 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-
         event_tables = {}
         try:
             if not self._skip_event_fks_step and len(events) > 0:  # we have event columns

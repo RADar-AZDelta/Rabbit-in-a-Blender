@@ -1,0 +1,18 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+WITH cte_custom_concepts AS (
+    SELECT DISTINCT t.concept_code AS concept_code, swap.y AS concept_id
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept] t
+    INNER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[concept_id_swap] swap
+        ON swap.x = concat('{{concept_id_column}}__', t.concept_code)
+)
+UPDATE T
+SET T.conceptId = c.concept_id
+FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] AS T 
+INNER JOIN cte_custom_concepts c ON T.sourceCode = c.concept_code
+{% if not process_semi_approved_mappings -%}
+    AND T.mappingStatus = 'APPROVED'
+{%- else -%}
+    AND T.mappingStatus IN ('APPROVED', 'SEMI-APPROVED')
+{%- endif %} 
+    AND (T.conceptId IS NULL or T.conceptId = 0);

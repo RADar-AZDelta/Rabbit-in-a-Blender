@@ -1,0 +1,51 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+MERGE INTO [{{omop_database_catalog}}].[{{omop_database_schema}}].[source_to_concept_map] AS T
+USING (
+    SELECT DISTINCT
+        t.sourceCode as source_code
+        ,0 as source_concept_id
+        ,'' as source_vocabulary_id
+        ,t.sourceName as source_code_description
+        ,t.conceptId as target_concept_id
+        ,c.vocabulary_id as target_vocabulary_id
+        ,GETDATE() as valid_start_date
+        ,CAST('2099-12-31' AS DATE) as valid_end_date
+        ,NULL as invalid_reason
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] t
+    INNER JOIN [{{omop_database_catalog}}].[{{omop_database_schema}}].[concept] c on c.concept_id = t.conceptId
+{%- if not process_semi_approved_mappings %}
+    where t.mappingStatus = 'APPROVED'
+{%- else %}
+    where t.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
+{%- endif -%} 
+) AS S
+ON S.source_code = T.source_code and S.target_concept_id = T.target_concept_id
+WHEN MATCHED THEN
+    UPDATE SET T.source_concept_id = S.source_concept_id
+        ,T.source_vocabulary_id = S.source_vocabulary_id
+        ,T.source_code_description = S.source_code_description
+        ,T.target_concept_id = S.target_concept_id
+        ,T.target_vocabulary_id = S.target_vocabulary_id
+        ,T.valid_start_date = S.valid_start_date
+        ,T.valid_end_date = S.valid_end_date
+        ,T.invalid_reason = S.invalid_reason
+WHEN NOT MATCHED THEN
+    INSERT (source_code
+        ,source_concept_id
+        ,source_vocabulary_id
+        ,source_code_description
+        ,target_concept_id
+        ,target_vocabulary_id
+        ,valid_start_date
+        ,valid_end_date
+        ,invalid_reason)
+    VALUES (S.source_code
+        ,S.source_concept_id
+        ,S.source_vocabulary_id
+        ,S.source_code_description
+        ,S.target_concept_id
+        ,S.target_vocabulary_id
+        ,S.valid_start_date
+        ,S.valid_end_date
+        ,S.invalid_reason);

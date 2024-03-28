@@ -21,6 +21,14 @@ class BigQueryImportVocabularies(ImportVocabularies, BigQueryEtlBase):
     ):
         super().__init__(**kwargs)
 
+    def _pre_load(self):
+        """Stuff to do before the load (ex remove constraints from omop tables)"""
+        pass
+
+    def _post_load(self):
+        """Stuff to do after the load (ex re-add constraints to omop tables)"""
+        pass
+
     def _load_vocabulary_parquet_in_upload_table(self, vocabulary_table: str, parquet_file: Path) -> None:
         """Loads the CSV file in the specific standardised vocabulary table
 

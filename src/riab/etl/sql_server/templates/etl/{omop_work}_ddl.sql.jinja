@@ -1,0 +1,17 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+USE  [{{omop_database_catalog}}];
+IF NOT EXISTS (SELECT 1 FROM sys.tables t INNER JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE t.name = '{{omop_table}}' AND s.name = '{{omop_database_schema}}')
+CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}] (
+  {%- for column in columns -%}
+      {%- if not loop.first -%}
+          {{ ',' }}
+      {%- endif %}
+      {{ column["cdmFieldName"] }} 
+      {%- if column["cdmFieldName"] in events or column["cdmFieldName"] in events.values() %} STRING
+      {%- else %} {{ column["cdmDatatype"] }}
+      {%- endif -%}
+      {%- if column['isRequired'] == "Yes" %} not null
+      {%- endif -%}
+  {%- endfor %}
+);

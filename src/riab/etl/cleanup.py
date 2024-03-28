@@ -32,6 +32,8 @@ class Cleanup(EtlBase, ABC):
         All custom concepts are removed from the 'concept', 'concept_relationship' and 'concept_ancestor' tables in the omop dataset.\n
         All local vocabularies are removed from the 'vocabulary' table in the omop dataset.\n
         """  # noqa: E501 # pylint: disable=line-too-long
+        self._pre_cleanup(cleanup_table)
+        # delete work tables
         work_tables = self._get_work_tables()
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             # custom cleanup
@@ -135,6 +137,26 @@ class Cleanup(EtlBase, ABC):
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
+
+        self._post_cleanup(cleanup_table)
+
+    @abstractmethod
+    def _pre_cleanup(self, cleanup_table: str = "all"):
+        """Stuff to do before the cleanup (ex remove constraints from omop tables)
+
+        Args:
+            cleanup_table (str, optional): _description_. Defaults to "all".
+        """
+        pass
+
+    @abstractmethod
+    def _post_cleanup(self, cleanup_table: str = "all"):
+        """Stuff to do after the cleanup (ex re-add constraints to omop tables)
+
+        Args:
+            cleanup_table (str, optional): Defaults to "all".
+        """
+        pass
 
     def _cleanup_usagi_tables(self, table_name: str):
         omop_table = table_name.split("__")[0]

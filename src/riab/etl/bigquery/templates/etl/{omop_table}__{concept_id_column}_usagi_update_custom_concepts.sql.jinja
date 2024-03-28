@@ -12,6 +12,6 @@ WHERE T.sourceCode = c.concept_code
 {% if not process_semi_approved_mappings -%}
     AND T.mappingStatus = "APPROVED"
 {%- else -%}
-    AND u.mappingStatus IN ("APPROVED", "SEMI-APPROVED")
+    AND T.mappingStatus IN ("APPROVED", "SEMI-APPROVED")
 {%- endif %} 
-    AND T.conceptId IS NULL;
+    AND (T.conceptId IS NULL or T.conceptId = 0);

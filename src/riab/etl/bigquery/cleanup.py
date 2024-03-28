@@ -21,6 +21,22 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
 
         self._lock_source_to_concept_map_cleanup = Lock()
 
+    def _pre_cleanup(self, cleanup_table: str = "all"):
+        """Stuff to do before the cleanup (ex remove constraints from omop tables)
+
+        Args:
+            cleanup_table (str, optional): _description_. Defaults to "all".
+        """
+        pass
+
+    def _post_cleanup(self, cleanup_table: str = "all"):
+        """Stuff to do after the cleanup (ex re-add constraints to omop tables)
+
+        Args:
+            cleanup_table (str, optional): Defaults to "all".
+        """
+        pass
+
     def _get_work_tables(self) -> List[str]:
         """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
 

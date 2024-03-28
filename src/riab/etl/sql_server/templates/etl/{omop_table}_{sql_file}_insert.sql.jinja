@@ -1,0 +1,8 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+DROP TABLE IF EXISTS [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_table}}];
+SELECT DISTINCT *
+INTO [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_table}}]
+FROM (
+    {{select_query}}
+) T;

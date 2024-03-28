@@ -1,6 +1,7 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-CREATE OR REPLACE TABLE `{{dataset_work}}.{{upload_table}}` AS
+CREATE OR REPLACE TABLE `{{dataset_work}}.{{upload_table}}` 
+AS
 SELECT DISTINCT *
 FROM (
     {{select_query}}

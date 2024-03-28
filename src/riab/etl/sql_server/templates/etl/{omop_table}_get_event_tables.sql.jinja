@@ -1,0 +1,12 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+SELECT DISTINCT * 
+FROM (
+{%- for column in events.values() -%}
+    {%- if not loop.first %}
+    UNION ALL
+    {%- endif %}
+    SELECT DISTINCT {{column}} as event_table
+    FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}]
+{%- endfor %} 
+)

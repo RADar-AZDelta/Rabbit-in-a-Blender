@@ -12,6 +12,7 @@ from typing import List
 
 import jinja2 as jj
 import polars as pl
+from flask import stream_with_context
 from jinja2.utils import select_autoescape
 
 
@@ -116,17 +117,29 @@ class EtlBase(ABC):
 
     def _resolve_cdm_tables_fks_dependencies(self):
         """Resolves the ETL dependency"""
-        df_cdm_tables = (
+        tables = (
             self._df_omop_tables.filter(
                 (pl.col("schema") == "CDM") | (pl.col("cdmTableName").is_in(["CDM_SOURCE", "VOCABULARY"]))
             )
             .select("cdmTableName")["cdmTableName"]
             .to_list()
         )
-        tables = dict(
+
+        self._cdm_tables_fks_dependencies_resolved = self._build_fk_dependency_tree_of_tables(tables)
+
+        logging.debug(
+            "Resolved ETL tables foreign keys dependency graph: \n%s",
+            self.print_cdm_tables_fks_dependencies_tree(),
+        )
+
+    def _build_fk_dependency_tree_of_tables(self, tables: list[str]):
+        """Builds the foreign key dependency tree of the tables"""
+        fk_dependency_tree: list[list[str]] = []
+
+        tables_with_fks = dict(
             self._df_omop_fields.filter(
-                (pl.col("cdmTableName").is_in(df_cdm_tables))
-                & ((pl.col("fkTableName").is_null()) | (pl.col("fkTableName").is_in(df_cdm_tables)))
+                (pl.col("cdmTableName").is_in(tables))
+                & ((pl.col("fkTableName").is_null()) | (pl.col("fkTableName").is_in(tables)))
             )
             .group_by("cdmTableName")
             .agg(pl.col("fkTableName"))
@@ -135,12 +148,14 @@ class EtlBase(ABC):
         )
 
         # remove circular references
-        tables = dict(((k.lower(), set(v.lower() for v in v) - set([k.lower()])) for k, v in tables.items()))
-
-        tables_with_no_fks = set(k for k, v in tables.items() if not v)
-        self._cdm_tables_fks_dependencies_resolved.append(sorted(tables_with_no_fks))
         tables_with_fks = dict(
-            ((k, set(v) - tables_with_no_fks) for k, v in tables.items() if k not in tables_with_no_fks)
+            ((k.lower(), set(v.lower() for v in v) - set([k.lower()])) for k, v in tables_with_fks.items())
+        )
+
+        tables_with_no_fks = set(k for k, v in tables_with_fks.items() if not v)
+        fk_dependency_tree.append(sorted(tables_with_no_fks))
+        tables_with_fks = dict(
+            ((k, set(v) - tables_with_no_fks) for k, v in tables_with_fks.items() if k not in tables_with_no_fks)
         )
 
         while tables_with_fks:
@@ -148,15 +163,14 @@ class EtlBase(ABC):
             t = set(fk for fks in tables_with_fks.values() for fk in fks) - set(tables_with_fks.keys())
             # and keys without value (tables without FK's)
             t.update(k for k, v in tables_with_fks.items() if not v)
+            if not t:  # circular reference
+                raise Exception("Circular reference in FKs dependency graph")
             # can be done right away
-            self._cdm_tables_fks_dependencies_resolved.append(sorted(t))
+            fk_dependency_tree.append(sorted(t))
             # and cleaned up
             tables_with_fks = dict(((k, set(v) - t) for k, v in tables_with_fks.items() if v))
 
-        logging.debug(
-            "Resolved ETL tables foreign keys dependency graph: \n%s",
-            self.print_cdm_tables_fks_dependencies_tree(),
-        )
+        return fk_dependency_tree
 
     def print_cdm_tables_fks_dependencies_tree(self) -> str:
         """Prints the ETL dependency tree"""
