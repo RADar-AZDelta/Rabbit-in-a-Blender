@@ -358,7 +358,8 @@ SQL Server
 
 ### Prerequisites
 
-Only SQL Server 2017 or later are supporteed.
+Only SQL Server 2017 or later are supported.
+
 RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
 
 Add the BCP dependency to the PATH environment variable.
