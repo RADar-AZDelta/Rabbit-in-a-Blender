@@ -35,7 +35,7 @@ class SqlServerEtlBase(EtlBase, ABC):
         work_database_schema: str,
         dqd_database_schema: str,
         achilles_database_schema: str,
-        disable_fk_constriants: bool = True,
+        disable_fk_constraints: bool = True,
         **kwargs,
     ):
         """This class holds the SQL Server specific methods of the ETL process
@@ -59,7 +59,7 @@ class SqlServerEtlBase(EtlBase, ABC):
         self._work_database_schema = work_database_schema
         self._dqd_database_schema = dqd_database_schema
         self._achilles_database_schema = achilles_database_schema
-        self._disable_fk_constriants = disable_fk_constriants
+        self._disable_fk_constraints = disable_fk_constraints
 
         self._db_connection = engine.URL.create(
             drivername="mssql+pymssql",

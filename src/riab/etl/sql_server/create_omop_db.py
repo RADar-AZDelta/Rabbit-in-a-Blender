@@ -20,7 +20,7 @@ class SqlServerCreateOmopDb(CreateOmopDb, SqlServerEtlBase):
 
     def _run_cdm_ddl_query(self, ddl_part: str) -> None:
         """Runs a specific ddl query"""
-        if self._disable_fk_constriants and ddl_part == "constraints":
+        if self._disable_fk_constraints and ddl_part == "constraints":
             return
 
         logging.info(f"Running DDL (Data Definition Language) query: OMOPCDM_{self._db_engine}_5.4_{ddl_part}.sql")

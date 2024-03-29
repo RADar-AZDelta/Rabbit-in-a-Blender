@@ -41,7 +41,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         Args:
             etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
         """
-        if self._disable_fk_constriants:
+        if self._disable_fk_constraints:
             return
 
         if not len(etl_tables):
@@ -56,7 +56,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         Args:
             etl_tables (list[str]): list of etl tables, eif list is empty then all tables are processed
         """
-        if self._disable_fk_constriants:
+        if self._disable_fk_constraints:
             return
 
         if not len(etl_tables):

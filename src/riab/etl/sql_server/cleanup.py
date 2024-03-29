@@ -27,7 +27,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         Args:
             cleanup_table (str, optional): _description_. Defaults to "all".
         """
-        if self._disable_fk_constriants:
+        if self._disable_fk_constraints:
             return
 
         if cleanup_table == "all":
@@ -41,7 +41,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         Args:
             cleanup_table (str, optional): Defaults to "all".
         """
-        if self._disable_fk_constriants:
+        if self._disable_fk_constraints:
             return
 
         if cleanup_table == "all":

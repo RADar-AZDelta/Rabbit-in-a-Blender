@@ -113,8 +113,8 @@ class Cli:
                                 db_engine, "achilles_database_catalog", "achilles"
                             ),
                             "achilles_database_schema": config.safe_get(db_engine, "achilles_database_schema", "dbo"),
-                            "disable_fk_constriants": config.safe_get(
-                                db_engine, "disable_fk_constriants", "true"
+                            "disable_fk_constraints": config.safe_get(
+                                db_engine, "disable_fk_constraints", "true"
                             ).lower()
                             in ["true", "1", "yes"],
                         }

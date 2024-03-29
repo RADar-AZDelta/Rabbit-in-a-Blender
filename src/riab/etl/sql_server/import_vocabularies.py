@@ -27,14 +27,14 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
 
     def _pre_load(self):
         """Stuff to do before the load (ex remove constraints from omop tables)"""
-        if self._disable_fk_constriants:
+        if self._disable_fk_constraints:
             return
 
         self._remove_all_constraints()
 
     def _post_load(self):
         """Stuff to do after the load (ex re-add constraints to omop tables)"""
-        if self._disable_fk_constriants:
+        if self._disable_fk_constraints:
             return
 
         self._add_all_constraints()
