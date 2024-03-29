@@ -412,6 +412,31 @@ CREATE SCHEMA dqd;
 CREATE SCHEMA achilles;
 ```
 
+### Linked server to the raw data
+
+If the raw EMR data is not on the same server defined in the riab.ini file, you will need to ask your database administrator, to add it as linked server.
+
+Example:
+
+```sql
+USE master;  
+GO  
+EXEC sp_addlinkedserver   
+   N'raw-emr-database-server,1433',  
+   N'SQL Server';
+GO
+
+EXEC sp_addlinkedsrvlogin
+   @rmtsrvname = N'raw-emr-database-server,1433',
+   @useself = N'False',
+   @locallogin = N'sa',
+   @rmtuser = N'remote_user',
+   @rmtpassword = N'???';
+GO
+
+sp_testlinkedserver N'raw-emr-database-server,1433';
+```
+
 ### Azure SQL Server
 
 Ensure SQL allows non- Entra ID users
