@@ -196,6 +196,9 @@ raw_database_schema=dbo
 disable_fk_constraints=true
 ; Optional
 ; By default foreign key constraints are disabled, because they are very resource consuming. (true or false are allowes as value)
+bcp_code_page=ACP
+; Optional
+; Default value is ACP. For more info see https://learn.microsoft.com/en-us/sql/tools/bcp-utility?view=sql-server-ver16#-c--acp--oem--raw--code_page-
 ```
 
 CLI Usage
@@ -374,6 +377,12 @@ Install bcp on machine that will run RIAB:
 Validate that you can run the BCP command: 
 ```
 bcp.exe --version
+```
+
+**Warning**: Under linux, the bcp command uses the current [locale](https://www.tecmint.com/set-system-locales-in-linux/) to convert floats. So make sure your current locale has a . as decimal sepertor!
+
+```bash
+sudo localectl set-locale LC_NUMERIC=en_IN.UTF-8
 ```
 
 ### SQL Server rights

@@ -117,6 +117,7 @@ class Cli:
                                 db_engine, "disable_fk_constraints", "true"
                             ).lower()
                             in ["true", "1", "yes"],
+                            "bcp_code_page": config.safe_get(db_engine, "bcp_code_page", "ACP"),
                         }
                     case _:
                         raise ValueError("Not a supported database engine: '{db_engine}'")

@@ -36,6 +36,7 @@ class SqlServerEtlBase(EtlBase, ABC):
         dqd_database_schema: str,
         achilles_database_schema: str,
         disable_fk_constraints: bool = True,
+        bcp_code_page: str = "ACP",
         **kwargs,
     ):
         """This class holds the SQL Server specific methods of the ETL process
@@ -60,6 +61,7 @@ class SqlServerEtlBase(EtlBase, ABC):
         self._dqd_database_schema = dqd_database_schema
         self._achilles_database_schema = achilles_database_schema
         self._disable_fk_constraints = disable_fk_constraints
+        self._bcp_code_page = bcp_code_page
 
         self._db_connection = engine.URL.create(
             drivername="mssql+pymssql",
@@ -137,7 +139,7 @@ class SqlServerEtlBase(EtlBase, ABC):
         )
         df = pl.read_parquet(parquet_file)
 
-        with NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
+        with NamedTemporaryFile(suffix=".csv") as tmp_file:
             df.write_csv(
                 tmp_file.name,
                 separator="\t",
@@ -163,7 +165,7 @@ class SqlServerEtlBase(EtlBase, ABC):
                 f"-U{self._user}",
                 f"-P{self._password}",
                 "-c",
-                "-C1252",
+                f"-C{self._bcp_code_page}",
                 "-t\t",
                 "-r\n",
                 "-F2",
@@ -171,6 +173,11 @@ class SqlServerEtlBase(EtlBase, ABC):
                 "-b10000",
                 f"-e{bcp_error_file}",
             ]
+            logging.info(f"Bulk copy command: {re.sub(
+                r"-P.*-c",
+                r"-P******* -c",
+                " ".join(args).encode("unicode_escape").decode("utf-8"),
+            )}")
             process = subprocess.Popen(args)  # , shell=True, stdout=subprocess.PIPE)
             exit_code = process.wait()
             file_size = os.path.getsize(bcp_error_file)
