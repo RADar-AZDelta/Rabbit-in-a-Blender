@@ -334,19 +334,26 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
                 )
         return select_query
 
-    def _query_into_upload_table(self, upload_table: str, select_query: str) -> None:
+    def _query_into_upload_table(self, upload_table: str, select_query: str, omop_table: str) -> None:
         """This method inserts the results from our custom SQL queries the the work OMOP upload table.
 
         Args:
-            upload_table (str): The work omop table
+            upload_table (str): The work upload table
             select_query (str): The query
+            omop_table (str): The omop table
         """
+
+        columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
+        events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}        
+
         template = self._template_env.get_template("etl/{omop_table}_{sql_file}_insert.sql.jinja")
         sql = template.render(
             work_database_catalog=self._work_database_catalog,
             work_database_schema=self._work_database_schema,
             upload_table=upload_table,
             select_query=select_query,
+            columns=columns,
+            events=events
         )
         self._run_query(sql)
 

@@ -308,12 +308,13 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 )
         return select_query
 
-    def _query_into_upload_table(self, upload_table: str, select_query: str) -> None:
+    def _query_into_upload_table(self, upload_table: str, select_query: str, omop_table: str) -> None:
         """This method inserts the results from our custom SQL queries the the upload OMOP table.
 
         Args:
-            upload_table (str): The work omop table
+            upload_table (str): The work upload table
             select_query (str): The query
+            omop_table (str): The omop table
         """
         template = self._template_env.get_template("etl/{omop_table}_{sql_file}_insert.sql.jinja")
         sql = template.render(

@@ -309,7 +309,7 @@ class Etl(EtlBase):
         select_query = self._get_query_from_sql_file(sql_file, omop_table)
 
         # load the results of the query in the tempopary work table
-        self._query_into_upload_table(upload_table, select_query)
+        self._query_into_upload_table(upload_table, select_query, omop_table)
 
     def _upload_custom_concepts(self, omop_table: str, concept_id_column: str):
         """Processes all the CSV files (ending with _concept.csv) under the 'custom' subfolder of the '{concept_id_column}' folder.
@@ -855,12 +855,13 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _query_into_upload_table(self, upload_table: str, select_query: str) -> None:
+    def _query_into_upload_table(self, upload_table: str, select_query: str, omop_table: str) -> None:
         """This method inserts the results from our custom SQL queries the the work OMOP upload table.
 
         Args:
-            upload_table (str): The work omop table
+            upload_table (str): The work upload table
             select_query (str): The query
+            omop_table (str): The omop table
         """
         pass
 

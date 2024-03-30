@@ -42,15 +42,7 @@ WITH cte_uploaded_tables AS (
             t.{{column}} as {{column}}
             {%- endif -%} 
         {%- elif column.endswith("_source_value") and pk_auto_numbering -%}
-            STRING_AGG(t.{{column}}) over (
-                partition by 
-                    swap_pk.y
-                {%- for column in concept_id_columns %}
-                    {%- if not column in events.values() %}
-                    , swap_pk.{{column}}
-                    {%- endif -%}
-                {%- endfor %}
-            ) as {{column}} 
+            STRING_AGG(t.{{column}}, ', ') as {{column}} 
         {%- else -%}
             t.{{column}}
         {%- endif %}
@@ -96,6 +88,38 @@ WITH cte_uploaded_tables AS (
         {%- endif -%}
         {%- set ns.fk_counter = ns.fk_counter + 1 -%}
     {%- endfor %} 
+   GROUP BY --IF TO SLOW WE REMOVE THE STRING_AGG and the GROUP BY
+        {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
+        {%- for column in columns -%}
+        {%- if not (column.endswith("_source_value") and pk_auto_numbering) -%}
+            {%- if not loop.first -%}
+                {{','}}
+            {%- endif %}
+        {% if column == primary_key_column -%}
+            {%- if pk_auto_numbering -%}
+                swap_pk.y
+            {%- else -%}
+                t.{{column}}
+            {%- endif -%}
+        {%- elif column in foreign_key_columns -%}
+            {%- if column in required_columns -%}
+            COALESCE(swap_fk{{ns.fk_counter}}.y, 0)
+            {%- else -%}
+            swap_fk{{ns.fk_counter}}.y
+            {%- endif -%}
+            {%- set ns.fk_counter = ns.fk_counter + 1 -%}
+        {%- elif column in concept_id_columns -%}
+            {%- if not column in events.values() -%}
+            COALESCE(swap_ci{{ns.ci_counter}}.conceptId, 0)
+            {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+            {%- else -%}
+            t.{{column}}
+            {%- endif -%} 
+        {%- else -%}
+            t.{{column}}
+        {%- endif %}
+        {%- endif %}
+        {%- endfor %}
 ), cte_duplicates AS (
     SELECT *
         , ROW_NUMBER() OVER(
