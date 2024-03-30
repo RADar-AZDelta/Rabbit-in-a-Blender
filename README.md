@@ -421,6 +421,8 @@ CREATE SCHEMA dqd;
 CREATE SCHEMA achilles;
 ```
 
+**Tip**: Make sure you've chosen the right [collation](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql?view=azuresqldb-current&preserve-view=true&tabs=sqlpool#collation_name), that is compatible with your raw data.
+
 ### Linked server to the raw data
 
 If the raw EMR data is not on the same server defined in the riab.ini file, you will need to ask your database administrator, to add it as linked server.
