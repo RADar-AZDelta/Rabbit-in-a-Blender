@@ -10,7 +10,7 @@ WITH cte_uploaded_tables AS (
     {%- endfor %}
 )
 SELECT TOP 100
-    STRING_AGG(upload_table, ", ") as upload_tables
+    STRING_AGG(upload_table, ', ') as upload_tables
 {%- if omop_table == 'fact_relationship' %}
     , fact_id_1
     , fact_id_2

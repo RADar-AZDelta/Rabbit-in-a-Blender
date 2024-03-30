@@ -474,6 +474,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
+        if not events:
+            return
+
         event_tables = {}
         try:
             if not self._skip_event_fks_step and len(events) > 0:  # we have event columns
@@ -513,6 +516,9 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             omop_table (str): The OMOP table
             events (Any): Object that holds the events of the the OMOP table.
         """
+        if not events:
+            return
+        
         columns = (
             self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table)
             .with_columns([pl.col("cdmDatatype").map_elements(lambda s: self._get_column_type(s)).alias("cdmDatatype")])

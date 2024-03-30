@@ -1,5 +1,123 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
+WITH cte_uploaded_tables AS (
+    {%- for upload_table in upload_tables -%}
+        {%- if not loop.first %}
+    UNION ALL
+        {%- endif %}
+    SELECT *
+    FROM `{{dataset_work}}.{{omop_table}}__upload__{{upload_table}}`
+    {%- endfor %}
+), cte_keys_swapped AS (
+    SELECT 
+        {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
+        {%- for column in columns -%}
+            {%- if not loop.first -%}
+                {{','}}
+            {%- endif %}
+        {% if column == primary_key_column -%}
+            {%- if pk_auto_numbering -%}
+                swap_pk.y as {{column}}
+            {%- else -%}
+                t.{{column}} as {{column}}
+            {%- endif -%}
+        {%- elif column in foreign_key_columns -%}
+            {%- if column in required_columns -%}
+            IFNULL(swap_fk{{ns.fk_counter}}.y, 0) as {{column}}
+            {%- else -%}
+            swap_fk{{ns.fk_counter}}.y as {{column}}
+            {%- endif -%}
+            {%- set ns.fk_counter = ns.fk_counter + 1 -%}
+        {%- elif column in concept_id_columns -%}
+            {%- if not column in events.values() -%}
+            IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0) as {{column}}
+            {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+            {%- else -%}
+            t.{{column}} as {{column}}
+            {%- endif -%} 
+        {%- elif column.endswith("_source_value") and pk_auto_numbering -%}
+            STRING_AGG(t.{{column}}) over (
+                partition by 
+                    swap_pk.y
+                {%- for column in concept_id_columns %}
+                    {%- if not column in events.values() %}
+                    , swap_pk.{{column}}
+                    {%- endif -%}
+                {%- endfor %}
+            ) as {{column}} 
+        {%- else -%}
+            t.{{column}}
+        {%- endif %}
+        {%- endfor %}
+    FROM cte_uploaded_tables t
+    {%- set ns = namespace(ci_counter=0) -%}
+    {%- for column in concept_id_columns %}
+        {%- if not column in events.values() %}
+    LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}
+            {% if not process_semi_approved_mappings -%}
+        and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
+            {%- else -%}
+        and swap_ci{{ns.ci_counter}}.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
+            {%- endif -%}        
+        {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+        {%- endif -%}
+    {%- endfor %}
+    {%- if pk_auto_numbering %}
+    INNER JOIN `{{dataset_work}}.{{primary_key_column}}_swap` swap_pk on swap_pk.x = t.{{primary_key_column}}
+        {%- set ns = namespace(ci_counter=0) -%}
+        {%- for column in concept_id_columns %}
+            {%- if not column in events.values() %}
+        and IFNULL(swap_pk.{{column}}, 0) = IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0)
+            {%- else %}
+        and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
+            {%- endif -%}
+            {%- set ns.ci_counter = ns.ci_counter + 1 -%}
+        {%- endfor %} 
+        {%- for column in events %}
+        and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
+        {%- endfor %}
+    {%- endif -%}
+    {%- set ns = namespace(fk_counter=0) -%}
+    {%- for column in foreign_key_columns %}
+        {%- if column == 'preceding_visit_occurrence_id' %}
+    LEFT OUTER JOIN `{{dataset_work}}.visit_occurrence_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+        {%- elif column == 'preceding_visit_detail_id' %}
+    LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}                
+        {%- elif column == 'parent_visit_detail_id' %}
+    LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}            
+        {%- else %}
+    LEFT OUTER JOIN `{{dataset_work}}.{{column}}_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+        {%- endif -%}
+        {%- set ns.fk_counter = ns.fk_counter + 1 -%}
+    {%- endfor %} 
+), cte_duplicates AS (
+    SELECT *
+        , ROW_NUMBER() OVER(
+            PARTITION BY 
+        {%- if omop_table == 'fact_relationship' %}
+            fact_id_1
+            , fact_id_2
+        {%- elif omop_table == 'death' %}
+            person_id
+        {%- elif omop_table == 'cdm_source' %}
+            cdm_source_name
+        {%- elif primary_key_column %}
+            {{primary_key_column}}
+        {%- endif -%}
+        {%- for column in concept_id_columns -%}
+            {% if not column in events.values() %}
+            , {{column}}
+            {%- endif -%} 
+        {%- endfor -%}
+        {%- for column in events %}
+            {%- if omop_table != 'fact_relationship' %}
+            , {{column}}
+            {%- endif -%}
+        {%- endfor %}
+        ) AS rn
+    FROM cte_keys_swapped
+)
+
 {%- if events.keys()|length > 0  %}
 {#- MERGE INTO `{{dataset_work}}.{{omop_table}}` AS T -#}
 CREATE OR REPLACE TABLE `{{dataset_work}}.{{omop_table}}`
@@ -10,125 +128,9 @@ LIKE `{{dataset_omop}}.{{omop_table}}`
 {%- endif %}
 {#- USING ( -#}
 AS (
-    WITH cte_uploaded_tables AS (
-        {%- for upload_table in upload_tables -%}
-            {%- if not loop.first %}
-        UNION ALL
-            {%- endif %}
-        SELECT *
-        FROM `{{dataset_work}}.{{omop_table}}__upload__{{upload_table}}`
-        {%- endfor %}
-    )
     SELECT * EXCEPT(rn)
-    FROM (
-        SELECT *
-            , ROW_NUMBER() OVER(
-                PARTITION BY 
-            {%- if omop_table == 'fact_relationship' %}
-                fact_id_1
-                , fact_id_2
-            {%- elif omop_table == 'death' %}
-                person_id
-            {%- elif omop_table == 'cdm_source' %}
-                cdm_source_name
-            {%- elif primary_key_column %}
-                {{primary_key_column}}
-            {%- endif -%}
-            {%- for column in concept_id_columns -%}
-                {% if not column in events.values() %}
-                , {{column}}
-                {%- endif -%} 
-            {%- endfor -%}
-            {%- for column in events %}
-                {%- if omop_table != 'fact_relationship' %}
-                , {{column}}
-                {%- endif -%}
-            {%- endfor %}
-            ) AS rn
-        FROM (
-            SELECT 
-                {%- set ns = namespace(fk_counter=0, ci_counter=0) -%}
-                {%- for column in columns -%}
-                    {%- if not loop.first -%}
-                        {{','}}
-                    {%- endif %}
-                {% if column == primary_key_column -%}
-                    {%- if pk_auto_numbering -%}
-                        swap_pk.y as {{column}}
-                    {%- else -%}
-                        t.{{column}} as {{column}}
-                    {%- endif -%}
-                {%- elif column in foreign_key_columns -%}
-                    {%- if column in required_columns -%}
-                    IFNULL(swap_fk{{ns.fk_counter}}.y, 0) as {{column}}
-                    {%- else -%}
-                    swap_fk{{ns.fk_counter}}.y as {{column}}
-                    {%- endif -%}
-                    {%- set ns.fk_counter = ns.fk_counter + 1 -%}
-                {%- elif column in concept_id_columns -%}
-                    {%- if not column in events.values() -%}
-                    IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0) as {{column}}
-                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
-                    {%- else -%}
-                    t.{{column}} as {{column}}
-                    {%- endif -%} 
-                {%- elif column.endswith("_source_value") and pk_auto_numbering -%}
-                    STRING_AGG(t.{{column}}) over (
-                        partition by 
-                            swap_pk.y
-                        {%- for column in concept_id_columns %}
-                            {%- if not column in events.values() %}
-                            , swap_pk.{{column}}
-                            {%- endif -%}
-                        {%- endfor %}
-                    ) as {{column}} 
-                {%- else -%}
-                    t.{{column}}
-                {%- endif %}
-                {%- endfor %}
-            FROM cte_uploaded_tables t
-            {%- set ns = namespace(ci_counter=0) -%}
-            {%- for column in concept_id_columns %}
-                {%- if not column in events.values() %}
-            LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}
-                    {% if not process_semi_approved_mappings -%}
-                and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
-                    {%- else -%}
-                and swap_ci{{ns.ci_counter}}.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
-                    {%- endif -%}        
-                {%- set ns.ci_counter = ns.ci_counter + 1 -%}
-                {%- endif -%}
-            {%- endfor %}
-            {%- if pk_auto_numbering %}
-            INNER JOIN `{{dataset_work}}.{{primary_key_column}}_swap` swap_pk on swap_pk.x = t.{{primary_key_column}}
-                {%- set ns = namespace(ci_counter=0) -%}
-                {%- for column in concept_id_columns %}
-                    {%- if not column in events.values() %}
-                and IFNULL(swap_pk.{{column}}, 0) = IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0)
-                    {%- else %}
-                and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
-                    {%- endif -%}
-                    {%- set ns.ci_counter = ns.ci_counter + 1 -%}
-                {%- endfor %} 
-                {%- for column in events %}
-                and IFNULL(swap_pk.{{column}}, '') = IFNULL(t.{{column}}, '')
-                {%- endfor %}
-            {%- endif -%}
-            {%- set ns = namespace(fk_counter=0) -%}
-            {%- for column in foreign_key_columns %}
-                {%- if column == 'preceding_visit_occurrence_id' %}
-            LEFT OUTER JOIN `{{dataset_work}}.visit_occurrence_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
-                {%- elif column == 'preceding_visit_detail_id' %}
-            LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}                
-                {%- elif column == 'parent_visit_detail_id' %}
-            LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}            
-                {%- else %}
-            LEFT OUTER JOIN `{{dataset_work}}.{{column}}_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
-                {%- endif -%}
-                {%- set ns.fk_counter = ns.fk_counter + 1 -%}
-            {%- endfor %} 
-        )
-    ) WHERE rn = 1
+    FROM cte_duplicates
+    WHERE rn = 1
 
     {%- if omop_table == "vocabulary" %}
     UNION ALL

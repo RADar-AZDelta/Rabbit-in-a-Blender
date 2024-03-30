@@ -469,8 +469,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-
-        if events:
+        if not (events or omop_table == 'vocabulary'):
             self._remove_constraints(omop_table)
 
         template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
@@ -493,7 +492,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         self._run_query(sql)
 
-        if events:
+        if not (events or omop_table == 'vocabulary'):
             self._add_constraints(omop_table)
 
     def _merge_event_columns(
@@ -512,6 +511,10 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
+        if not (events or omop_table == 'vocabulary'):
+            return
+
+        self._remove_constraints(omop_table)
         event_tables = {}
         try:
             if not self._skip_event_fks_step and len(events) > 0:  # we have event columns
@@ -541,11 +544,13 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             )
             self._run_query(sql)
         except Exception as e:
-            if isinstance(e.__cause__, NotFound):  # chained exception!!!
+            #if isinstance(e.__cause__, NotFound):  # chained exception!!!
                 logging.debug(
                     "Table %s not found in work dataset, continue without merge for this table",
                     omop_table,
                 )
+        finally:
+            self._add_constraints(omop_table)
 
     def _create_omop_work_table(self, omop_table: str, events: Any) -> None:
         """Creates the OMOP work table (if it does'nt yet exists) based on the DDL.
@@ -554,12 +559,15 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The OMOP table
             events (Any): Object that holds the events of the the OMOP table.
         """
+        if not (events or omop_table == 'vocabulary'):
+            return
+        
         columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
 
         template = self._template_env.get_template("etl/{omop_work}_ddl.sql.jinja")
         sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
             omop_table=omop_table,
             columns=columns,
             events=events,

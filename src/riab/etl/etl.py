@@ -167,8 +167,7 @@ class Etl(EtlBase):
         events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}
 
         # create the OMOP work table (only if the table has event columns) based on the DDL, but with the event_id columns of type STRING
-        if events:
-            self._create_omop_work_table(omop_table, events)
+        self._create_omop_work_table(omop_table, events)
 
         # get all the columns from the destination OMOP table
         columns = self._get_omop_column_names(omop_table)
@@ -533,8 +532,6 @@ class Etl(EtlBase):
             omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
         """
         events = self._omop_event_fields.get(omop_table, {})
-        if not events:
-            return
 
         # get all the columns from the destination OMOP table
         columns = self._get_omop_column_names(omop_table)

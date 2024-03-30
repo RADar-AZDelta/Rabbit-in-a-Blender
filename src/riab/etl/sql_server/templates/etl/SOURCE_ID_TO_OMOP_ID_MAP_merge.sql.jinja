@@ -1,6 +1,6 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-MERGE INTO [{{work_database_catalog}}].[{{work_database_schema}}].[source_id_to_omop_id_map] AS T
+MERGE INTO [{{omop_database_catalog}}].[{{omop_database_schema}}].[source_id_to_omop_id_map] AS T
 USING (
     SELECT DISTINCT
         '{{omop_table}}' as omop_table
@@ -20,4 +20,5 @@ WHEN MATCHED THEN
         ,T.valid_end_date = S.valid_end_date
         ,T.invalid_reason = S.invalid_reason
 WHEN NOT MATCHED THEN
-    INSERT (omop_table, omop_id, source, source_id, valid_start_date, valid_end_date, invalid_reason) VALUES (S.omop_table, S.omop_id, S.source, S.source_id, S.valid_start_date, S.valid_end_date, S.invalid_reason)
+    INSERT (omop_table, omop_id, source, source_id, valid_start_date, valid_end_date, invalid_reason) 
+    VALUES (S.omop_table, S.omop_id, S.source, S.source_id, S.valid_start_date, S.valid_end_date, S.invalid_reason);

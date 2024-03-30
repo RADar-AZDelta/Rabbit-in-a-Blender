@@ -58,7 +58,17 @@ USING (
         s.{{column}},
         {%- endfor %}
         s.source,
-        ROW_NUMBER() OVER() + cte_max.y as y
+        ROW_NUMBER() OVER(
+            ORDER BY
+                s.x,
+                {%- for column in concept_id_columns %}
+                s.{{column}},
+                {%- endfor %} 
+                {%- for column in events -%}
+                s.{{column}},
+                {%- endfor %}
+                s.source
+        ) + cte_max.y as y
     FROM swap s
     INNER JOIN cte_max on 1=1
 ) AS S
