@@ -4,12 +4,14 @@
 import logging
 from datetime import date
 from pathlib import Path
+from threading import Lock
 from typing import Any, List, Optional
 
 import polars as pl
 
 from ..etl import Etl
 from .etl_base import SqlServerEtlBase
+from .ctes import extract_ctes
 
 
 class SqlServerEtl(Etl, SqlServerEtlBase):
@@ -34,6 +36,8 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         ```
         """  # noqa: E501 # pylint: disable=line-too-long
         super().__init__(**kwargs)
+
+        self._lock_parse_sql = Lock()
 
     def _pre_etl(self, etl_tables: list[str]):
         """Stuff to do before the ETL (ex remove constraints on omop tables)
@@ -342,6 +346,11 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             select_query (str): The query
             omop_table (str): The omop table
         """
+        self._lock_parse_sql.acquire()
+        try:
+            (ctes, remainder) = extract_ctes(select_query)
+        finally:
+            self._lock_parse_sql.release()
 
         columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
         events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}        
@@ -351,7 +360,8 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             work_database_catalog=self._work_database_catalog,
             work_database_schema=self._work_database_schema,
             upload_table=upload_table,
-            select_query=select_query,
+            ctes=ctes,
+            select_query=remainder,
             columns=columns,
             events=events
         )

@@ -1,18 +1,18 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-delete from [{{work_database_catalog}}].[{{work_database_schema}}].[concept_relationship] 
-where (CAST(concept_id_1 as STRING) in (
-    select CAST(conceptId as STRING)
-    from [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi]
+delete from [{{omop_database_catalog}}].[{{omop_database_schema}}].[concept_relationship] 
+where (CAST(concept_id_1 as varchar(50)) in (
+    select CAST(conceptId as varchar(50))
+    from [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi]
     where sourceCode in (
         select concept_code
-        from [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
+        from [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
     )
-) or CAST(concept_id_2 as STRING) in (
-    select CAST(conceptId as STRING)
-    from [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi]
+) or CAST(concept_id_2 as varchar(50)) in (
+    select CAST(conceptId as varchar(50))
+    from [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi]
     where sourceCode in (
         select concept_code
-        from [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
+        from [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
     )
 )) and (concept_id_1 >= {{min_custom_concept_id}} or concept_id_2 >= {{min_custom_concept_id}})

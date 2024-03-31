@@ -17,5 +17,6 @@ CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_ta
   {%- endfor %}
 );
 
+{{ctes}}
 INSERT INTO [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_table}}]
 {{select_query}}

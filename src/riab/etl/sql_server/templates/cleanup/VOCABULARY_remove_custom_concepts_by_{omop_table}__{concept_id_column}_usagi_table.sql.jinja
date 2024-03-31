@@ -3,9 +3,9 @@
 delete [{{omop_database_catalog}}].[{{omop_database_schema}}].[vocabulary]
 where vocabulary_concept_id in (
     select conceptId
-    from [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi]
+    from [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi]
     where sourceCode in (
         select concept_code
-        from [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
+        from [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
     )
 ) and vocabulary_concept_id >= {{min_custom_concept_id}}

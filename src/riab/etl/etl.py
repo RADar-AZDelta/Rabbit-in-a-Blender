@@ -196,6 +196,7 @@ class Etl(EtlBase):
                 for result in as_completed(futures):
                     result.result()
 
+            with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
                 # upload and apply the Usagi CSV's
                 futures = [
                     executor.submit(

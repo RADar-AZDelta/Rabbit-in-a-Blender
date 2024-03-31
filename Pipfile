@@ -28,6 +28,7 @@ python-dotenv = "*"
 sqlalchemy = "*"
 pywin32 = {markers = "platform_system == 'Windows'",version = "*"}
 tqdm = "*"
+sqlparse = "*"
 
 [requires]
 python_version = "3.12"
