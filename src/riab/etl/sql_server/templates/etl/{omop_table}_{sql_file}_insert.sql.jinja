@@ -3,16 +3,15 @@
 DROP TABLE IF EXISTS [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_table}}];
 
 CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_table}}] (
-  {%- for column in columns -%}
-      {%- if not loop.first -%}
-          {{ ',' }}
-      {%- endif %}
+  {% for column in columns -%}
+      {% if not loop.first %}
+  {{ ',' }}
+      {%- endif -%}
       {{ column["cdmFieldName"] }}
       {%- if column["isPrimaryKey"] == 'Yes' %} varchar(50) 
       {%- elif column["isForeignKey"] == 'Yes' %} varchar(50) 
+      {%- elif column["cdmFieldName"] in events.keys() %} varchar(50) 
       {%- else %} {{ column["cdmDatatype"] }}
-      {%- endif -%}
-      {%- if column['isRequired'] == "Yes" %} not null
       {%- endif -%}
   {%- endfor %}
 );

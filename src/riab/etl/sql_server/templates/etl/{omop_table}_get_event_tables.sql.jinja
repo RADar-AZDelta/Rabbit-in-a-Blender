@@ -9,4 +9,4 @@ FROM (
     SELECT DISTINCT {{column}} as event_table
     FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}]
 {%- endfor %} 
-)
+) T
