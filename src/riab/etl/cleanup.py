@@ -71,19 +71,6 @@ class Cleanup(EtlBase, ABC):
                 )
                 self._remove_omop_ids_from_map_table(omop_table=cleanup_table)
 
-                concept_tables = [
-                    table_name
-                    for table_name in work_tables
-                    if table_name.startswith(cleanup_table) and table_name.endswith("_concept")
-                ]
-                futures = [
-                    executor.submit(self._cleanup_custom_concept_tables, table_name, cleanup_table)
-                    for table_name in concept_tables
-                ]
-                # wait(futures, return_when=ALL_COMPLETED)
-                for result in as_completed(futures):
-                    result.result()
-
                 usagi_tables = [
                     table_name
                     for table_name in work_tables
@@ -99,6 +86,20 @@ class Cleanup(EtlBase, ABC):
                 # wait(futures, return_when=ALL_COMPLETED)
                 for result in as_completed(futures):
                     result.result()
+
+                concept_tables = [
+                    table_name
+                    for table_name in work_tables
+                    if table_name.startswith(cleanup_table) and table_name.endswith("_concept")
+                ]
+                futures = [
+                    executor.submit(self._cleanup_custom_concept_tables, table_name, cleanup_table)
+                    for table_name in concept_tables
+                ]
+                # wait(futures, return_when=ALL_COMPLETED)
+                for result in as_completed(futures):
+                    result.result()
+
                 self._custom_db_engine_cleanup(cleanup_table)
 
             # delete work tables

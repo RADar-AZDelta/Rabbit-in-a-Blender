@@ -30,10 +30,10 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         if self._disable_fk_constraints:
             return
 
-        if cleanup_table == "all":
-            self._remove_all_constraints()
-        else:
-            self._remove_constraints(cleanup_table)
+        #if cleanup_table == "all":
+        self._remove_all_constraints()
+        # else:
+        #     self._remove_constraints(cleanup_table)
 
     def _post_cleanup(self, cleanup_table: str = "all"):
         """Stuff to do after the cleanup (ex re-add constraints to omop tables)
@@ -44,8 +44,8 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         if self._disable_fk_constraints:
             return
 
-        if cleanup_table == "all":
-            self._add_all_constraints()
+        #if cleanup_table == "all":
+        self._add_all_constraints()
         # else:
         #     self._add_constraints(cleanup_table) #we will only readd the constraints after the ETL because for example if you have peron data, and you delete the provider data, this will throw a fk constraint error!
 

@@ -2,5 +2,8 @@
 {#- SPDX-License-Identifier: gpl3+ -#}
 USE  [{{work_database_catalog}}];
 IF NOT EXISTS (SELECT 1 FROM sys.tables t INNER JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE t.name = '{{omop_table}}__{{concept_id_column}}_concept' AND s.name = '{{work_database_schema}}')
-CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
-(concept_id integer,concept_name varchar(255),domain_id varchar(20),vocabulary_id varchar(20),concept_class_id varchar(20),standard_concept varchar(1),concept_code varchar(50),valid_start_date DATE,valid_end_date DATE,invalid_reason varchar(1));
+BEGIN
+    CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept]
+    (concept_id integer,concept_name varchar(255),domain_id varchar(255),vocabulary_id varchar(510),concept_class_id varchar(255),standard_concept varchar(1),concept_code varchar(50),valid_start_date DATE,valid_end_date DATE,invalid_reason varchar(1));
+    CREATE INDEX idx_{{omop_table}}__{{concept_id_column}}_concept_1 ON [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept] (concept_code);
+END

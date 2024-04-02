@@ -155,6 +155,25 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             parquet_file,
         )
 
+    def _validate_custom_concepts(self, omop_table: str, concept_id_column: str) -> None:
+        """Checks that the domain_id, vocabulary_id and concept_class_id columns of the custom concept contain valid values, that exists in our uploaded vocabulary."""
+        template = self._template_env.get_template("etl/CONCEPT_custom_validate.sql.jinja")
+        sql = template.render(
+            omop_database_catalog=self._omop_database_catalog,
+            omop_database_schema=self._omop_database_schema,
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        rows = self._run_query(sql)
+        if rows:
+            df = pl.from_dicts(rows)
+            with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
+                raise Exception(
+                    f"Invalid domain_id, vocabulary_id or concept_class_id supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
+                )
+
     def _give_custom_concepts_an_unique_id_above_2bilj(self, omop_table: str, concept_id_column: str) -> None:
         """Give the custom concepts an unique id (above 2.000.000.000) and store those id's
         in the concept id swap table.
@@ -354,6 +373,12 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
 
         columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
         events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}        
+        primary_key_column = self._get_pk(omop_table)
+        # concept_columns = [
+        #     column["cdmFieldName"]
+        #     for column in columns
+        #     if "concept_id" in column["cdmFieldName"]  # and "source_concept_id" not in column
+        # ]
 
         template = self._template_env.get_template("etl/{omop_table}_{sql_file}_insert.sql.jinja")
         sql = template.render(
@@ -363,7 +388,10 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             ctes=ctes,
             select_query=remainder,
             columns=columns,
-            events=events
+            omop_table=omop_table,
+            primary_key_column=primary_key_column,
+            events=events,
+            # concept_id_columns=concept_columns,
         )
         self._run_query(sql)
 
@@ -587,7 +615,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             work_database_schema=self._work_database_schema,
             omop_table=omop_table,
             columns=columns,
-            events=events,
+            events=events
         )
         self._run_query(sql)
 

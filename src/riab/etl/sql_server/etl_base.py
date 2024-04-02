@@ -110,14 +110,14 @@ class SqlServerEtlBase(EtlBase, ABC):
         )
 
     @backoff.on_exception(backoff.expo, (Exception), max_time=10, max_tries=3)
-    def _run_query(self, sql: str, parameters: Optional[dict] = None) -> Sequence[Row] | None:
+    def _run_query(self, sql: str, parameters: Optional[dict] = None) -> list[dict] | None:
         logging.debug("Running query: %s", sql)
         try:
             rows = None
             with self._engine.begin() as conn:
                 with conn.execute(text(sql), parameters) as result:
                     if isinstance(result, CursorResult) and not result._soft_closed:
-                        rows = result.all()
+                        rows = [u._asdict() for u in result.all()]        
                     return rows
         except Exception as ex:
             logging.debug("FAILED QUERY: %s", sql)

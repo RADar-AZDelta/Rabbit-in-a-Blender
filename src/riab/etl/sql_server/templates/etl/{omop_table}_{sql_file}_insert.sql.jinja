@@ -16,6 +16,29 @@ CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_ta
   {%- endfor %}
 );
 
+CREATE INDEX idx_{{upload_table}}_1 ON [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_table}}] (
+{%- if omop_table == 'fact_relationship' %}
+    fact_id_1
+    , fact_id_2
+{%- elif omop_table == 'death' %}
+    person_id
+{%- elif omop_table == 'cdm_source' %}
+    cdm_source_name
+{%- elif primary_key_column %}
+    {{primary_key_column}}
+{%- endif -%}
+{# {%- for column in concept_id_columns -%}
+    {%- if not column in events.values() %}
+    , {{column}}
+    {%- endif -%} 
+{%- endfor -%}
+{%- for column in events -%}
+    {%- if omop_table != 'fact_relationship' %}
+    , {{column}}
+    {%- endif -%}
+{%- endfor %} #}
+);
+
 {{ctes}}
 INSERT INTO [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_table}}]
 {{select_query}}

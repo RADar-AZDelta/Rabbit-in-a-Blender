@@ -378,6 +378,9 @@ class Etl(EtlBase):
             # load the Parquet file into the specific custom concept upload table
             self._load_custom_concepts_parquet_in_upload_table(parquet_file, omop_table, concept_id_column)
 
+            # Check that the domain_id,vocabulary_id,concept_class_id of the custom concept exisits in our uploaded vocabulary
+            self._validate_custom_concepts(omop_table, concept_id_column)
+
         logging.info(
             "Swapping the custom concept id's for for column '%s' of table '%s'",
             concept_id_column,
@@ -400,6 +403,12 @@ class Etl(EtlBase):
             raise ex
         finally:
             self._lock_custom_concepts.release()
+
+    @abstractmethod
+    def _validate_custom_concepts(self, omop_table: str, concept_id_column: str) -> None:
+        """Checks that the domain_id, vocabulary_id and concept_class_id columns of the custom concept contain valid values, that exists in our uploaded vocabulary."""
+        pass
+
 
     def _apply_usagi_mapping(self, omop_table: str, concept_id_column: str):
         """Processes all the Usagi CSV files (ending with _usagi.csv) under the '{concept_id_column}' folder.

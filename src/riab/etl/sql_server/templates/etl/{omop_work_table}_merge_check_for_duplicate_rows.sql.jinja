@@ -19,7 +19,7 @@ SELECT TOP 100
 {%- elif omop_table == 'cdm_source' -%}
     , cdm_source_name
 {%- elif primary_key_column -%}
-    {{primary_key_column}}
+    , {{primary_key_column}}
 {%- endif %}
 {%- for column in concept_id_columns -%}
     {%- if not column in events.values() %}

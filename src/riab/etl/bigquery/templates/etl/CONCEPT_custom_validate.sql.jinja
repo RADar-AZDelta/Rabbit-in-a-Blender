@@ -1,0 +1,11 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+SELECT c.*
+FROM `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept` c
+LEFT OUTER JOIN `{{dataset_omop}}.domain` d on d.domain_id = c.domain_id
+LEFT OUTER JOIN `{{dataset_omop}}.vocabulary` v on v.vocabulary_id = c.vocabulary_id
+LEFT OUTER JOIN `{{dataset_omop}}.concept_class` cc on cc.concept_class_id = c.concept_class_id
+WHERE d.domain_id IS NULL
+	OR v.vocabulary_id IS NULL
+	OR cc.concept_class_id IS NULL
+LIMIT 100;

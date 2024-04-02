@@ -140,6 +140,24 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             f"{omop_table}__{concept_id_column}_concept",
         )
 
+    def _validate_custom_concepts(self, omop_table: str, concept_id_column: str) -> None:
+        """Checks that the domain_id, vocabulary_id and concept_class_id columns of the custom concept contain valid values, that exists in our uploaded vocabulary."""
+        template = self._template_env.get_template("etl/CONCEPT_custom_validate.sql.jinja")
+        sql = template.render(
+            dataset_omop=self._dataset_omop,
+            dataset_work=self._dataset_work,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        rows = self._gcp.run_query_job(sql)
+        ar_table = rows.to_arrow()
+        if len(ar_table):
+            df = pl.from_arrow(ar_table)
+            with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
+                raise Exception(
+                    f"Invalid domain_id, vocabulary_id or concept_class_id supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
+                )
+
     def _give_custom_concepts_an_unique_id_above_2bilj(self, omop_table: str, concept_id_column: str) -> None:
         """Give the custom concepts an unique id (above 2.000.000.000) and store those id's in the concept id swap table.
 
