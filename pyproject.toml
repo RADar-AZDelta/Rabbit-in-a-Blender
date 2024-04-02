@@ -1,6 +1,6 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.44"
+version = "0.0.45"
 authors = [
   { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
   { name="Dupulthys Stijn", email="stijn.dupulthys@azdelta.be" },
@@ -34,7 +34,7 @@ dependencies = [
     'python-dotenv >= 1.0.1',
     'sqlalchemy >= 2.0.28',
     'pywin32 >= 306; platform_system == "Windows"',
-    'sqlparse >= '0.4.4'
+    'sqlparse >= 0.4.4',
 ]
 
 [project.urls]
