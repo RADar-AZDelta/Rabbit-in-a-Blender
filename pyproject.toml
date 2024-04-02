@@ -34,6 +34,7 @@ dependencies = [
     'python-dotenv >= 1.0.1',
     'sqlalchemy >= 2.0.28',
     'pywin32 >= 306; platform_system == "Windows"',
+    'sqlparse >= '0.4.4'
 ]
 
 [project.urls]
