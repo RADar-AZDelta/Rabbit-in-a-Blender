@@ -60,7 +60,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             work_database_catalog=self._work_database_catalog, work_database_schema=self._work_database_schema
         )
         rows: Sequence = cast(Sequence, self._run_query(sql))
-        return [row.table_name for row in rows]
+        return [row["table_name"] for row in rows]
 
     def _truncate_omop_table(self, table_name: str) -> None:
         logging.debug("Truncate omop table %s", table_name)
