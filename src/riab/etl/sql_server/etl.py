@@ -10,8 +10,8 @@ from typing import Any, List, Optional
 import polars as pl
 
 from ..etl import Etl
-from .etl_base import SqlServerEtlBase
 from .ctes import extract_ctes
+from .etl_base import SqlServerEtlBase
 
 
 class SqlServerEtl(Etl, SqlServerEtlBase):
@@ -372,7 +372,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             self._lock_parse_sql.release()
 
         columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
-        events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}        
+        events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}
         primary_key_column = self._get_pk(omop_table)
         # concept_columns = [
         #     column["cdmFieldName"]
@@ -514,7 +514,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_columns (List[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        if not (events or omop_table == 'vocabulary'):
+        if not (events or omop_table == "vocabulary"):
             self._remove_constraints(omop_table)
 
         template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
@@ -537,7 +537,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         self._run_query(sql)
 
-        if not (events or omop_table == 'vocabulary'):
+        if not (events or omop_table == "vocabulary"):
             self._add_constraints(omop_table)
 
     def _merge_event_columns(
@@ -556,7 +556,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        if not (events or omop_table == 'vocabulary'):
+        if not (events or omop_table == "vocabulary"):
             return
 
         self._remove_constraints(omop_table)
@@ -572,7 +572,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
                 )
                 rows = self._run_query(sql)
                 event_tables = dict(
-                    (table, self._get_pk(table)) for table in (row.event_table for row in rows) if table
+                    (table, self._get_pk(table)) for table in (row["event_table"] for row in rows) if table
                 )
 
             template = self._template_env.get_template("etl/{omop_table}_apply_event_columns.sql.jinja")
@@ -589,11 +589,11 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             )
             self._run_query(sql)
         except Exception as e:
-            #if isinstance(e.__cause__, NotFound):  # chained exception!!!
-                logging.debug(
-                    "Table %s not found in work dataset, continue without merge for this table",
-                    omop_table,
-                )
+            # if isinstance(e.__cause__, NotFound):  # chained exception!!!
+            logging.debug(
+                "Table %s not found in work dataset, continue without merge for this table",
+                omop_table,
+            )
         finally:
             self._add_constraints(omop_table)
 
@@ -604,9 +604,9 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table (str): The OMOP table
             events (Any): Object that holds the events of the the OMOP table.
         """
-        if not (events or omop_table == 'vocabulary'):
+        if not (events or omop_table == "vocabulary"):
             return
-        
+
         columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
 
         template = self._template_env.get_template("etl/{omop_work}_ddl.sql.jinja")
@@ -615,7 +615,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             work_database_schema=self._work_database_schema,
             omop_table=omop_table,
             columns=columns,
-            events=events
+            events=events,
         )
         self._run_query(sql)
 

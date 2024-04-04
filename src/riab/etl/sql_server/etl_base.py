@@ -8,12 +8,12 @@ import subprocess
 from abc import ABC
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from typing import Optional, Sequence, cast
+from tempfile import TemporaryDirectory
+from typing import Optional, cast
 
 import backoff
 import polars as pl
-from sqlalchemy import CursorResult, Row, create_engine, engine, text
+from sqlalchemy import CursorResult, create_engine, engine, text
 
 from ..etl_base import EtlBase
 
@@ -117,7 +117,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             with self._engine.begin() as conn:
                 with conn.execute(text(sql), parameters) as result:
                     if isinstance(result, CursorResult) and not result._soft_closed:
-                        rows = [u._asdict() for u in result.all()]        
+                        rows = [u._asdict() for u in result.all()]
                     return rows
         except Exception as ex:
             logging.debug("FAILED QUERY: %s", sql)
@@ -139,9 +139,11 @@ class SqlServerEtlBase(EtlBase, ABC):
         )
         df = pl.read_parquet(parquet_file)
 
-        with NamedTemporaryFile(suffix=".csv") as tmp_file:
+        with TemporaryDirectory(prefix="riab_") as temp_dir_path:
+            upload_file = str(Path(temp_dir_path) / f"{table}.csv")
+
             df.write_csv(
-                tmp_file.name,
+                upload_file,
                 separator="\t",
                 line_terminator="\n",
                 include_header=True,
@@ -154,12 +156,12 @@ class SqlServerEtlBase(EtlBase, ABC):
 
             bcp_error_file = f"bcp_{table}.err"
 
-            logging.debug("Loading '%s' into table [%s].[%s].[%s]", tmp_file.name, catalog, schema, table)
+            logging.debug("Loading '%s' into table [%s].[%s].[%s]", upload_file, catalog, schema, table)
             args = [
                 "bcp" + (".exe" if os.name == "nt" else ""),
                 f"{schema}.{table}",
                 "in",
-                tmp_file.name,
+                upload_file,
                 f"-d{catalog}",
                 f"-S{self._server},{self._port}",
                 f"-U{self._user}",
@@ -176,12 +178,11 @@ class SqlServerEtlBase(EtlBase, ABC):
             logging.info(f"Bulk copy command: {re.sub(
                 r"-P.*-c",
                 r"-P******* -c",
-                " ".join(args).encode("unicode_escape").decode("utf-8"),
+                " ".join([arg.encode("unicode_escape").decode("utf-8") if (arg.startswith("-r") or arg.startswith("-t")) else arg for arg in args]),
             )}")
             process = subprocess.Popen(args)  # , shell=True, stdout=subprocess.PIPE)
             exit_code = process.wait()
-            file_size = os.path.getsize(bcp_error_file)
-            if file_size == 0:
+            if os.path.isfile(bcp_error_file) and os.path.getsize(bcp_error_file) == 0:
                 os.remove(bcp_error_file)  # remove the BCP error file
             else:
                 raise Exception(f"BCP failed! See {bcp_error_file} for errors.")

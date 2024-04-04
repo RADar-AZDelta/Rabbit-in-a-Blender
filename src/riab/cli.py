@@ -641,7 +641,7 @@ ______      _     _     _ _     _                ______ _                _
         main_logger.addHandler(console_handler)
 
         # file handler
-        tmp_file_handle = NamedTemporaryFile(delete=False, prefix="omop_etl_", suffix=".log")
+        tmp_file_handle = NamedTemporaryFile(delete=False, prefix="riab_", suffix=".log")
         file_handler = logging.FileHandler(tmp_file_handle.name)
         file_handler.setFormatter(file_formatter)
         main_logger.addHandler(file_handler)

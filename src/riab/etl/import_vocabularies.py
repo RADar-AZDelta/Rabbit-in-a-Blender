@@ -57,7 +57,7 @@ class ImportVocabularies(EtlBase, ABC):
 
             with (
                 zipfile.ZipFile(path_to_zip_file, "r") as zip_ref,
-                tempfile.TemporaryDirectory(prefix="omop_vocabularies_") as temp_dir_path,
+                tempfile.TemporaryDirectory(prefix="riab_") as temp_dir_path,
             ):
                 logging.info(
                     "Extracting vocabularies zip file '%s' to temporary dir '%s'",

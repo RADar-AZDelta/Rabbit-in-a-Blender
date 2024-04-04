@@ -365,7 +365,7 @@ class Etl(EtlBase):
         # = ar_temp_table if not ar_table else pa.concat_tables([ar_table, ar_temp_table])
         if df.is_empty():
             return
-        with tempfile.TemporaryDirectory() as temp_dir_path:
+        with tempfile.TemporaryDirectory(prefix="riab_") as temp_dir_path:
             if platform.system() == "Windows":
                 import win32api
 
@@ -408,7 +408,6 @@ class Etl(EtlBase):
     def _validate_custom_concepts(self, omop_table: str, concept_id_column: str) -> None:
         """Checks that the domain_id, vocabulary_id and concept_class_id columns of the custom concept contain valid values, that exists in our uploaded vocabulary."""
         pass
-
 
     def _apply_usagi_mapping(self, omop_table: str, concept_id_column: str):
         """Processes all the Usagi CSV files (ending with _usagi.csv) under the '{concept_id_column}' folder.
@@ -493,7 +492,7 @@ class Etl(EtlBase):
                     omop_table,
                 )
 
-            with tempfile.TemporaryDirectory() as temp_dir_path:
+            with tempfile.TemporaryDirectory(prefix="riab_") as temp_dir_path:
                 if platform.system() == "Windows":
                     import win32api
 
