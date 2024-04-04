@@ -111,7 +111,7 @@ Installation
 ========
 
 ```bash
-pip install Rabbit-in-a-Blender
+pip install --upgrade Rabbit-in-a-Blender
 ```
 
 Config
