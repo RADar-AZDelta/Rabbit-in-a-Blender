@@ -456,6 +456,12 @@ Ensure SQL allows non- Entra ID users
    3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
 
 
+Windows
+========
+
+Use a terminal that supports colors (like [Hyper](https://hyper.is/))
+
+
 Authors
 ========
 

@@ -69,6 +69,9 @@ class Cli:
                 if args.verbose:
                     logging.getLogger().setLevel(logging.DEBUG)
 
+                if sys.version_info < (3, 12):
+                    raise Exception("Minimum Python version is 3.12 or later")
+
                 config = self._read_config_file(args.config)
 
                 db_engine = config.safe_get("riab", "db_engine")
