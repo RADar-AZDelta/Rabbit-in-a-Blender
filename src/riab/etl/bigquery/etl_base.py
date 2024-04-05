@@ -60,9 +60,9 @@ class BigQueryEtlBase(EtlBase, ABC):
 
         self.__clustering_fields = None
 
-    def __del__(self):
+    def __exit__(self, exception_type, exception_value, exception_traceback):
         logging.info("Total BigQuery cost: %s€", self._gcp.total_cost)
-        EtlBase.__del__(self)
+        EtlBase.__exit__(self, exception_type, exception_value, exception_traceback)
 
     @property
     def _clustering_fields(self) -> Dict[str, List[str]]:

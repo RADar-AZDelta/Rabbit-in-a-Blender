@@ -39,7 +39,6 @@ class EtlBase(ABC):
         Args:
             cdm_folder_path (str): The path to the OMOP folder structure that holds for each OMOP CDM table (folder) the ETL queries, Usagi CSV's and custom concept CSV's0
         """  # noqa: E501 # pylint: disable=line-too-long
-        self._start_time = time.time()
 
         self._cdm_folder_path = Path(cdm_folder_path).resolve() if cdm_folder_path else None
         self._db_engine = db_engine
@@ -108,7 +107,11 @@ class EtlBase(ABC):
         ) as file:
             self._omop_event_fields: dict[str, dict[str, str]] = json.load(file)
 
-    def __del__(self):
+    def __enter__(self):
+        self._start_time = time.time()
+        return self
+
+    def __exit__(self, exception_type, exception_value, exception_traceback):
         end_time = time.time()
         hours, rem = divmod(end_time - self._start_time, 3600)
         minutes, seconds = divmod(rem, 60)
