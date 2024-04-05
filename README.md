@@ -454,6 +454,7 @@ Ensure SQL allows non- Entra ID users
    1. Open Azure portal
    2. Go to SQL **server** instance (not database)
    3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
+   4. You might need to [scale up](https://learn.microsoft.com/en-us/azure/azure-sql/database/scale-resources?view=azuresql) the number of max vCores to speed up for instance the import of the vocabularies.
 
 
 Windows
