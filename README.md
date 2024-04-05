@@ -456,6 +456,7 @@ Ensure SQL allows non- Entra ID users
    3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
    4. You might need to [scale up](https://learn.microsoft.com/en-us/azure/azure-sql/database/scale-resources?view=azuresql) the number of max vCores to speed up for instance the import of the vocabularies.
 
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/1187178/1ac67835-b467-4278-8c9a-171af0a98aa8)
 
 Windows
 ========
