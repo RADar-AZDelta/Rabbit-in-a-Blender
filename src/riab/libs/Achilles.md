@@ -7,7 +7,7 @@ git submodule add --name Achilles --branch main --force ssh://git@github.com/OHD
 Set to specific tag:
 
 ```bash
-VERSION=v1.7.0
+VERSION=v1.7.2
 cd src/riab/libs/Achilles
 git checkout ${VERSION}
 cd ../../../..

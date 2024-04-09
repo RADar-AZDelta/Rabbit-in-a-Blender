@@ -7,7 +7,7 @@ git submodule add --name SqlRender --branch main --force ssh://git@github.com/OH
 Set to specific tag:
 
 ```bash
-VERSION=v1.10.0
+VERSION=v1.16.1
 cd src/riab/libs/SqlRender
 git checkout ${VERSION}
 cd ../../../..
