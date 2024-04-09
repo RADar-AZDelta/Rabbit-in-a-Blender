@@ -14,3 +14,7 @@
 	path = src/riab/libs/CommonDataModel
 	url = ssh://git@github.com/OHDSI/CommonDataModel.git
 	tag = v5.4.1
+[submodule "Ares"]
+	path = src/riab/libs/Ares
+	url = ssh://git@github.com/OHDSI/Ares.git
+	branch = main
