@@ -18,3 +18,7 @@
 	path = src/riab/libs/Ares
 	url = ssh://git@github.com/OHDSI/Ares.git
 	branch = main
+[submodule "QueryLibrary"]
+	path = src/riab/libs/QueryLibrary
+	url = ssh://git@github.com/OHDSI/QueryLibrary.git
+	branch = main
