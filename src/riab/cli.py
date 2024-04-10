@@ -85,8 +85,8 @@ class Cli:
                                 db_engine, "achilles_database_catalog", "achilles"
                             ),
                             "achilles_database_schema": config.safe_get(db_engine, "achilles_database_schema", "dbo"),
-                            "disable_fk_constraints": config.safe_get(
-                                db_engine, "disable_fk_constraints", "true"
+                            "disable_fk_constraints": cast(
+                                str, config.safe_get(db_engine, "disable_fk_constraints", "true")
                             ).lower()
                             in ["true", "1", "yes"],
                             "bcp_code_page": config.safe_get(db_engine, "bcp_code_page", "ACP"),
@@ -515,10 +515,11 @@ ______      _     _     _ _     _                ______ _                _
         argument_group.add_argument(
             "-q",
             "--only-query",
-            help="Run only the specified ETL query form the CMD folder structure (ex: measurement/lab_measurements.sql).",  # noqa: E501 # pylint: disable=line-too-long
+            help="Run only the specified ETL query(s) form the CMD folder structure (ex: measurement/lab_measurements.sql).",  # noqa: E501 # pylint: disable=line-too-long
             nargs="?",
             type=str,
             metavar="PATH",
+            action="append",
         )
         argument_group.add_argument(
             "-t",

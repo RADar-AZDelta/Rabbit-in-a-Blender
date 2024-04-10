@@ -234,7 +234,7 @@ CLI Usage
     |  command | help  
     |---|---  
     | -t [TABLE], --table [TABLE] | Do only ETL on this specific OMOP CDM table (this argument can be used multiple times). (ex: --run-etl ~/git/omop-cdm/ -t cdm_source -t metadata -t vocabulary -t location). This option is only usefull while developing the ETL queries or testing Usagi mappings, to speed up the ETL process. Do not use in production.
-    | -q [PATH], --only-query [PATH] | Do ETL for a specified sql file in the CDM folder structure (ex: measurement/lab_measurements.sql). This option is only usefull while developing a specific ETL query, to speed up the ETL process. Do not use in production.
+    | -q [PATH], --only-query [PATH] | Do ETL for a specified sql file in the CDM folder structure (this argument can be used multiple times). (ex: measurement/lab_measurements.sql). This option is only usefull while developing a specific ETL query, to speed up the ETL process. Do not use in production.
     | -s, --skip-usagi-and-custom-concept-upload | Skips the parsing and uploading of the Usagi and custom concept CSV's. Skipping results in a significant speed boost.
     | -sa, --process-semi-approved-mappings | In addition to 'APPROVED' as mapping status, 'SEMI-APPROVED' will be processed as valid Usagi concept mappings.
     | -se, --skip-event-fks-step | Skip the event foreign keys ETL step.

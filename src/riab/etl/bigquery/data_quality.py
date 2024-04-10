@@ -4,7 +4,7 @@
 import logging
 import traceback
 from time import time
-from typing import Any, List
+from typing import Any, List, Optional
 
 import polars as pl
 import pyarrow as pa
@@ -20,16 +20,21 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
     ):
         super().__init__(**kwargs)
 
-    def _run_check_query(self, check: Any, row: str, parameters: Any) -> Any:
+    def _run_check_query(
+        self, check: Any, row: str, parameters: Any, cohort_definition_id: Optional[int] = None
+    ) -> Any:
         sql = None
         result = None
         exception: str | None = None
         execution_time = -1
         try:
-            parameters["cohort"] = "TRUE" if hasattr(parameters, "cohortDefinitionId") else "FALSE"
-            parameters["cdmDatabaseSchema"] = f"{self._dataset_omop}"
-            parameters["vocabDatabaseSchema"] = f"{self._dataset_omop}"
-            parameters["schema"] = f"{self._dataset_omop}"
+            parameters["cdmDatabaseSchema"] = self._dataset_omop
+            parameters["cohortDatabaseSchema"] = self._dataset_omop
+            parameters["cohortTableName"] = "cohort"
+            parameters["cohortDefinitionId"] = cohort_definition_id
+            parameters["vocabDatabaseSchema"] = self._dataset_omop
+            parameters["cohort"] = "TRUE" if cohort_definition_id else "FALSE"
+            parameters["schema"] = self._dataset_omop
 
             sql = self._render_sqlfile(check["sqlFile"], parameters)
 

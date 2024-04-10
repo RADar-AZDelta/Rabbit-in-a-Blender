@@ -16,7 +16,6 @@ from humanfriendly import format_timespan
 
 from .etl_base import EtlBase
 from .sql_render_base import SqlRenderBase
-from .utils import StringConverter
 
 
 class DataQuality(SqlRenderBase, EtlBase, ABC):
@@ -26,7 +25,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
 
     def __init__(
         self,
-        data_quality_dashboard_version: str = "1.4.1",
+        data_quality_dashboard_version: str = "2.6.0",
         json_path: str | None = None,
         **kwargs,
     ):
@@ -35,23 +34,27 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         self.data_quality_dashboard_version = data_quality_dashboard_version
         self.json_path = json_path
 
-    def run(self, tables_to_exclude: list[str] | None = None):
-        if not tables_to_exclude:
-            tables_to_exclude = [
-                "CONCEPT",
-                "VOCABULARY",
-                "CONCEPT_ANCESTOR",
-                "CONCEPT_RELATIONSHIP",
-                "CONCEPT_CLASS",
-                "CONCEPT_SYNONYM",
-                "RELATIONSHIP",
-                "DOMAIN",
-            ]
-
+    def run(
+        self,
+        tables_to_exclude: list[str] = [
+            "CONCEPT",
+            "VOCABULARY",
+            "CONCEPT_ANCESTOR",
+            "CONCEPT_RELATIONSHIP",
+            "CONCEPT_CLASS",
+            "CONCEPT_SYNONYM",
+            "RELATIONSHIP",
+            "DOMAIN",
+        ],
+        cohort_definition_id: Optional[int] = None,
+    ):
         logging.info("Checking data quality")
+
+        metadata = self._capture_check_metadata()
 
         start = time()
 
+        # load Threshold CSVs
         df_check_descriptions = pl.read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
@@ -105,7 +108,16 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         # remove offset from being checked
         df_field_level = df_field_level.filter(pl.col("cdmFieldName").ne("offset"))
 
-        metadata = self._capture_check_metadata()
+        # deprecations
+        logging.warning(
+            "DEPRECATION WARNING - The plausibleDuringLife check has been reimplemented with the plausibleBeforeDeath check."
+        )
+        logging.warning(
+            "DEPRECATION WARNING - The plausibleTemporalAfter check has been reimplemented with the plausibleAfterBirth and plausibleStartBeforeEnd checks."
+        )
+        logging.warning(
+            "DEPRECATION WARNING - The plausibleGender check has been reimplemented with the plausibleGenderUseDescendants check."
+        )
 
         check_results = pl.DataFrame()
         for index, check in enumerate(df_check_descriptions.iter_rows(named=True)):
@@ -113,11 +125,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                 [
                     check_results,
                     self._run_check(
-                        check,
-                        cast(int, index),
-                        df_table_level,
-                        df_field_level,
-                        df_concept_level,
+                        check, cast(int, index), df_table_level, df_field_level, df_concept_level, cohort_definition_id
                     ),
                 ]
             )
@@ -159,11 +167,17 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             ) as file:  # outputFile <- sprintf("%s-%s.json", tolower(metadata$CDM_SOURCE_ABBREVIATION),endTimestamp)
                 json.dump(check_summary, file, indent=4, sort_keys=True, default=str)
 
-    def _capture_check_metadata(self):
-        cdm_soures = self._get_cdm_sources()
-        metadata = [dict((k.upper(), v) for k, v in cdm_soure.items()) for cdm_soure in cdm_soures]
-        for item in metadata:
-            item["DQD_VERSION"] = self.data_quality_dashboard_version
+    def _capture_check_metadata(self) -> dict[str, Any]:
+        cdm_sources = self._get_cdm_sources()
+        # metadata = [dict((k.upper(), v) for k, v in cdm_soure.items()) for cdm_soure in cdm_soures]
+        if len(cdm_sources) < 1:
+            raise Exception("Please populate the cdm_source table before executing data quality checks.")
+        if len(cdm_sources) > 1:
+            logging.warning(
+                "The cdm_source table has more than 1 row. A single row from this table has been selected to populate DQD metadata."
+            )
+        metadata = cdm_sources[0]
+        metadata["dqd_version"] = self.data_quality_dashboard_version
         return metadata
 
     def _cleanNullTerms(self, d: dict):
@@ -184,6 +198,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         df_table_level: pl.DataFrame,
         df_field_level: pl.DataFrame,
         df_concept_level: pl.DataFrame,
+        cohort_definition_id: Optional[int] = None,
     ) -> pl.DataFrame:
         data_frame = None
         match check["checkLevel"]:
@@ -197,22 +212,17 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                 raise Exception(f"Unknown check level: {check["checkLevel"]}")
 
         try:
-            data_frame = data_frame.filter(pl.sql_expr(check["evaluationFilter"]))
+            # polars.exceptions.ComputeError: SQL operator BitwiseAnd is not yet supported --> we split the expression on &
+            for expression in check["evaluationFilter"].split("&"):
+                data_frame = data_frame.filter(pl.sql_expr(expression))
         except Exception:
-            # fallback to pandas eval
-            pd_df = data_frame.to_pandas()
-            import pandas as pd
-
-            data_frame = pl.from_pandas(pd.DataFrame(pd_df[pd_df.eval(check["evaluationFilter"])]))
+            logging.error(f"Expression '{check["evaluationFilter"]}' not supported in polars!!!!")
 
         check_results = []
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [
                 executor.submit(
-                    self._run_check_query,
-                    check,
-                    f"{int(row) + 1}.{cast(int, index) + 1}",
-                    item,
+                    self._run_check_query, check, f"{int(row) + 1}.{cast(int, index) + 1}", item, cohort_definition_id
                 )
                 for index, item in enumerate(data_frame.iter_rows(named=True))
             ]
@@ -250,7 +260,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         return pl.from_dicts(check_results, schema=schema).sort("_row")
 
     @abstractmethod
-    def _run_check_query(self, check: Any, row: str, item: Any) -> Any:
+    def _run_check_query(self, check: Any, row: str, item: Any, cohort_definition_id: Optional[int] = None) -> Any:
         pass
 
     @abstractmethod
@@ -341,6 +351,37 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         execution_time: Optional[float],
         exception: Optional[str],
     ) -> Any:
+        check_description = (
+            str(check["checkDescription"])
+            .replace("@cdmTableName", item.get("cdmTableName") or "@cdmTableName")
+            .replace("@cdmFieldName", item.get("cdmFieldName") or "@cdmFieldName")
+            .replace("@fkTableName", item.get("fkTableName") or "@fkTableName")
+            .replace("@fkDomain", item.get("fkDomain") or "@fkDomain")
+            .replace("@fkClass", item.get("fkClass") or "@fkClass")
+            .replace("@plausibleValueLow", item.get("plausibleValueLow") or "@plausibleValueLow")
+            .replace("@plausibleValueHigh", item.get("plausibleValueHigh") or "@plausibleValueHigh")
+            .replace(
+                "@plausibleTemporalAfterFieldName",
+                item.get("plausibleTemporalAfterFieldName") or "@plausibleTemporalAfterFieldName",
+            )
+            .replace(
+                "@plausibleTemporalAfterTableName",
+                item.get("plausibleTemporalAfterTableName") or "@plausibleTemporalAfterTableName",
+            )
+            .replace(
+                "@plausibleStartBeforeEndFieldName",
+                item.get("plausibleStartBeforeEndFieldName") or "@plausibleStartBeforeEndFieldName",
+            )
+            .replace("@conceptId", item.get("conceptId") or "@conceptId")
+            .replace("@conceptName", item.get("conceptName") or "@conceptName")
+            .replace("@plausibleGender", item.get("plausibleGender") or "@plausibleGender")
+            .replace(
+                "@plausibleGenderUseDescendants",
+                item.get("plausibleGenderUseDescendants") or "@plausibleGenderUseDescendants",
+            )
+            .replace("@plausibleUnitConceptIds", item.get("plausibleUnitConceptIds") or "@plausibleUnitConceptIds")
+        )
+
         check_result = {
             "num_violated_rows": result["num_violated_rows"] if result else None,
             "pct_violated_rows": round(result["pct_violated_rows"], 4) if result else None,
@@ -349,11 +390,11 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             "query_text": sql,
             "check_name": check["checkName"],
             "check_level": check["checkLevel"],
-            "check_description": check["checkDescription"],
-            "cdm_table_name": item.cdmTableName if hasattr(item, "cdmTableName") else None,
-            "cdm_field_name": item.cdmFieldName if hasattr(item, "cdmFieldName") else None,
-            "concept_id": item.conceptTd if hasattr(item, "conceptTd") else None,
-            "unit_concept_id": item.unitConceptId if hasattr(item, "unitConceptId") else None,
+            "check_description": check_description,
+            "cdm_table_name": item.get("cdmTableName"),
+            "cdm_field_name": item.get("cdmFieldName"),
+            "concept_id": item.get("conceptTd"),
+            "unit_concept_id": item.get("unitConceptId"),
             "sql_file": check["sqlFile"],
             "category": check["kahnCategory"],
             "subcategory": check["kahnSubcategory"],

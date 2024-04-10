@@ -9,6 +9,7 @@ import os
 import platform
 import tempfile
 from abc import abstractmethod
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from pathlib import Path
@@ -28,7 +29,7 @@ class Etl(EtlBase):
     def __init__(
         self,
         only_omop_table: Optional[list[str]] = None,
-        only_query: Optional[str] = None,
+        only_query: Optional[list[str]] = None,
         skip_usagi_and_custom_concept_upload: Optional[bool] = None,
         process_semi_approved_mappings: Optional[bool] = None,
         skip_event_fks_step: Optional[bool] = None,
@@ -39,14 +40,14 @@ class Etl(EtlBase):
 
         Args:
             cdm_folder_path (str): The path to the OMOP folder structure that holds for each OMOP CDM table (folder) the ETL queries, Usagi CSV's and custom concept CSV's0
-            only_omop_table (str): Only do ETL on this OMOP CDM table.
-            only_query (str): Only do ETL for the specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql)
+            only_omop_table (str): Only do specific ETL on this OMOP CDM table(s).
+            only_query (str): Only do ETL for the specified sql file(s) in the CDM folder structure. (ex: measurement/lab_measurements.sql)
             skip_usagi_and_custom_concept_upload (bool): If no changes have been made to the Usagi and custom concept CSV's, then you can speed up the ETL process by setting this flag to True. The ETL process will skip the upload and processing of the Usagi and custom concept CSV's.
         """  # noqa: E501 # pylint: disable=line-too-long
         super().__init__(**kwargs)
 
         self._only_omop_table = only_omop_table
-        self._only_query: Optional[Path] = Path(only_query) if only_query else None
+        self._only_query: Optional[list[Path]] = [Path(query) for query in only_query] if only_query else None
         self._skip_usagi_and_custom_concept_upload = skip_usagi_and_custom_concept_upload
         self._process_semi_approved_mappings = process_semi_approved_mappings
         self._skip_event_fks_step = skip_event_fks_step
@@ -82,9 +83,12 @@ class Etl(EtlBase):
         etl_start = date.today()
 
         if self._only_query:
-            omop_table = self._only_query.parts[0]
-            self._process_omop_table(omop_table)
-            self._fill_in_event_columns_for_omop_table(omop_table)
+            d: dict[str, list[Path]] = defaultdict(list[Path])
+            for k, v in [(path.parts[0], cast(Path, self._cdm_folder_path) / path) for path in self._only_query]:
+                d[k].append(v)
+            for omop_table, queries in d.items():
+                self._process_omop_table(omop_table, queries)
+                self._fill_in_event_columns_for_omop_table(omop_table)
         elif self._only_omop_table:
             for omop_table in self._only_omop_table:
                 self._process_omop_table(omop_table)
@@ -146,7 +150,7 @@ class Etl(EtlBase):
         if len(elt_flow):
             self._process_all_omop_tables(elt_flow)
 
-    def _process_omop_table(self, omop_table: str):
+    def _process_omop_table(self, omop_table: str, only_queries: Optional[list[Path]] = None):
         """ETL method for one OMOP table
 
         Args:
@@ -213,31 +217,24 @@ class Etl(EtlBase):
         foreign_key_columns = self._get_fks(omop_table)
         primary_key_column = self._get_pk(omop_table)
 
-        if self._only_query:
-            sql_files = [cast(Path, self._cdm_folder_path) / self._only_query]
+        if only_queries:
+            sql_files = only_queries
 
-        if self._only_query:
-            self._run_upload_query(sql_files[0], omop_table)
-        else:
-            with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
-                # upload an apply the custom concept CSV's
-                futures = [
-                    executor.submit(
-                        self._run_upload_query,
-                        sql_file,
-                        omop_table,
-                    )
-                    for sql_file in sql_files
-                ]
-                # wait(futures, return_when=ALL_COMPLETED)
-                for result in as_completed(futures):
-                    result.result()
+        with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
+            # upload an apply the custom concept CSV's
+            futures = [
+                executor.submit(
+                    self._run_upload_query,
+                    sql_file,
+                    omop_table,
+                )
+                for sql_file in sql_files
+            ]
+            # wait(futures, return_when=ALL_COMPLETED)
+            for result in as_completed(futures):
+                result.result()
 
-        upload_tables = (
-            [Path(Path(self._only_query).stem).stem]
-            if self._only_query
-            else [Path(Path(sql_file).stem).stem for sql_file in sql_files]
-        )  # remove file extensions
+        upload_tables = [Path(Path(sql_file).stem).stem for sql_file in sql_files]  # remove file extensions
 
         if pk_auto_numbering:
             # swap the primary key with an auto number
