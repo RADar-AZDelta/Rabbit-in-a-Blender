@@ -11,7 +11,7 @@ VERSION=v0.3-beta
 cd src/riab/libs/Ares
 git checkout ${VERSION}
 cd ../../../..
-git add libs/Ares
+git add src/riab/libs/Ares
 git commit -m "moved Ares submodule to ${VERSION}"
 git push
 ```

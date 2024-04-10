@@ -11,7 +11,7 @@ VERSION=v2.6.0
 cd src/riab/libs/DataQualityDashboard
 git checkout ${VERSION}
 cd ../../../..
-git add libs/DataQualityDashboard
+git add src/riab/libs/DataQualityDashboard
 git commit -m "moved DataQualityDashboard submodule to ${VERSION}"
 git push
 ```

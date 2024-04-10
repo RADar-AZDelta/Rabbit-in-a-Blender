@@ -11,7 +11,7 @@ VERSION=v1.16.1
 cd src/riab/libs/SqlRender
 git checkout ${VERSION}
 cd ../../../..
-git add libs/SqlRender
+git add src/riab/libs/SqlRender
 git commit -m "moved SqlRender submodule to ${VERSION}"
 git push
 ```

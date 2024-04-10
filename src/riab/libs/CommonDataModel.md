@@ -11,7 +11,7 @@ VERSION=v5.4.1
 pushd src/riab/libs/CommonDataModel
 git checkout ${VERSION}
 popd
-git add libs/CommonDataModel
+git add src/riab/libs/CommonDataModel
 git commit -m "moved CommonDataModel submodule to ${VERSION}"
 git push
 ```

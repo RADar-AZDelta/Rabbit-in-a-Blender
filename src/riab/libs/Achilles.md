@@ -11,7 +11,7 @@ VERSION=v1.7.2
 cd src/riab/libs/Achilles
 git checkout ${VERSION}
 cd ../../../..
-git add libs/Achilles
+git add src/riab/libs/Achilles
 git commit -m "moved Achilles submodule to ${VERSION}"
 git push
 ```
