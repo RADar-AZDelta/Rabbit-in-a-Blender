@@ -250,7 +250,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
     def _delete_given_analysis(self, analysis_ids: list[int] | None):
         parameters = {
-            "resultsDatabaseSchema": self._dataset_achilles,
+            "resultsDatabaseSchema": self._results_database_schema,
             "analysisIds": ",".join([str(id) for id in (analysis_ids or [])]),
         }
         sql = self._render_sql(
@@ -273,7 +273,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         if result_ids:
             parameters = {
-                "resultsDatabaseSchema": self._dataset_achilles,
+                "resultsDatabaseSchema": self._results_database_schema,
                 "analysisIds": ",".join(result_ids),
             }
             sql = self._render_sql(
@@ -285,7 +285,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         if dist_ids:
             parameters = {
-                "resultsDatabaseSchema": self._dataset_achilles,
+                "resultsDatabaseSchema": self._results_database_schema,
                 "analysisIds": ",".join(dist_ids),
             }
             sql = self._render_sql(
@@ -311,7 +311,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         ) as file:
             sql = file.read()
 
-        parameters = {"resultsDatabaseSchema": self._dataset_achilles}
+        parameters = {"resultsDatabaseSchema": self._results_database_schema}
 
         sql = self._render_sql(self._db_engine, sql, parameters)
         self._run_query(sql)
@@ -325,6 +325,31 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
     @abstractmethod
     def _run_query(self, sql) -> Tuple[pl.DataFrame, float]:
+        pass
+
+    @property
+    @abstractmethod
+    def _temp_emulation_schema(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def _voc_database_schema(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def _cdm_database_schema(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def _scratch_database_schema(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def _results_database_schema(self) -> str:
         pass
 
     @property
@@ -398,7 +423,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         logging.info("Dropping table %s", table)
         sql = "IF OBJECT_ID('@scratchDatabaseSchema@schemaDelim@scratchTable', 'U') IS NOT NULL DROP TABLE @scratchDatabaseSchema@schemaDelim@scratchTable;"  # noqa: E501 # pylint: disable=line-too-long
         parameters = {
-            "scratchDatabaseSchema": self._dataset_achilles,
+            "scratchDatabaseSchema": self._scratch_database_schema,
             "schemaDelim": self._schema_delim,
             "scratchTable": table,
         }
@@ -408,7 +433,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
     def _get_source_name(self) -> str:
         sql = "select cdm_source_name from @cdmDatabaseSchema.cdm_source"
         parameters = {
-            "cdmDatabaseSchema": self._dataset_omop,
+            "cdmDatabaseSchema": self._cdm_database_schema,
         }
         rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         df_result, execution_time = self._run_query(rendered_sql)
@@ -434,12 +459,12 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         sql = self._pre_prep_query(sql)
 
         parameters = {
-            "scratchDatabaseSchema": self._dataset_achilles,
-            "cdmDatabaseSchema": self._dataset_omop,
-            "resultsDatabaseSchema": self._dataset_achilles,
+            "scratchDatabaseSchema": self._scratch_database_schema,
+            "cdmDatabaseSchema": self._cdm_database_schema,
+            "resultsDatabaseSchema": self._results_database_schema,
             "schemaDelim": self._schema_delim,
             "tempAchillesPrefix": self._temp_achilles_prefix,
-            "tempEmulationSchema": self._dataset_achilles,
+            "tempEmulationSchema": self._temp_emulation_schema,
             "source_name": self._source_name,
             "achilles_version": self._achilles_version.lstrip("v"),
             "cdmVersion": self._omop_cdm_version.lstrip("v"),
@@ -480,7 +505,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         results_table: Any,
     ):
         parameters = {
-            "scratchDatabaseSchema": self._dataset_achilles,
+            "scratchDatabaseSchema": self._scratch_database_schema,
             "schemaDelim": self._schema_delim,
             "castedNames": casted_names,
             "tablePrefix": results_table["table_prefix"],
@@ -549,8 +574,8 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
 
         parameters = {
             "createTable": "TRUE",
-            "resultsDatabaseSchema": self._dataset_achilles,
-            "tempEmulationSchema": self._dataset_achilles,
+            "resultsDatabaseSchema": self._results_database_schema,
+            "tempEmulationSchema": self._temp_emulation_schema,
             "detailType": results_table["detail_type"],
             "detailSqls": " \nunion all\n ".join(detail_sqls),
             "fieldNames": ", ".join(iter(results_table["schema"][["FIELD_NAME"][0]])),
@@ -589,8 +614,8 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         ) as file:
             sql = file.read()
         parameters = {
-            "resultsDatabaseSchema": self._dataset_achilles,
-            "vocabDatabaseSchema": self._dataset_omop,
+            "resultsDatabaseSchema": self._results_database_schema,
+            "vocabDatabaseSchema": self._voc_database_schema,
             "fieldNames": ", ".join(iter(df_results_concept_count_table["FIELD_NAME"])),
         }
         rendered_sql = self._render_sql(self._db_engine, sql, parameters)
