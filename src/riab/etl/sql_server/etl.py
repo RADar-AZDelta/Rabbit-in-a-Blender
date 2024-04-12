@@ -634,7 +634,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         self._run_query(sql)
 
-    def _check_usagi_fk_domains(self, omop_table: str, concept_id_column: str, domains: list[str]) -> None:
+    def _check_usagi(self, omop_table: str, concept_id_column: str, domains: list[str] | None) -> None:
         """Checks the usagi fk domain of the concept id column.
 
         Args:
@@ -642,9 +642,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_column (str): The conept id column
             domains (list[str]): The allowed domains
         """
-        template = self._template_env.get_template(
-            "etl/{omop_table}__{concept_id_column}_usagi_fk_domain_check.sql.jinja"
-        )
+        template = self._template_env.get_template("etl/{omop_table}__{concept_id_column}_usagi_non_standard.sql.jinja")
         sql = template.render(
             work_database_catalog=self._work_database_catalog,
             work_database_schema=self._work_database_schema,
@@ -652,12 +650,32 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             omop_table=omop_table,
             concept_id_column=concept_id_column,
-            domains=domains,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
         rows = self._run_query(sql)
         if rows:
             df = pl.from_dicts(rows)
-            raise Exception(
-                f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
+            logging.warn(
+                f"Non-standard concepts found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly standard concepts are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
             )
+
+        if domains:
+            template = self._template_env.get_template(
+                "etl/{omop_table}__{concept_id_column}_usagi_fk_domain_check.sql.jinja"
+            )
+            sql = template.render(
+                work_database_catalog=self._work_database_catalog,
+                work_database_schema=self._work_database_schema,
+                omop_database_catalog=self._omop_database_catalog,
+                omop_database_schema=self._omop_database_schema,
+                omop_table=omop_table,
+                concept_id_column=concept_id_column,
+                domains=domains,
+                process_semi_approved_mappings=self._process_semi_approved_mappings,
+            )
+            rows = self._run_query(sql)
+            if rows:
+                df = pl.from_dicts(rows)
+                raise Exception(
+                    f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
+                )

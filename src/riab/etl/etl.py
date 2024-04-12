@@ -502,8 +502,15 @@ class Etl(EtlBase):
                 self._load_usagi_parquet_in_upload_table(parquet_file, omop_table, concept_id_column)
 
             fk_domains = self._get_fk_domains(omop_table)
-            for column, domains in fk_domains.items():
-                self._check_usagi_fk_domains(omop_table, column, domains)
+            columns = self._get_omop_column_names(omop_table)
+            concept_columns = [
+                column
+                for column in columns
+                if "concept_id" in column  # and "source_concept_id" not in column
+            ]
+            # for column, domains in fk_domains.items():
+            for concept_column in concept_columns:
+                self._check_usagi(omop_table, concept_column, fk_domains.get(concept_column))
 
         concept_csv_files = list(
             (cast(Path, self._cdm_folder_path) / f"{omop_table}/{concept_id_column}/custom/").glob("*_concept.csv")
@@ -947,7 +954,7 @@ class Etl(EtlBase):
         pass
 
     @abstractmethod
-    def _check_usagi_fk_domains(self, omop_table: str, concept_id_column: str, domains: list[str]) -> bool:
+    def _check_usagi(self, omop_table: str, concept_id_column: str, domains: list[str] | None) -> bool:
         """Checks the usagi fk domain of the concept id column.
 
         Args:

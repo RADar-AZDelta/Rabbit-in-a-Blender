@@ -1,0 +1,13 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+select u.*, c.standard_concept
+from `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_usagi` u
+inner join `{{dataset_omop}}.concept` c on c.concept_id = cast(u.conceptId as integer)
+  and c.concept_id <> 0 
+{% if not process_semi_approved_mappings -%}
+where u.mappingStatus = "APPROVED"
+{%- else -%}
+where u.mappingStatus in ("APPROVED", "SEMI-APPROVED")
+{%- endif %} 
+  and c.standard_concept <> 'S'
+limit 100

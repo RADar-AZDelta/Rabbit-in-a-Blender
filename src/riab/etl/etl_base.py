@@ -278,7 +278,7 @@ class EtlBase(ABC):
 
         return fks
 
-    def _get_fk_domains(self, omop_table_name: str) -> dict[str, List[str]]:
+    def _get_fk_domains(self, omop_table_name: str) -> dict[str, list[str]]:
         """Get list of domains of the foreign key columns of a omop table.
 
         Args:
