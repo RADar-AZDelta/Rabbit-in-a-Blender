@@ -116,7 +116,7 @@ class EtlBase(ABC):
         hours, rem = divmod(end_time - self._start_time, 3600)
         minutes, seconds = divmod(rem, 60)
         elapsted_time = "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
-        logging.info("ETL took: %s", elapsted_time)
+        logging.info("RiaB took: %s", elapsted_time)
 
     def _resolve_cdm_tables_fks_dependencies(self):
         """Resolves the ETL dependency"""

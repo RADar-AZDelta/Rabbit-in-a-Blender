@@ -174,6 +174,21 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
                     f"Invalid domain_id, vocabulary_id or concept_class_id supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
                 )
 
+        template = self._template_env.get_template("etl/CONCEPT_custom_validate_duplicates.sql.jinja")
+        sql = template.render(
+            work_database_catalog=self._work_database_catalog,
+            work_database_schema=self._work_database_schema,
+            omop_table=omop_table,
+            concept_id_column=concept_id_column,
+        )
+        rows = self._run_query(sql)
+        if rows:
+            df = pl.from_dicts(rows)
+            with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
+                raise Exception(
+                    f"Duplicate custom concepts supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
+                )
+
     def _give_custom_concepts_an_unique_id_above_2bilj(self, omop_table: str, concept_id_column: str) -> None:
         """Give the custom concepts an unique id (above 2.000.000.000) and store those id's
         in the concept id swap table.
