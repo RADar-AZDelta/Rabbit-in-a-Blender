@@ -447,5 +447,4 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             sql = file.read()
 
         rendered_sql = self._render_sql(self._db_engine, sql, parameters)
-
         return rendered_sql

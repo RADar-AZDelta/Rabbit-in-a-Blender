@@ -11,10 +11,10 @@ import polars as pl
 import pyarrow as pa
 
 from ..data_quality import DataQuality
-from .etl_base import BigQueryEtlBase
+from .etl_base import SqlServerEtlBase
 
 
-class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
+class BigQueryDataQuality(DataQuality, SqlServerEtlBase):
     def __init__(
         self,
         **kwargs,
@@ -92,8 +92,9 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         return [dict(row.items()) for row in rows]
 
     def _store_dqd_run(self, dqd_run: dict):
-        df = pl.from_dicts([dqd_run])
-        self._append_dataframe_to_bigquery_table(df, self._dataset_dqd, "dqdashboard_runs")
+        table = pa.Table.from_pylist([dqd_run])
+        # df = pl.from_dicts([dqd_run])
+        self._upload_arrow_table(table, self._dataset_dqd, "dqdashboard_runs")
 
     def _store_dqd_result(self, dqd_result: pl.DataFrame):
         dqd_result.with_columns(
@@ -103,4 +104,5 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
                 pl.col("threshold_value").replace(None, 0).alias("threshold_value"),
             ]
         )
-        self._append_dataframe_to_bigquery_table(dqd_result, self._dataset_dqd, "dqdashboard_results")
+        table = dqd_result.to_arrow()
+        self._upload_arrow_table(table, self._dataset_dqd, "dqdashboard_results")

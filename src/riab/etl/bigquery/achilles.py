@@ -33,8 +33,7 @@ class BigQueryAchilles(Achilles, BigQueryEtlBase):
             return (pl.DataFrame([]), -1)
 
     def _store_analysis_details(self, data_frame: pl.DataFrame):
-        table = data_frame.to_arrow()
-        self._upload_arrow_table(table, self._dataset_achilles, "achilles_analysis")
+        self._append_dataframe_to_bigquery_table(data_frame, self._dataset_achilles, "achilles_analysis")
 
     @property
     def _temp_emulation_schema(self) -> str:

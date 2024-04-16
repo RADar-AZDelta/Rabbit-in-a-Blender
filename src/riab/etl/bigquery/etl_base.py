@@ -6,6 +6,8 @@
 
 import json
 import logging
+import platform
+import tempfile
 from abc import ABC
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -13,8 +15,7 @@ from typing import Dict, List, Optional, cast
 
 import google.auth
 import google.cloud.bigquery as bq
-import pyarrow as pa
-import pyarrow.parquet as pq
+import polars as pl
 
 from ..etl_base import EtlBase
 from .gcp import Gcp
@@ -85,14 +86,19 @@ class BigQueryEtlBase(EtlBase, ABC):
                 self.__clustering_fields = json.load(file)
         return self.__clustering_fields
 
-    def _upload_arrow_table(self, table: pa.Table, dataset: str, table_name: str):
-        with TemporaryDirectory(prefix="riab_") as tmp_dir:
-            tmp_file = str(Path(tmp_dir) / f"{table_name}.parquet")
-            logging.debug("Writing arrow table to parquet file '{tmp_file}'")
-            pq.write_table(table, where=tmp_file)
+    def _append_dataframe_to_bigquery_table(self, df: pl.DataFrame, dataset: str, table_name: str):
+        with tempfile.TemporaryDirectory(prefix="riab_") as temp_dir_path:
+            if platform.system() == "Windows":
+                import win32api
+
+                temp_dir_path = win32api.GetLongPathName(temp_dir_path)
+
+            parquet_file = str(Path(temp_dir_path) / f"{table_name}.parquet")
+            # save the one large Arrow table in a Parquet file in a temporary directory
+            df.write_parquet(parquet_file)
 
             # upload the Parquet file to the Cloud Storage Bucket
-            uri = self._gcp.upload_file_to_bucket(tmp_file, self._bucket_uri)
+            uri = self._gcp.upload_file_to_bucket(parquet_file, self._bucket_uri)
             # load the uploaded Parquet file from the bucket into the specific standardised vocabulary table
             self._gcp.batch_load_from_bucket_into_bigquery_table(
                 uri,
