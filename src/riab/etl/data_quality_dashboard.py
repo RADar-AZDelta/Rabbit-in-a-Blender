@@ -20,12 +20,12 @@ class DataQualityDashboard(EtlBase, ABC):
 
     def __init__(
         self,
-        port: int = 8050,
+        dqd_port: int = 8050,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self.port = port
+        self.dqd_port = dqd_port
         assets_folder = str(Path(__file__).parent.parent.resolve() / "assets")
         self.app = Dash(
             name=__name__,
@@ -42,7 +42,7 @@ class DataQualityDashboard(EtlBase, ABC):
 
         self._create_callbacks()
 
-        self.app.run_server(host="0.0.0.0", port=self.port)
+        self.app.run_server(host="0.0.0.0", port=self.dqd_port)
 
     def _create_layout(self):
         last_runs = self._get_last_runs()
@@ -366,7 +366,7 @@ class DataQualityDashboard(EtlBase, ABC):
         return row["query_text"]
 
     @abstractmethod
-    def _get_last_runs(self) -> List[Any]:
+    def _get_last_runs(self) -> list[Any]:
         pass
 
     @abstractmethod

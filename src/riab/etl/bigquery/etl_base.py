@@ -66,11 +66,11 @@ class BigQueryEtlBase(EtlBase, ABC):
         EtlBase.__exit__(self, exception_type, exception_value, exception_traceback)
 
     @property
-    def _clustering_fields(self) -> Dict[str, List[str]]:
+    def _clustering_fields(self) -> Dict[str, list[str]]:
         """The BigQuery clustering fields for every OMOP table
 
         Returns:
-            Dict[str, List[str]]: A dictionary that holds for every OMOP table the clustering fields.
+            Dict[str, list[str]]: A dictionary that holds for every OMOP table the clustering fields.
         """
         if not self.__clustering_fields:
             with open(

@@ -36,8 +36,8 @@ class SqlRenderBase(ABC):  # TODO: make this obsolete!!!!
 
         Args:
             sql (str): Original SQL
-            parameters (List[str]): Query parameter names
-            values (List[str]): Query parameter
+            parameters (list[str]): Query parameter names
+            values (list[str]): Query parameter
 
         Returns:
             str: The rendered SQL

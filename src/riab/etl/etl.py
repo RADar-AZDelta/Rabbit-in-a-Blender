@@ -568,20 +568,20 @@ class Etl(EtlBase):
         self,
         omop_table: str,
         primary_key_column: str,
-        concept_id_columns: List[str],
+        concept_id_columns: list[str],
         events: Any,
-        sql_files: List[str],
-        upload_tables: List[str],
+        sql_files: list[str],
+        upload_tables: list[str],
     ):
         """Swap the primary key source value of the omop table with a generated incremental number.
 
         Args:
             omop_table (str): OMOP table.
             primary_key_column (str): The name of the primary key column.
-            concept_id_columns (List[str]): List of the columns that hold concepts
+            concept_id_columns (list[str]): List of the columns that hold concepts
             events (Any): Object that holds the events of the the OMOP table.
-            sql_files (List[str]): List of the SQL files to execute.
-            upload_tables (List[str]): List of the upload tables to execute.
+            sql_files (list[str]): List of the SQL files to execute.
+            upload_tables (list[str]): List of the upload tables to execute.
         """  # noqa: E501 # pylint: disable=line-too-long
         logging.debug(
             "Swapping primary key column '%s' for table '%s'",
@@ -605,20 +605,20 @@ class Etl(EtlBase):
     def _check_for_duplicate_rows(
         self,
         omop_table: str,
-        columns: List[str],
-        upload_tables: List[str],
+        columns: list[str],
+        upload_tables: list[str],
         primary_key_column: Optional[str],
-        concept_id_columns: List[str],
+        concept_id_columns: list[str],
         events: Any,
     ):
         """The one shot merge of the uploaded query result from the work table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
 
         Args:
             omop_table (str): OMOP table.
-            columns (List[str]): List of columns of the OMOP table.
-            upload_tables (List[str]): List of the upload tables to execute.
+            columns (list[str]): List of columns of the OMOP table.
+            upload_tables (list[str]): List of the upload tables to execute.
             primary_key_column (str): The name of the primary key column.
-            concept_id_columns (List[str]): List of concept columns.
+            concept_id_columns (list[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
         pass
@@ -627,13 +627,13 @@ class Etl(EtlBase):
     def _merge_into_omop_table(
         self,
         omop_table: str,
-        columns: List[str],
-        upload_tables: List[str],
-        required_columns: List[str],
+        columns: list[str],
+        upload_tables: list[str],
+        required_columns: list[str],
         primary_key_column: Optional[str],
         pk_auto_numbering: bool,
         foreign_key_columns: Any,
-        concept_id_columns: List[str],
+        concept_id_columns: list[str],
         events: Any,
     ):
         """The one shot merge of the uploaded query result from the omop table, with the swapped primary and foreign keys, the mapped Usagi concept and custom concepts in the destination OMOP table.
@@ -642,12 +642,12 @@ class Etl(EtlBase):
 
         Args:
             omop_table (str): OMOP table.
-            columns (List[str]): List of columns of the OMOP table.
-            required_columns (List[str]): List of required columns of the OMOP table.
+            columns (list[str]): List of columns of the OMOP table.
+            required_columns (list[str]): List of required columns of the OMOP table.
             primary_key_column (str): The name of the primary key column.
             pk_auto_numbering (bool): Is the primary key a generated incremental number?
             foreign_key_columns (Any): List of foreign key columns.
-            concept_id_columns (List[str]): List of concept columns.
+            concept_id_columns (list[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
         pass
@@ -880,13 +880,13 @@ class Etl(EtlBase):
 
     @abstractmethod
     def _create_pk_auto_numbering_swap_table(
-        self, primary_key_column: str, concept_id_columns: List[str], events: Any
+        self, primary_key_column: str, concept_id_columns: list[str], events: Any
     ) -> None:
         """This method created a swap table so that our source codes can be translated to auto numbering primary keys.
 
         Args:
             primary_key_column (str): The primary key column of the OMOP table
-            concept_id_columns (List[str]): List of concept_id columns
+            concept_id_columns (list[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
         """
         pass
@@ -896,10 +896,10 @@ class Etl(EtlBase):
         self,
         omop_table: str,
         primary_key_column: str,
-        concept_id_columns: List[str],
+        concept_id_columns: list[str],
         events: Any,
-        sql_files: List[str],
-        upload_tables: List[str],
+        sql_files: list[str],
+        upload_tables: list[str],
     ) -> None:
         """This method does the swapping of our source codes to an auto number that will be the primary key
         of our OMOP table.
@@ -907,10 +907,10 @@ class Etl(EtlBase):
         Args:
             omop_table (str): The OMOP table
             primary_key_column (str): Primary key column
-            concept_id_columns (List[str]): List of concept_id columns
+            concept_id_columns (list[str]): List of concept_id columns
             events (Any): Object that holds the events of the the OMOP table.
-            sql_files (List[str]): List of upload SQL files
-            upload_tables (List[str]): List of upload tables
+            sql_files (list[str]): List of upload SQL files
+            upload_tables (list[str]): List of upload tables
         """
         pass
 
@@ -928,7 +928,7 @@ class Etl(EtlBase):
     def _merge_event_columns(
         self,
         omop_table: str,
-        columns: List[str],
+        columns: list[str],
         primary_key_column: Optional[str],
         events: Any,
     ):
@@ -937,7 +937,7 @@ class Etl(EtlBase):
         Args:
             sql_file (str): The sql file holding the query on the raw data.
             omop_table (str): OMOP table.
-            columns (List[str]): List of columns of the OMOP table.
+            columns (list[str]): List of columns of the OMOP table.
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long

@@ -17,7 +17,7 @@ class BigQueryDataQualityDashboard(DataQualityDashboard, BigQueryEtlBase):
     ):
         super().__init__(**kwargs)
 
-    def _get_last_runs(self) -> List[Any]:
+    def _get_last_runs(self) -> list[Any]:
         template = self._template_env.get_template("dqd/get_last_dqd_runs.sql.jinja")
         sql = template.render(
             dataset_dqd=self._dataset_dqd,

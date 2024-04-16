@@ -64,13 +64,13 @@ class EtlBase(ABC):
         )
         # ctx = pl.SQLContext(omop_tables=self._df_omop_tables, eager_execution=True)
         # self._omop_cdm_tables = ctx.execute("SELECT lower(cdmTableName) FROM omop_tables WHERE schema = 'CDM'")["cdmTableName"].to_list()
-        self._omop_cdm_tables: List[str] = (
+        self._omop_cdm_tables: list[str] = (
             self._df_omop_tables.filter(pl.col("schema") == "CDM")
             .select(cdmTableName=(pl.col("cdmTableName").str.to_lowercase()))["cdmTableName"]
             .to_list()
         )
 
-        self._omop_etl_tables: List[str] = (
+        self._omop_etl_tables: list[str] = (
             self._df_omop_tables.filter(
                 (pl.col("schema") == "CDM") | (pl.col("cdmTableName").str.to_lowercase() == "vocabulary")
             )
@@ -187,28 +187,28 @@ class EtlBase(ABC):
             spacer += 2
         return "\n".join(depency_tree_text_representation)
 
-    def _get_omop_column_names(self, omop_table_name: str) -> List[str]:
+    def _get_omop_column_names(self, omop_table_name: str) -> list[str]:
         """Get list of column names of a omop table.
 
         Args:
             omop_table_name (str): OMOP table
 
         Returns:
-            List[str]: list of column names
+            list[str]: list of column names
         """
         fields = self._df_omop_fields.filter((pl.col("cdmTableName").str.to_lowercase() == omop_table_name))[
             "cdmFieldName"
         ].to_list()
         return fields
 
-    def _get_required_omop_column_names(self, omop_table_name: str) -> List[str]:
+    def _get_required_omop_column_names(self, omop_table_name: str) -> list[str]:
         """Get list of required column names of a omop table.
 
         Args:
             omop_table_name (str): OMOP table
 
         Returns:
-            List[str]: list of column names
+            list[str]: list of column names
         """
         fields = self._df_omop_fields.filter(
             (pl.col("cdmTableName").str.to_lowercase() == omop_table_name) & (pl.col("isRequired") == "Yes")
@@ -285,7 +285,7 @@ class EtlBase(ABC):
             omop_table_name (str): OMOP table
 
         Returns:
-            dict[str, List[str]]: dict with he column name and the list of foreign key domain names
+            dict[str, list[str]]: dict with he column name and the list of foreign key domain names
         """
         fk_domains = dict(
             self._df_omop_fields.filter(

@@ -269,10 +269,19 @@ class Cli:
 
                             with BigQueryDataQualityDashboard(
                                 **etl_kwargs,
-                                port=args.port if args.port else 8050,
+                                dqd_port=args.port if args.port else 8050,
                                 **bigquery_kwargs,
                             ) as data_quality_dashboard:
                                 data_quality_dashboard.run()
+                        case "sql_server":
+                            from .etl.sql_server import SqlServerDataQualityDashboard
+
+                            with SqlServerDataQualityDashboard(
+                                **etl_kwargs,
+                                dqd_port=args.port if args.port else 8050,
+                                **sqlserver_kwargs,
+                            ) as data_quality_dashboard:
+                                data_quality_dashboard.run()                                
                         case _:
                             raise ValueError("Not a supported database engine")
                 elif args.achilles:  # run descriptive statistics

@@ -37,11 +37,11 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
         """
         pass
 
-    def _get_work_tables(self) -> List[str]:
+    def _get_work_tables(self) -> list[str]:
         """Returns a list of all our work tables (Usagi upload, custom concept upload, swap and query upload tables)
 
         Returns:
-            List[str]: List of all the work tables
+            list[str]: List of all the work tables
         """
         template = self._template_env.get_template("cleanup/all_work_table_names.sql.jinja")
         sql = template.render(dataset=self._dataset_work)

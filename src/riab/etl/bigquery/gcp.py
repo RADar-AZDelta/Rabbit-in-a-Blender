@@ -65,14 +65,14 @@ class Gcp:
     def run_query_job(
         self,
         query: str,
-        query_parameters: Union[List[bq.ScalarQueryParameter], None] = None,
+        query_parameters: Union[list[bq.ScalarQueryParameter], None] = None,
     ) -> Union[RowIterator, _EmptyRowIterator]:
         """Runs a query with or without parameters on Big Query
         Calculates and logs the billed cost of the query
 
         Args:
             query (str): the sql query
-            query_parameters (List[bigquery.ScalarQueryParameter], optional): the query parameters
+            query_parameters (list[bigquery.ScalarQueryParameter], optional): the query parameters
 
         Returns:
             RowIterator: row iterator
@@ -89,14 +89,14 @@ class Gcp:
     def run_query_job_with_benchmark(
         self,
         query: str,
-        query_parameters: Union[List[bq.ScalarQueryParameter], None] = None,
+        query_parameters: Union[list[bq.ScalarQueryParameter], None] = None,
     ) -> Tuple[Union[RowIterator, _EmptyRowIterator], float]:
         """Runs a query with or without parameters on Big Query
         Calculates and logs the billed cost of the query
 
         Args:
             query (str): the sql query
-            query_parameters (List[bigquery.ScalarQueryParameter], optional): the query parameters
+            query_parameters (list[bigquery.ScalarQueryParameter], optional): the query parameters
 
         Returns:
             RowIterator: row iterator
