@@ -586,9 +586,10 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
                     events=events,
                 )
                 rows = self._run_query(sql)
-                event_tables = dict(
-                    (table, self._get_pk(table)) for table in (row["event_table"] for row in rows) if table
-                )
+                if rows:
+                    event_tables = dict(
+                        (table, self._get_pk(table)) for table in (row["event_table"] for row in rows) if table
+                    )
 
             template = self._template_env.get_template("etl/{omop_table}_apply_event_columns.sql.jinja")
             sql = template.render(

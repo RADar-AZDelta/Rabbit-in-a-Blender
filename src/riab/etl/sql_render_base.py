@@ -42,6 +42,10 @@ class SqlRenderBase(ABC):  # TODO: make this obsolete!!!!
         Returns:
             str: The rendered SQL
         """
+        match target_dialect:
+            case "sql_server":
+                target_dialect = "sql server"
+
         # import the Java module
         from org.ohdsi.sql import (  # type: ignore # pylint: disable=import-outside-toplevel,import-error
             SqlRender,

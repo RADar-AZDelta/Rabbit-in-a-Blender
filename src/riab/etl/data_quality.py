@@ -142,22 +142,27 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         }
 
         # write results to database
-        dqd_run = check_summary["Overview"]
-        dqd_run["startTimestamp"] = check_summary["startTimestamp"]
-        dqd_run["endTimestamp"] = check_summary["endTimestamp"]
-        dqd_run["executionTime"] = check_summary["executionTime"]
-        dqd_run["id"] = str(uuid.uuid4())
+        dqd_run = {
+            "id": str(uuid.uuid4()),
+            "startTimestamp": check_summary["startTimestamp"],
+            "endTimestamp": check_summary["endTimestamp"],
+            "executionTime": check_summary["executionTime"]
+        }
+        dqd_run.update(check_summary["Overview"])
         self._store_dqd_run(dqd_run)
 
         dqd_results = check_results.clone()
-        dqd_results = dqd_results.with_columns(pl.lit(dqd_run["id"]).alias("run_id"))
+        dqd_results = dqd_results.with_columns(
+            pl.lit(dqd_run["id"]).alias("run_id"),
+            #pl.int_range(pl.len(), dtype=pl.UInt32).alias("index")
+         )
         dqd_results = dqd_results.drop("_row")
         self._store_dqd_result(dqd_results)
 
         if self.json_path:
             # uppercase columns names
             check_results.columns = [
-                column.upper() if column not in ["checkId", "_row"] else column for column in check_results.columns
+                column.upper() if column not in ["checkid", "_row"] else column for column in check_results.columns
             ]
             check_summary["CheckResults"] = [self._cleanNullTerms(row) for row in check_results.iter_rows(named=True)]
             with open(
@@ -264,7 +269,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         pass
 
     @abstractmethod
-    def _get_cdm_sources(self) -> List[Any]:
+    def _get_cdm_sources(self) -> list[Any]:
         """Merges the uploaded custom concepts in the OMOP concept table.
 
         Returns:
@@ -401,7 +406,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             "context": check["kahnContext"],
             # "warning": warning,
             "error": exception,
-            "checkId": self._get_check_id(check, item),
+            "checkid": self._get_check_id(check, item),
             # row.names = NULL,
             # stringsAsFactors = FALSE
             "_row": row,
@@ -414,14 +419,14 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
 
     def _get_check_id(self, check: Any, item: Any):
         id = [check["checkLevel"].lower(), check["checkName"].lower()]
-        if hasattr(item, "cdmTableName"):
-            id.append(item.cdmTableName.lower())
-        if hasattr(item, "cdmFieldName"):
-            id.append(item.cdmFieldName.lower())
-        if hasattr(item, "conceptId"):
-            id.append(item.conceptId.lower())
-        if hasattr(item, "unitConceptId"):
-            id.append(item.unitConceptId.lower())
+        if "cdmTableName" in item.keys():
+            id.append(item["cdmTableName"].lower())
+        if "cdmFieldName" in item.keys():
+            id.append(item["cdmFieldName"].lower())
+        if "conceptId" in item.keys() and item["conceptId"]:
+            id.append(item["conceptId"].lower())
+        if "unitConceptId" in item.keys() and item["unitConceptId"]:
+            id.append(item["unitConceptId"].lower())
         return "_".join(id)
 
     @abstractmethod

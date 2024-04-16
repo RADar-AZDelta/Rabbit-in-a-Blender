@@ -250,6 +250,16 @@ class Cli:
                                 **bigquery_kwargs,
                             ) as data_quality:
                                 data_quality.run()
+                        case "sql_server":
+                            from .etl.sql_server import SqlServerDataQuality
+
+                            with SqlServerDataQuality(
+                                **etl_kwargs,
+                                cdm_folder_path=args.run_etl or args.create_folders,
+                                json_path=args.json,
+                                **sqlserver_kwargs,
+                            ) as data_quality:
+                                data_quality.run()                                
                         case _:
                             raise ValueError("Not a supported database engine")
                 elif args.data_quality_dashboard:  # view data quality results

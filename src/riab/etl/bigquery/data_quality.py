@@ -78,7 +78,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
 
     #     return jinja_sql
 
-    def _get_cdm_sources(self) -> List[Any]:
+    def _get_cdm_sources(self) -> list[Any]:
         """Merges the uploaded custom concepts in the OMOP concept table.
 
         Returns:

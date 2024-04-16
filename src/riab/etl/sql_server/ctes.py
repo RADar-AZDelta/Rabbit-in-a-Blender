@@ -1,3 +1,4 @@
+from typing import Any, cast
 from sqlparse import parse
 from sqlparse.tokens import Keyword, CTE, DML
 from sqlparse.sql import Identifier, IdentifierList, Parenthesis
@@ -11,12 +12,12 @@ def extract_ctes(sql):
 
     # Make sure the first meaningful token is "WITH" which is necessary to
     # define CTEs
-    idx, tok = p.token_next(-1, skip_ws=True, skip_cm=True)
+    idx, tok = cast(tuple[int, Any], p.token_next(-1, skip_ws=True, skip_cm=True))
     if not (tok and tok.ttype == CTE):
         return "", sql
 
     # Get the next (meaningful) token, which should be the first CTE
-    idx, tok = p.token_next(idx)
+    idx, tok = cast(tuple[int, Any], p.token_next(idx))
     if not tok:
         return ("", "")
     start_pos = _token_start_pos(p.tokens, idx)

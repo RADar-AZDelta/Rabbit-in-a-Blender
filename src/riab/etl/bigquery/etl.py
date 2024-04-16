@@ -4,7 +4,7 @@
 import logging
 from datetime import date
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import google.cloud.bigquery as bq
 import polars as pl
@@ -152,7 +152,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            df = pl.from_arrow(ar_table)
+            df = cast(pl.DataFrame, pl.from_arrow(ar_table))
             with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
                 raise Exception(
                     f"Invalid domain_id, vocabulary_id or concept_class_id supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
@@ -167,7 +167,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            df = pl.from_arrow(ar_table)
+            df = cast(pl.DataFrame, pl.from_arrow(ar_table))
             with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
                 raise Exception(
                     f"Duplicate custom concepts supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"

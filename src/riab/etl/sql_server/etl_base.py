@@ -123,22 +123,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             logging.debug("FAILED QUERY: %s", sql)
             raise ex
 
-    def _upload_parquet(self, catalog: str, schema: str, table: str, parquet_file: Path) -> None:
-        """Loads the CSV file in the specific standardised vocabulary table
-
-        Args:
-            vocabulary_table (str): The standardised vocabulary table
-            parquet_file (Path): Path to the CSV file
-        """
-        logging.debug(
-            "Converting parquet file %s to BCP input file for table [%s].[%s].[%s]",
-            parquet_file,
-            catalog,
-            schema,
-            table,
-        )
-        df = pl.read_parquet(parquet_file)
-
+    def _upload_dataframe(self, catalog: str, schema: str, table: str, df: pl.DataFrame) -> None:
         with TemporaryDirectory(prefix="riab_") as temp_dir_path:
             upload_file = str(Path(temp_dir_path) / f"{table}.csv")
 
@@ -186,6 +171,24 @@ class SqlServerEtlBase(EtlBase, ABC):
                 os.remove(bcp_error_file)  # remove the BCP error file
             else:
                 raise Exception(f"BCP failed! See {bcp_error_file} for errors.")
+
+    def _upload_parquet(self, catalog: str, schema: str, table: str, parquet_file: Path) -> None:
+        """Loads the CSV file in the specific standardised vocabulary table
+
+        Args:
+            vocabulary_table (str): The standardised vocabulary table
+            parquet_file (Path): Path to the CSV file
+        """
+        logging.debug(
+            "Converting parquet file %s to BCP input file for table [%s].[%s].[%s]",
+            parquet_file,
+            catalog,
+            schema,
+            table,
+        )
+        df = pl.read_parquet(parquet_file)
+
+        self._upload_dataframe(catalog, schema, table, df)
 
     def _remove_constraints(self, table_name: str) -> None:
         """Remove the foreign key constraints pointing to this table

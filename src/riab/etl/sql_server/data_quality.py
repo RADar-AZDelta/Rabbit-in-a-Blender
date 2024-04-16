@@ -5,7 +5,7 @@ import logging
 import traceback
 from pathlib import Path
 from time import time
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import polars as pl
 import pyarrow as pa
@@ -14,7 +14,7 @@ from ..data_quality import DataQuality
 from .etl_base import SqlServerEtlBase
 
 
-class BigQueryDataQuality(DataQuality, SqlServerEtlBase):
+class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
     def __init__(
         self,
         **kwargs,
@@ -25,26 +25,27 @@ class BigQueryDataQuality(DataQuality, SqlServerEtlBase):
         self, check: Any, row: str, parameters: Any, cohort_definition_id: Optional[int] = None
     ) -> Any:
         sql = None
-        result = None
+        #result = None
         exception: str | None = None
         execution_time = -1
         try:
-            parameters["cdmDatabaseSchema"] = self._dataset_omop
-            parameters["cohortDatabaseSchema"] = self._dataset_omop
+            parameters["cdmDatabaseSchema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
+            parameters["cohortDatabaseSchema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
             parameters["cohortTableName"] = "cohort"
             parameters["cohortDefinitionId"] = cohort_definition_id if cohort_definition_id else 0
-            parameters["vocabDatabaseSchema"] = self._dataset_omop
+            parameters["vocabDatabaseSchema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
             # parameters["cohort"] = True if cohort_definition_id else False
             parameters["cohort"] = "TRUE" if cohort_definition_id else "FALSE"
-            parameters["schema"] = self._dataset_omop
+            parameters["schema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
 
             sql = self._render_sqlfile(check["sqlFile"], parameters)
 
             start = time()
-            rows = self._gcp.run_query_job(sql)
+            result = cast(list[dict], self._run_query(sql))
             end = time()
             execution_time = end - start
-            result = dict(next(rows))
+
+            #result = dict(next(rows))
         except Exception as ex:
             logging.warn(traceback.format_exc())
             # with open(
@@ -63,7 +64,7 @@ class BigQueryDataQuality(DataQuality, SqlServerEtlBase):
             # if __debug__:
             #     breakpoint()
 
-        return self._process_check(check, row, parameters, sql, result, execution_time, exception)
+        return self._process_check(check, row, parameters, sql, result[0], execution_time, exception)
 
     # def _render_sqlfile(self, sql_file: str, parameters: dict):
     #     d: dict = {}
@@ -78,7 +79,7 @@ class BigQueryDataQuality(DataQuality, SqlServerEtlBase):
 
     #     return jinja_sql
 
-    def _get_cdm_sources(self) -> List[Any]:
+    def _get_cdm_sources(self) -> list[Any]:
         """Merges the uploaded custom concepts in the OMOP concept table.
 
         Returns:
@@ -86,23 +87,34 @@ class BigQueryDataQuality(DataQuality, SqlServerEtlBase):
         """
         template = self._template_env.from_string("select * from {{dataset_omop}}.cdm_source;")
         sql = template.render(
-            dataset_omop=self._dataset_omop,
+            dataset_omop=f"{self._omop_database_catalog}.{self._omop_database_schema}",
         )
-        rows = self._gcp.run_query_job(sql)
-        return [dict(row.items()) for row in rows]
+        rows = self._run_query(sql)
+        return rows or []
 
     def _store_dqd_run(self, dqd_run: dict):
-        table = pa.Table.from_pylist([dqd_run])
-        # df = pl.from_dicts([dqd_run])
-        self._upload_arrow_table(table, self._dataset_dqd, "dqdashboard_runs")
+        df = pl.from_dicts([dqd_run])
+
+        self._upload_dataframe(
+            self._dqd_database_catalog,
+            self._dqd_database_schema,
+            "dqdashboard_runs", 
+            df
+        )
 
     def _store_dqd_result(self, dqd_result: pl.DataFrame):
-        dqd_result.with_columns(
+        dqd_result = dqd_result.with_columns(
             [
+                pl.col("query_text").str.replace_all(r'\n', "<br>").str.replace_all(r'\t', "   ").alias("query_text"),
                 pl.col("num_violated_rows").replace(None, 0).alias("num_violated_rows"),
                 pl.col("num_denominator_rows").replace(None, 0).alias("num_denominator_rows"),
                 pl.col("threshold_value").replace(None, 0).alias("threshold_value"),
             ]
         )
-        table = dqd_result.to_arrow()
-        self._upload_arrow_table(table, self._dataset_dqd, "dqdashboard_results")
+
+        self._upload_dataframe(
+            self._dqd_database_catalog,
+            self._dqd_database_schema,
+            "dqdashboard_results", 
+            dqd_result
+        )
