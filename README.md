@@ -212,12 +212,6 @@ CLI Usage
     | -V, --version | The current installed version
     | --config | Optional path to the ini config file that holds the database engine configuration. Alternatively set the RIAB_CONFIG environment variable, pointing to the ini file. Or place a riab.ini file in the current directory.
 
-<!-- * **Required named arguments:**
-    |  command | help  
-    |---|---
-    | -d [DB-ENGINE], --db-engine [DB-ENGINE] | The database engine technology the ETL is running on. Each database engine has its own legacy SQL dialect, so the generated ETL queries can be different for each database engine. For the moment only BigQuery is supported, yet 'Rabbit in a Blender' has an open design, so in the future other database engines can be added easily. -->
-
-
 * **ETL Commands**:
     |  command | help  
     |---|---    
@@ -359,6 +353,8 @@ The creation of different datasets in needed before config settings.
 SQL Server
 ==========
 
+Difference between [catalogue, schema](https://medium.com/@diehardankush/catalogue-schema-and-table-understanding-database-structures-ec54347f85c7) in the riab.ini.
+
 ### Prerequisites
 
 Only SQL Server 2017 or later are supported.
@@ -455,6 +451,7 @@ Ensure SQL allows non- Entra ID users
    2. Go to SQL **server** instance (not database)
    3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
    4. You might need to [scale up](https://learn.microsoft.com/en-us/azure/azure-sql/database/scale-resources?view=azuresql) the number of max vCores to speed up for instance the import of the vocabularies.
+   5. You need to use the same database catalog for omop, work, dqd and achilles. Because of the following limitation: To change database context to a different database in Azure SQL Database, you must create a new connection to that database. (see [T-SQL differences between SQL Server and Azure SQL Database](https://learn.microsoft.com/en-us/azure/azure-sql/database/transact-sql-tsql-differences-sql-server?view=azuresql)). So the omop_database_catalog, work_database_catalog, dqd_database_catalog and achilles_database_catalog must have the same value in the riab.ini!
 
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/1187178/1ac67835-b467-4278-8c9a-171af0a98aa8)
 
