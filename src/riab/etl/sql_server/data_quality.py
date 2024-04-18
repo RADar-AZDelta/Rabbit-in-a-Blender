@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
-from os import XATTR_SIZE_MAX
 import traceback
+from os import XATTR_SIZE_MAX
 from pathlib import Path
 from time import time
 from typing import Any, List, Optional, cast
@@ -29,14 +29,14 @@ class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
         exception: str | None = None
         execution_time = -1
         try:
-            parameters["cdmDatabaseSchema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
-            parameters["cohortDatabaseSchema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
+            parameters["cdmDatabaseSchema"] = f"[{self._omop_database_catalog}].[{self._omop_database_schema}]"
+            parameters["cohortDatabaseSchema"] = f"[{self._omop_database_catalog}].[{self._omop_database_schema}]"
             parameters["cohortTableName"] = "cohort"
             parameters["cohortDefinitionId"] = cohort_definition_id if cohort_definition_id else 0
-            parameters["vocabDatabaseSchema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
+            parameters["vocabDatabaseSchema"] = f"[{self._omop_database_catalog}].[{self._omop_database_schema}]"
             # parameters["cohort"] = True if cohort_definition_id else False
             parameters["cohort"] = "TRUE" if cohort_definition_id else "FALSE"
-            parameters["schema"] = f"{self._omop_database_catalog}.{self._omop_database_schema}"
+            parameters["schema"] = f"[{self._omop_database_catalog}].[{self._omop_database_schema}]"
 
             sql = self._render_sqlfile(check["sqlFile"], parameters)
 
@@ -82,7 +82,7 @@ class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
         """
         template = self._template_env.from_string("select * from {{dataset_omop}}.cdm_source;")
         sql = template.render(
-            dataset_omop=f"{self._omop_database_catalog}.{self._omop_database_schema}",
+            dataset_omop=f"[{self._omop_database_catalog}].[{self._omop_database_schema}]",
         )
         rows = self._db.run_query(sql)
         return rows or []
@@ -90,26 +90,16 @@ class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
     def _store_dqd_run(self, dqd_run: dict):
         df = pl.from_dicts([dqd_run])
 
-        self._upload_dataframe(
-            self._dqd_database_catalog,
-            self._dqd_database_schema,
-            "dqdashboard_runs", 
-            df
-        )
+        self._upload_dataframe(self._dqd_database_catalog, self._dqd_database_schema, "dqdashboard_runs", df)
 
     def _store_dqd_result(self, dqd_result: pl.DataFrame):
         dqd_result = dqd_result.with_columns(
             [
-                pl.col("query_text").str.replace_all(r'\n', "<br>").str.replace_all(r'\t', "   ").alias("query_text"),
+                pl.col("query_text").str.replace_all(r"\n", "<br>").str.replace_all(r"\t", "   ").alias("query_text"),
                 pl.col("num_violated_rows").replace(None, 0).alias("num_violated_rows"),
                 pl.col("num_denominator_rows").replace(None, 0).alias("num_denominator_rows"),
                 pl.col("threshold_value").replace(None, 0).alias("threshold_value"),
             ]
         )
 
-        self._upload_dataframe(
-            self._dqd_database_catalog,
-            self._dqd_database_schema,
-            "dqdashboard_results", 
-            dqd_result
-        )
+        self._upload_dataframe(self._dqd_database_catalog, self._dqd_database_schema, "dqdashboard_results", dqd_result)

@@ -34,46 +34,43 @@ class SqlServerAchilles(Achilles, SqlServerEtlBase):
 
     def _store_analysis_details(self, data_frame: pl.DataFrame):
         self._upload_dataframe(
-            self._achilles_database_catalog,
-            self._achilles_database_schema,
-            "achilles_analysis", 
-            data_frame
+            self._achilles_database_catalog, self._achilles_database_schema, "achilles_analysis", data_frame
         )
 
     @property
     def _temp_emulation_schema(self) -> str:
-        return f"{self._achilles_database_catalog}.{self._achilles_database_schema}"
+        return f"[{self._achilles_database_catalog}].[{self._achilles_database_schema}]"
 
     @property
     def _voc_database_schema(self) -> str:
-        return f"{self._omop_database_catalog}.{self._omop_database_schema}"
-    
+        return f"[{self._omop_database_catalog}].[{self._omop_database_schema}]"
+
     @property
     def _cdm_database_schema(self) -> str:
-        return f"{self._omop_database_catalog}.{self._omop_database_schema}"
+        return f"[{self._omop_database_catalog}].[{self._omop_database_schema}]"
 
     @property
     def _scratch_database_schema(self) -> str:
-        return f"{self._achilles_database_catalog}.{self._achilles_database_schema}" # multithreaded doesn't support tempdb
+        return f"[{self._achilles_database_catalog}].[{self._achilles_database_schema}]"  # multithreaded doesn't support tempdb
 
     @property
     def _results_database_schema(self) -> str:
-        return f"{self._achilles_database_catalog}.{self._achilles_database_schema}"
+        return f"[{self._achilles_database_catalog}].[{self._achilles_database_schema}]"
 
     @property
     def _supports_temp_tables(self) -> bool:
-        return False # multithreaded doesn't support tempdb
+        return False  # multithreaded doesn't support tempdb
 
     @property
     def _schema_delim(self) -> str:
-        return "." # multithreaded doesn't support tempdb
+        return "."  # multithreaded doesn't support tempdb
 
     def _pre_prep_analysis_query(self, sql: str) -> str:
-        return sql.replace("#", f"{self._dqd_database_catalog}.{self._dqd_database_schema}.")
+        return sql.replace("#", f"[{self._dqd_database_catalog}].[{self._dqd_database_schema}].")
 
     def _post_prep_analysis_query(self, sql: str) -> str:
         return sql.replace("CREATE TABLE", "CREATE OR REPLACE TABLE")
-    
+
     @property
     def _drop_index_sql(self) -> str:
         return "drop index if exists @resultsDatabaseSchema.@indexName;"
