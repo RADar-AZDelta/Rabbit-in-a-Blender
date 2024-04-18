@@ -9,15 +9,12 @@ from abc import ABC
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import time
 from typing import Optional, cast
 
-import backoff
 import polars as pl
-from sqlalchemy import CursorResult, Tuple, create_engine, engine, text
+from sqlalchemy import engine
 
 from ..db import Db
-
 from ..etl_base import EtlBase
 
 
@@ -336,3 +333,4 @@ class SqlServerEtlBase(EtlBase, ABC):
     def _test_db_connection(self):
         """Test the connection to the database."""
         self._db.run_query("select 1")
+        logging.info("Successfully connected to the database.")

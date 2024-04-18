@@ -60,6 +60,10 @@ class BigQueryAchilles(Achilles, BigQueryEtlBase):
         return False
 
     @property
+    def _create_indices(self) -> bool:
+        return False
+
+    @property
     def _schema_delim(self) -> str:
         return "."
 

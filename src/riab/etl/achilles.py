@@ -32,7 +32,6 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         exclude_analysis_ids: list[int] | None = None,
         update_given_analyses_only: bool = False,
         create_table: bool = True,
-        create_indices: bool = True,
         drop_scratch_tables=True,
         output_folder: str = "output",
         **kwargs,
@@ -49,7 +48,6 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         self._exclude_analysis_ids = exclude_analysis_ids
         self._update_given_analyses_only = update_given_analyses_only
         self._create_table = create_table
-        self._create_indices = create_indices
         self._output_folder = output_folder
         self._drop_scratch_tables = drop_scratch_tables
 
@@ -371,30 +369,18 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         if self._default_analyses_only:
             df_results_tables = df_analysis_details.filter(
                 (pl.col("DISTRIBUTION") <= 0) & (pl.col("IS_DEFAULT") == 1)
-            ).with_columns(
-                pl.col("ANALYSIS_ID")
-                .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
-                .alias("TABLE")
-            )
+            ).with_columns(pl.col("ANALYSIS_ID").apply(lambda id: f"{self._temp_achilles_prefix}_{id}").alias("TABLE"))
         else:
-            df_results_tables = df_analysis_details.filter(
-                (pl.col("DISTRIBUTION") <= 0)
-            ).with_columns(
-                pl.col("ANALYSIS_ID")
-                .apply(lambda id: f"{self._temp_achilles_prefix}_{id}")
-                .alias("TABLE")
+            df_results_tables = df_analysis_details.filter((pl.col("DISTRIBUTION") <= 0)).with_columns(
+                pl.col("ANALYSIS_ID").apply(lambda id: f"{self._temp_achilles_prefix}_{id}").alias("TABLE")
             )
-        
-        df_results_dist_tables = df_analysis_details.filter(
-            (pl.col("DISTRIBUTION") == 1)
-        ).with_columns(
-            pl.col("ANALYSIS_ID")
-            .apply(lambda id: f"{self._temp_achilles_prefix}_dist_{id}")
-            .alias("TABLE")
+
+        df_results_dist_tables = df_analysis_details.filter((pl.col("DISTRIBUTION") == 1)).with_columns(
+            pl.col("ANALYSIS_ID").apply(lambda id: f"{self._temp_achilles_prefix}_dist_{id}").alias("TABLE")
         )
 
         tables = list(df_results_tables["TABLE"]) + list(df_results_dist_tables["TABLE"])
-        tables.append('tmpach_dist_0') # for some reason we are missing tmpach_dist_0
+        tables.append("tmpach_dist_0")  # for some reason we are missing tmpach_dist_0
 
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [
@@ -571,7 +557,11 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         }
         rendered_sql = self._render_sql(self._db_engine, sql, parameters)
         return rendered_sql
-    
+
+    @property
+    def _create_indices(self) -> bool:
+        return True
+
     @property
     def _drop_index_sql(self) -> str:
         return "drop index @resultsDatabaseSchema.@indexName;"
@@ -579,7 +569,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
     @property
     def _create_index_sql(self) -> str:
         return "create index @indexName on @resultsDatabaseSchema.@tableName (@fields);"
-    
+
     def _create_indices_sqls(self) -> list[str]:
         achilles_tables = ["achilles_results", "achilles_results_dist"]
         df_indices_details = pl.read_csv(
@@ -593,22 +583,38 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 / "indices.csv"
             ),
         )
-        drop_indices_sql = [self._render_sql(self._db_engine, self._drop_index_sql, {
-            'resultsDatabaseSchema': self._results_database_schema,
-            'indexName': index['INDEX_NAME'],
-        }) for index in df_indices_details.iter_rows(named=True) if index['TABLE_NAME'] in achilles_tables]
+        drop_indices_sql = [
+            self._render_sql(
+                self._db_engine,
+                self._drop_index_sql,
+                {
+                    "resultsDatabaseSchema": self._results_database_schema,
+                    "indexName": index["INDEX_NAME"],
+                },
+            )
+            for index in df_indices_details.iter_rows(named=True)
+            if index["TABLE_NAME"] in achilles_tables
+        ]
 
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [executor.submit(self._run_query, sql) for sql in drop_indices_sql]
             for result in as_completed(futures):
                 result.result()
 
-        indices_sql = [self._render_sql(self._db_engine, self._create_index_sql, {
-            'resultsDatabaseSchema': self._results_database_schema,
-            'tableName': index['TABLE_NAME'],
-            'indexName': index['INDEX_NAME'],
-            'fields': ",".join(index['FIELDS'].split("~"))
-        }) for index in df_indices_details.iter_rows(named=True) if index['TABLE_NAME'] in achilles_tables]
+        indices_sql = [
+            self._render_sql(
+                self._db_engine,
+                self._create_index_sql,
+                {
+                    "resultsDatabaseSchema": self._results_database_schema,
+                    "tableName": index["TABLE_NAME"],
+                    "indexName": index["INDEX_NAME"],
+                    "fields": ",".join(index["FIELDS"].split("~")),
+                },
+            )
+            for index in df_indices_details.iter_rows(named=True)
+            if index["TABLE_NAME"] in achilles_tables
+        ]
 
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             futures = [executor.submit(self._run_query, sql) for sql in indices_sql]
@@ -616,7 +622,6 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
                 result.result()
 
         return drop_indices_sql + indices_sql
-
 
     def _get_optimize_atlas_cache_sql(self) -> str:
         df_results_concept_count_table = pl.read_csv(
