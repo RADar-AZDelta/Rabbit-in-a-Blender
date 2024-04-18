@@ -65,12 +65,12 @@ Most CDM tables have foreign keys (FKs) to other tables. Some tables can be proc
 The ETL flow for v5.4 is as follows:
 
 ```
+├──vocabulary
 ├──cdm_source
+├──metadata
 ├──cost
 ├──fact_relationship
-├──location
-├──metadata
-└──vocabulary
+└──location
   └──care_site
     └──provider
       └──person
