@@ -1,7 +1,7 @@
 ![Rabbit in a Blender](resources/img/rabbitinablenderlogo.png)
 ===========
 
-**Rabbit in a Blender** is an [ETL](https://en.wikipedia.org/wiki/Extract,_transform,_load) pipeline [CLI](https://nl.wikipedia.org/wiki/Command-line-interface) to transform your [EMR](https://en.wikipedia.org/wiki/Electronic_health_record) data to [OMOP](https://www.ohdsi.org/data-standardization/the-common-data-model/).
+**Rabbit in a Blender (RiaB)** is an [ETL](https://en.wikipedia.org/wiki/Extract,_transform,_load) pipeline [CLI](https://nl.wikipedia.org/wiki/Command-line-interface) to transform your [EMR](https://en.wikipedia.org/wiki/Electronic_health_record) data to [OMOP](https://www.ohdsi.org/data-standardization/the-common-data-model/).
 
 Why the name 'Rabbit in a Blender'? It stays in the rabbit theme of the [OHDSI](https://www.ohdsi.org) tools, and an ETL pipeline is like putting all your data in a blender. 
 
@@ -55,8 +55,7 @@ Examples:
     - Add custom concept for cemiplimab with concept_code = *C12*, it gets a assigned a concept_id automatically, no usagi-entry required
     - Add only one usagi-entry, mapping sourceCode *C12* to targetConceptId = *1792776* (standard code for atezolizumab), the second mapping of *C12* to custom concept with concept_code = *C12* is done automatically.
 
-For the moment we only implemented a BigQuery backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
-A SQL Server backend is in development for usage in the Federated Health Innovation Network (FHIN) project.
+For the moment we only implemented a BigQuery and SQL Server backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 
 ETL flow
 ========
@@ -98,14 +97,20 @@ The ETL flow for v5.4 is as follows:
 
 Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.
 
-Install python
+Install Python
 ========
+
 usage of [pyenv](https://github.com/pyenv/pyenv) to install the required version of python (version 3.12)
 
 ```
 pyenv install 3.12
 pyenv local 3.12 # use version 3.12 of python for the current user
 ```
+
+Install Java
+========
+
+The [Data Quality Dashboard (DQD)](https://github.com/OHDSI/DataQualityDashboard) and the [Automated Characterization of Health Information at Large-scale Longitudinal Evidence Systems (ACHILLES)](https://github.com/OHDSI/Achilles) require [Java](https://www.java.com/download) (minimal version 8)
 
 Installation
 ========
@@ -451,9 +456,11 @@ Ensure SQL allows non- Entra ID users
    2. Go to SQL **server** instance (not database)
    3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
    4. You might need to [scale up](https://learn.microsoft.com/en-us/azure/azure-sql/database/scale-resources?view=azuresql) the number of max vCores to speed up for instance the import of the vocabularies.
-   5. You need to use the same database catalog for omop, work, dqd and achilles. Because of the following limitation: To change database context to a different database in Azure SQL Database, you must create a new connection to that database. (see [T-SQL differences between SQL Server and Azure SQL Database](https://learn.microsoft.com/en-us/azure/azure-sql/database/transact-sql-tsql-differences-sql-server?view=azuresql)). So the omop_database_catalog, work_database_catalog, dqd_database_catalog and achilles_database_catalog must have the same value in the riab.ini!
 
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/1187178/1ac67835-b467-4278-8c9a-171af0a98aa8)
+
+   5. You need to use the same database catalog for omop, work, dqd and achilles. Because of the following limitation: To change database context to a different database in Azure SQL Database, you must create a new connection to that database. (see [T-SQL differences between SQL Server and Azure SQL Database](https://learn.microsoft.com/en-us/azure/azure-sql/database/transact-sql-tsql-differences-sql-server?view=azuresql)). So the omop_database_catalog, work_database_catalog, dqd_database_catalog and achilles_database_catalog must have the same value in the riab.ini!
+
 
 Windows
 ========

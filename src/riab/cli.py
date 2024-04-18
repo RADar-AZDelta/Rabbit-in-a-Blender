@@ -12,7 +12,7 @@ from importlib import metadata
 from os import environ as env
 from os import getcwd, linesep, path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import Optional, Sequence, cast
+from typing import Sequence, cast
 
 from dotenv import load_dotenv
 
@@ -292,6 +292,14 @@ class Cli:
                             with BigQueryAchilles(
                                 **etl_kwargs,
                                 **bigquery_kwargs,
+                            ) as achilles:
+                                achilles.run()
+                        case "sql_server":
+                            from .etl.sql_server import SqlServerAchilles
+
+                            with SqlServerAchilles(
+                                **etl_kwargs,
+                                **sqlserver_kwargs,
                             ) as achilles:
                                 achilles.run()
                         case _:

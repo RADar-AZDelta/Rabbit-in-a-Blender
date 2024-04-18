@@ -63,13 +63,8 @@ class BigQueryAchilles(Achilles, BigQueryEtlBase):
     def _schema_delim(self) -> str:
         return "."
 
-    def _pre_prep_query(self, sql: str) -> str:
+    def _pre_prep_analysis_query(self, sql: str) -> str:
         return sql.replace("#", f"{self._dataset_dqd}.")
 
-    def _post_prep_query(self, sql: str) -> str:
+    def _post_prep_analysis_query(self, sql: str) -> str:
         return sql.replace("CREATE TABLE", "CREATE OR REPLACE TABLE")
-
-    def _get_indices_sqls(self, achilles_tables: list[str] | None = None) -> list[str]:
-        if not achilles_tables:
-            achilles_tables = ["achilles_results", "achilles_results_dist"]
-        return ["/* INDEX CREATION SKIPPED, INDICES NOT SUPPORTED IN BIGQUERY */"]

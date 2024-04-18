@@ -9,7 +9,7 @@ import jpype
 import jpype.imports
 
 
-class SqlRenderBase(ABC):  # TODO: make this obsolete!!!!
+class SqlRenderBase(ABC):  
     """
     Base class for the Java SQLRender
     """

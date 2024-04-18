@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
+from os import XATTR_SIZE_MAX
 import traceback
 from pathlib import Path
 from time import time
@@ -25,7 +26,6 @@ class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
         self, check: Any, row: str, parameters: Any, cohort_definition_id: Optional[int] = None
     ) -> Any:
         sql = None
-        #result = None
         exception: str | None = None
         execution_time = -1
         try:
@@ -40,12 +40,7 @@ class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
 
             sql = self._render_sqlfile(check["sqlFile"], parameters)
 
-            start = time()
-            result = cast(list[dict], self._run_query(sql))
-            end = time()
-            execution_time = end - start
-
-            #result = dict(next(rows))
+            rows, execution_time = self._db.run_query_with_benchmark(sql)
         except Exception as ex:
             logging.warn(traceback.format_exc())
             # with open(
@@ -64,7 +59,7 @@ class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
             # if __debug__:
             #     breakpoint()
 
-        return self._process_check(check, row, parameters, sql, result[0], execution_time, exception)
+        return self._process_check(check, row, parameters, sql, cast(list[dict], rows)[0], execution_time, exception)
 
     # def _render_sqlfile(self, sql_file: str, parameters: dict):
     #     d: dict = {}
@@ -89,7 +84,7 @@ class SqlServerDataQuality(DataQuality, SqlServerEtlBase):
         sql = template.render(
             dataset_omop=f"{self._omop_database_catalog}.{self._omop_database_schema}",
         )
-        rows = self._run_query(sql)
+        rows = self._db.run_query(sql)
         return rows or []
 
     def _store_dqd_run(self, dqd_run: dict):

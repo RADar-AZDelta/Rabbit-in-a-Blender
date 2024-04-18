@@ -59,7 +59,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         sql = template.render(
             work_database_catalog=self._work_database_catalog, work_database_schema=self._work_database_schema
         )
-        rows: Sequence = cast(Sequence, self._run_query(sql))
+        rows: Sequence = cast(Sequence, self._db.run_query(sql))
         return [row["table_name"] for row in rows]
 
     def _truncate_omop_table(self, table_name: str) -> None:
@@ -70,7 +70,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             table_name=table_name,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _remove_custom_concepts_from_concept_table(self) -> None:
         """Remove the custom concepts from the OMOP concept table"""
@@ -80,7 +80,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
         """Remove the custom concepts from the OMOP concept_relationship table"""
@@ -90,7 +90,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
         """Remove the custom concepts from the OMOP concept_ancestor table"""
@@ -100,7 +100,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _remove_custom_concepts_from_vocabulary_table(self) -> None:
         """Remove the custom concepts from the OMOP vocabulary table"""
@@ -110,7 +110,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
@@ -134,7 +134,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             concept_id_column=concept_id_column,
         )
         try:
-            self._run_query(sql)
+            self._db.run_query(sql)
         except Exception:
             logging.debug(
                 "Table %s__%s_usagi_table not found in work dataset",
@@ -156,7 +156,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             omop_table=omop_table,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
@@ -180,7 +180,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             concept_id_column=concept_id_column,
         )
         try:
-            self._run_query(sql)
+            self._db.run_query(sql)
         except Exception:
             logging.debug(
                 "Table %s__%s_usagi_table not found in work dataset",
@@ -210,7 +210,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             concept_id_column=concept_id_column,
         )
         try:
-            self._run_query(sql)
+            self._db.run_query(sql)
         except Exception:
             logging.debug(
                 "Table %s__%s_usagi_table not found in work dataset",
@@ -240,7 +240,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             concept_id_column=concept_id_column,
         )
         try:
-            self._run_query(sql)
+            self._db.run_query(sql)
         except Exception:
             logging.debug(
                 "Table %s__%s_usagi_table not found in work dataset",
@@ -270,7 +270,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
 
         self._lock_source_to_concept_map_cleanup.acquire()
         try:
-            self._run_query(sql)
+            self._db.run_query(sql)
         except Exception:
             logging.warn(
                 f"Cannot cleanup source_to_concept_map table with the concepts from the usagi concepts of {omop_table}.{concept_id_column}"
@@ -291,7 +291,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             work_database_schema=self._work_database_schema,
             table_name=work_table,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _custom_db_engine_cleanup(self, table: str) -> None:
         """Custom cleanup method for specific database engine implementation

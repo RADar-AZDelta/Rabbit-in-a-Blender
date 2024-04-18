@@ -52,7 +52,7 @@ class SqlServerImportVocabularies(ImportVocabularies, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             vocabulary_table=vocabulary_table,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _load_vocabulary_parquet_in_upload_table(self, vocabulary_table: str, parquet_file: Path) -> None:
         """Loads the CSV file in the specific standardised vocabulary table

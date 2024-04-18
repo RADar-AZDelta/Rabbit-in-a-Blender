@@ -81,7 +81,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
         )
-        self._run_query(sql, {"etl_start": etl_start})
+        self._db.run_query(sql, {"etl_start": etl_start})
 
     def _source_id_to_omop_id_map_update_invalid_reason(self, etl_start: date) -> None:
         """Cleanup old source id's to omop id's maps by setting the invalid_reason to deleted
@@ -95,7 +95,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
         )
-        self._run_query(sql, {"etl_start": etl_start})
+        self._db.run_query(sql, {"etl_start": etl_start})
 
     def _clear_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the custom concept upload table (holds the contents of the custom concept CSV's)
@@ -110,7 +110,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             work_database_schema=self._work_database_schema,
             work_table=f"{omop_table}__{concept_id_column}_concept",
         )
-        self._run_query(ddl)
+        self._db.run_query(ddl)
 
     def _create_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the custom concept upload table (holds the contents of the custom concept CSV's)
@@ -126,7 +126,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        self._run_query(ddl)
+        self._db.run_query(ddl)
 
     def _create_custom_concept_id_swap_table(self) -> None:
         """Creates the custom concept id swap tabel (swaps between source value and the concept id)"""
@@ -135,7 +135,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             work_database_catalog=self._work_database_catalog,
             work_database_schema=self._work_database_schema,
         )
-        self._run_query(ddl)
+        self._db.run_query(ddl)
 
     def _load_custom_concepts_parquet_in_upload_table(
         self, parquet_file: Path, omop_table: str, concept_id_column: str
@@ -166,7 +166,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        rows = self._run_query(sql)
+        rows = self._db.run_query(sql)
         if rows:
             df = pl.from_dicts(rows)
             with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
@@ -181,7 +181,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        rows = self._run_query(sql)
+        rows = self._db.run_query(sql)
         if rows:
             df = pl.from_dicts(rows)
             with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
@@ -205,7 +205,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_column=concept_id_column,
             min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _merge_custom_concepts_with_the_omop_concepts(self, omop_table: str, concept_id_column: str) -> None:
         """Merges the uploaded custom concepts in the OMOP concept table.
@@ -223,7 +223,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _clear_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Clears the usagi upload table (holds the contents of the usagi CSV's)
@@ -238,7 +238,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             work_database_schema=self._work_database_schema,
             work_table=f"{omop_table}__{concept_id_column}_usagi",
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _create_usagi_upload_table(self, omop_table: str, concept_id_column: str) -> None:
         """Creates the Usagi upload table (holds the contents of the Usagi CSV's)
@@ -254,7 +254,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_table=omop_table,
             concept_id_column=concept_id_column,
         )
-        self._run_query(ddl)
+        self._db.run_query(ddl)
 
     def _load_usagi_parquet_in_upload_table(self, parquet_file: str, omop_table: str, concept_id_column: str) -> None:
         """The Usagi CSV's are converted to a parquet file.
@@ -290,7 +290,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_column=concept_id_column,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _store_usagi_source_value_to_concept_id_mapping(self, omop_table: str, concept_id_column: str) -> None:
         """Fill up the SOURCE_TO_CONCEPT_MAP table with all approved mappings from the uploaded Usagi CSV's
@@ -309,7 +309,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
-        rows = self._run_query(sql_doubles)
+        rows = self._db.run_query(sql_doubles)
         if rows:
             df = pl.from_dicts(rows)
             with pl.Config(fmt_str_lengths=1000):
@@ -327,7 +327,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_database_schema=self._omop_database_schema,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _store_usagi_source_id_to_omop_id_mapping(self, omop_table: str, primary_key_column: str) -> None:
         """Fill up the SOURCE_ID_TO_OMOP_ID_MAP table with all the swapped source id's to omop id's
@@ -345,7 +345,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _get_query_from_sql_file(self, sql_file: Path, omop_table: str) -> str:
         """Reads the query from file. If it is a Jinja template, it renders the template.
@@ -408,7 +408,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             events=events,
             # concept_id_columns=concept_columns,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _create_pk_auto_numbering_swap_table(
         self, primary_key_column: str, concept_id_columns: list[str], events: Any
@@ -429,7 +429,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_columns=concept_id_columns,
             events=events,
         )
-        self._run_query(ddl)
+        self._db.run_query(ddl)
 
     def _execute_pk_auto_numbering_swap_query(
         self,
@@ -463,7 +463,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             upload_tables=upload_tables,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _check_for_duplicate_rows(
         self,
@@ -495,7 +495,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             upload_tables=upload_tables,
             events=events,
         )
-        rows = self._run_query(sql_doubles)
+        rows = self._db.run_query(sql_doubles)
         if rows:
             df = pl.from_dicts(rows)
             with pl.Config(fmt_str_lengths=1000):
@@ -550,7 +550,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             upload_tables=upload_tables,
             min_custom_concept_id=Etl._CUSTOM_CONCEPT_IDS_START,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
         if not (events or omop_table == "vocabulary"):
             self._add_constraints(omop_table)
@@ -585,7 +585,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
                     work_database_schema=self._work_database_schema,
                     events=events,
                 )
-                rows = self._run_query(sql)
+                rows = self._db.run_query(sql)
                 if rows:
                     event_tables = dict(
                         (table, self._get_pk(table)) for table in (row["event_table"] for row in rows) if table
@@ -603,7 +603,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
                 events=events,
                 event_tables=event_tables,
             )
-            self._run_query(sql)
+            self._db.run_query(sql)
         except Exception as e:
             # if isinstance(e.__cause__, NotFound):  # chained exception!!!
             logging.debug(
@@ -633,7 +633,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             columns=columns,
             events=events,
         )
-        self._run_query(sql)
+        self._db.run_query(sql)
 
     def _check_usagi(self, omop_table: str, concept_id_column: str, domains: list[str] | None) -> None:
         """Checks the usagi fk domain of the concept id column.
@@ -653,7 +653,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_column=concept_id_column,
             process_semi_approved_mappings=self._process_semi_approved_mappings,
         )
-        rows = self._run_query(sql)
+        rows = self._db.run_query(sql)
         if rows:
             df = pl.from_dicts(rows)
             logging.warn(
@@ -674,7 +674,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
                 domains=domains,
                 process_semi_approved_mappings=self._process_semi_approved_mappings,
             )
-            rows = self._run_query(sql)
+            rows = self._db.run_query(sql)
             if rows:
                 df = pl.from_dicts(rows)
                 raise Exception(

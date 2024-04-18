@@ -23,7 +23,7 @@ class SqlServerDataQualityDashboard(DataQualityDashboard, SqlServerEtlBase):
             dqd_database_catalog=self._dqd_database_catalog,
             dqd_database_schema=self._dqd_database_schema,
         )
-        rows = self._run_query(sql)
+        rows = self._db.run_query(sql)
         return rows or []
 
     def _get_run(self, id: str) -> Any:
@@ -32,10 +32,10 @@ class SqlServerDataQualityDashboard(DataQualityDashboard, SqlServerEtlBase):
             dqd_database_catalog=self._dqd_database_catalog,
             dqd_database_schema=self._dqd_database_schema,
         )
-        rows = self._run_query(sql, {
+        rows = self._db.run_query(sql, {
                 "id": id,
             })
-        return rows[0]
+        return rows[0] if rows else None
 
     def _get_results(self, run_id: str) -> pl.DataFrame:
         template = self._template_env.get_template("dqd/get_dqd_run_results.sql.jinja")
@@ -43,10 +43,10 @@ class SqlServerDataQualityDashboard(DataQualityDashboard, SqlServerEtlBase):
             dqd_database_catalog=self._dqd_database_catalog,
             dqd_database_schema=self._dqd_database_schema,
         )
-        rows = self._run_query(sql, {
+        rows = self._db.run_query(sql, {
                 "id": run_id,
             })
-        data_frame = pl.from_dicts(rows)
+        data_frame = pl.from_dicts(rows or [])
         data_frame = data_frame.with_columns(
             [
                 pl.col("query_text").str.replace_all("<br>", "\n").alias("query_text"),

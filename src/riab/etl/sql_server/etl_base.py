@@ -9,11 +9,14 @@ from abc import ABC
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import time
 from typing import Optional, cast
 
 import backoff
 import polars as pl
-from sqlalchemy import CursorResult, create_engine, engine, text
+from sqlalchemy import CursorResult, Tuple, create_engine, engine, text
+
+from ..db import Db
 
 from ..etl_base import EtlBase
 
@@ -63,7 +66,7 @@ class SqlServerEtlBase(EtlBase, ABC):
         self._disable_fk_constraints = disable_fk_constraints
         self._bcp_code_page = bcp_code_page
 
-        self._db_connection = engine.URL.create(
+        url = engine.URL.create(
             drivername="mssql+pymssql",
             username=self._user,
             password=self._password,
@@ -71,57 +74,8 @@ class SqlServerEtlBase(EtlBase, ABC):
             port=self._port,
             database=self._work_database_catalog,  # required for Azure SQL
         )
-        # self._db_connection = engine.URL.create(
-        #     drivername="mssql+pyodbc",
-        #     username=self._user,
-        #     password=self._password,
-        #     host=self._server,
-        #     port=self._port,
-        #     database=self._omop_database_catalog,
-        #     query={"driver": "ODBC Driver 17 for SQL Server", "TrustServerCertificate": "yes"},
-        # )
-        self._engine = create_engine(
-            self._db_connection,
-            # fast_executemany=True,
-            use_insertmanyvalues=True,
-        )
 
-        self._upload_db_connection = engine.URL.create(
-            drivername="mssql+pymssql",
-            username=self._user,
-            password=self._password,
-            host=self._server,
-            port=self._port,
-            database=self._work_database_catalog,
-        )
-        # self._upload_db_connection = engine.URL.create(
-        #     drivername="mssql+pyodbc",
-        #     username=self._user,
-        #     password=self._password,
-        #     host=self._server,
-        #     port=self._port,
-        #     database=self._work_database_catalog,
-        #     query={"driver": "ODBC Driver 17 for SQL Server", "TrustServerCertificate": "yes"},
-        # )
-        self._upload_engine = create_engine(
-            self._upload_db_connection,
-            # fast_executemany=True,
-            use_insertmanyvalues=True,
-        )
-
-    @backoff.on_exception(backoff.expo, (Exception), max_time=10, max_tries=3)
-    def _run_query(self, sql: str, parameters: Optional[dict] = None) -> list[dict] | None:
-        logging.debug("Running query: %s", sql)
-        try:
-            rows = None
-            with self._engine.begin() as conn:
-                with conn.execute(text(sql), parameters) as result:
-                    if isinstance(result, CursorResult) and not result._soft_closed:
-                        rows = [u._asdict() for u in result.all()]
-                    return rows
-        except Exception as ex:
-            logging.debug("FAILED QUERY: %s", sql)
-            raise ex
+        self._db = Db(url)
 
     def _upload_dataframe(self, catalog: str, schema: str, table: str, df: pl.DataFrame) -> None:
         with TemporaryDirectory(prefix="riab_") as temp_dir_path:
@@ -226,7 +180,7 @@ class SqlServerEtlBase(EtlBase, ABC):
                 omop_database_catalog=self._omop_database_catalog,
                 omop_database_schema=self._omop_database_schema,
             )
-            self._run_query(f"use {self._omop_database_catalog};\n" + sql)
+            self._db.run_query(f"use {self._omop_database_catalog};\n" + sql)
 
     def _add_constraints(self, table_name: str) -> None:
         """Add the foreign key constraints pointing to this table
@@ -277,7 +231,7 @@ class SqlServerEtlBase(EtlBase, ABC):
 
         logging.debug("Adding the table contraints to the omop tables")
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
-            futures = [executor.submit(self._run_query, ddl) for ddl in constraint_ddls]
+            futures = [executor.submit(self._db.run_query, ddl) for ddl in constraint_ddls]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
@@ -312,7 +266,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
         )
-        self._run_query(f"use {self._omop_database_catalog};\n" + sql)
+        self._db.run_query(f"use {self._omop_database_catalog};\n" + sql)
 
     def _add_all_constraints(self) -> None:
         """Add all the foreign key constraints to the omop tables"""
@@ -373,7 +327,7 @@ class SqlServerEtlBase(EtlBase, ABC):
 
     def _run_constraint_ddl(self, ddl: str):
         try:
-            self._run_query(ddl)
+            self._db.run_query(ddl)
         except Exception as ex:
             logging.warn(
                 f"Failed to run constraint ddl: '{ddl}'.\nThis usually means you have some inconsistent data in your tables.\n{ex}"
