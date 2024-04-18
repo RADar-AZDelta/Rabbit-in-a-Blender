@@ -2,7 +2,16 @@
 {#- SPDX-License-Identifier: gpl3+ -#}
 select T.concept_code, count(*) as amount
 from (
-    SELECT DISTINCT swap.y as concept_id, t.* EXCEPT(concept_id)
+    SELECT DISTINCT swap.y as concept_id
+        ,t.concept_name
+        ,t.domain_id
+        ,t.vocabulary_id
+        ,t.concept_class_id
+        ,t.standard_concept
+        ,t.concept_code
+        ,t.valid_start_date
+        ,t.valid_end_date
+        ,t.invalid_reason
     FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_concept] t
     INNER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[concept_id_swap] swap 
         on swap.x = concat('{{concept_id_column}}__', t.concept_code)
