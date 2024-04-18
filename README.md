@@ -423,6 +423,21 @@ CREATE SCHEMA dqd;
 CREATE SCHEMA achilles;
 ```
 
+Change the recovery mode to Simple. (ask your DBA for best practices)
+
+```sql
+ALTER DATABASE omop SET RECOVERY SIMPLE;
+ALTER DATABASE work SET RECOVERY SIMPLE;
+ALTER DATABASE dqd SET RECOVERY SIMPLE;
+ALTER DATABASE achilles SET RECOVERY SIMPLE;
+```
+
+or
+
+```sql
+ALTER DATABASE omop SET RECOVERY SIMPLE;
+```
+
 **Tip**: Make sure you've chosen the right [collation](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql?view=azuresqldb-current&preserve-view=true&tabs=sqlpool#collation_name), that is compatible with your raw data.
 
 ### Linked server to the raw data
