@@ -153,3 +153,7 @@ class BigQueryEtlBase(EtlBase, ABC):
                 return "string"
             case _:
                 raise ValueError(f"Unknown cdmDatatype: {cdmDatatype}")
+
+    def _test_db_connection(self):
+        """Test the connection to the database."""
+        self._gcp.run_query_job("select 1")

@@ -220,6 +220,7 @@ CLI Usage
 * **ETL Commands**:
     |  command | help  
     |---|---    
+    | -tdc, --test-db-connection | Test the database connection
     | -cd, --create-db | Create the OMOP CDM tables
     | -cf, --create-folders [PATH] | Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.
     | -i, --import-vocabularies [VOCABULARIES_ZIP_FILE] | Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.

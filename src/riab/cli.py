@@ -140,6 +140,26 @@ class Cli:
                                 create_omop_db.run()
                         case _:
                             raise ValueError("Not a supported database engine")
+                elif args.test_db_connection:
+                    match db_engine:
+                        case "bigquery":
+                            from .etl.bigquery import BigQueryEtl
+
+                            etl = BigQueryEtl(
+                                **etl_kwargs,
+                                **bigquery_kwargs,
+                            )
+                            etl._test_db_connection()
+                        case "sql_server":
+                            from .etl.sql_server import SqlServerEtl
+
+                            etl = SqlServerEtl(
+                                **etl_kwargs,
+                                **sqlserver_kwargs,
+                            )
+                            etl._test_db_connection()
+                        case _:
+                            raise ValueError("Not a supported database engine")                        
                 elif args.create_folders:  # create the ETL folder structure
                     match db_engine:
                         case "bigquery":
@@ -423,6 +443,7 @@ ______      _     _     _ _     _                ______ _                _
         parser = ArgumentParserWithBetterErrorPrinting(add_help=False, parents=parents)
         argument_group = parser.add_argument_group("ETL commands")
         argument_group.add_argument("-cd", "--create-db", help="Create the OMOP CDM tables", action="store_true")
+        argument_group.add_argument("-tdc", "--test-db-connection", help="Test connection to the database", action="store_true")
         argument_group.add_argument(
             "-cf",
             "--create-folders",

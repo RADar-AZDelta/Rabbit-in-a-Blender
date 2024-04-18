@@ -6,7 +6,7 @@
 import json
 import logging
 import time
-from abc import ABC
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
@@ -360,3 +360,8 @@ class EtlBase(ABC):
         for cdmFieldName, cdmDatatype in df_table_fields.iter_rows():
             polars_schema[cdmFieldName] = self._get_polars_type(cdmDatatype)
         return polars_schema
+
+    @abstractmethod
+    def _test_db_connection(self):
+        """Test the connection to the database."""
+        pass

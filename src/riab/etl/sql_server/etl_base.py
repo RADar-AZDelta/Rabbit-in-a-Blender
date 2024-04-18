@@ -332,3 +332,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             logging.warn(
                 f"Failed to run constraint ddl: '{ddl}'.\nThis usually means you have some inconsistent data in your tables.\n{ex}"
             )
+
+    def _test_db_connection(self):
+        """Test the connection to the database."""
+        self._db.run_query("select 1")
