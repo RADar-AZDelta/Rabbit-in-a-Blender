@@ -95,26 +95,35 @@ class SqlServerEtlBase(EtlBase, ABC):
             logging.debug("Loading '%s' into table [%s].[%s].[%s]", upload_file, catalog, schema, table)
             args = [
                 "bcp" + (".exe" if os.name == "nt" else ""),
-                f"{schema}.{table}",
+                f"[{schema}].[{table}]",
                 "in",
                 upload_file,
-                f"-d{catalog}",
-                f"-S{self._server},{self._port}",
-                f"-U{self._user}",
-                f"-P{self._password}",
+                "-d",
+                f"{catalog}",
+                "-S",
+                f"{self._server},{self._port}",
+                "-U",
+                self._user,
+                "-P",
+                self._password,
                 "-c",
-                f"-C{self._bcp_code_page}",
-                "-t\t",
-                "-r\n",
+                "-C",
+                self._bcp_code_page,
+                "-t",
+                "\t",
+                "-r",
+                "\n",
                 "-F2",
                 "-k",
-                "-b10000",
-                f"-e{bcp_error_file}",
+                "-b",
+                "10000",
+                "-e",
+                bcp_error_file
             ]
             logging.info(f"Bulk copy command: {re.sub(
                 r"-P.*-c",
                 r"-P******* -c",
-                " ".join([arg.encode("unicode_escape").decode("utf-8") if (arg.startswith("-r") or arg.startswith("-t")) else arg for arg in args]),
+                " ".join([arg.encode("unicode_escape").decode("utf-8") if (arg == "\n" or arg == "\t") else arg for arg in args]),
             )}")
             process = subprocess.Popen(args)  # , shell=True, stdout=subprocess.PIPE)
             exit_code = process.wait()
@@ -160,7 +169,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             ddl = file.read()
         matches = list(
             re.finditer(
-                rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{table_name.upper()} \()(.*)(\);)",
+                rf"(ALTER TABLE \[{{{{omop_database_catalog}}}}\]\.\[{{{{omop_database_schema}}}}\]\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES \[{{{{omop_database_catalog}}}}\]\.\[{{{{omop_database_schema}}}}\]\.{table_name.upper()} \()(.*)(\);)",
                 ddl,
             )
         )
@@ -177,7 +186,7 @@ class SqlServerEtlBase(EtlBase, ABC):
                 omop_database_catalog=self._omop_database_catalog,
                 omop_database_schema=self._omop_database_schema,
             )
-            self._db.run_query(f"use {self._omop_database_catalog};\n" + sql)
+            self._db.run_query(f"use [{self._omop_database_catalog}];\n" + sql)
 
     def _add_constraints(self, table_name: str) -> None:
         """Add the foreign key constraints pointing to this table
@@ -198,7 +207,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             ddl = file.read()
         matches = list(
             re.finditer(
-                rf"(ALTER TABLE {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{{{omop_database_catalog}}}}\.{{{{omop_database_schema}}}}\.{table_name.upper()} \()(.*)(\);)",
+                rf"(ALTER TABLE \[{{{{omop_database_catalog}}}}\]\.\[{{{{omop_database_schema}}}}\]\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES \[{{{{omop_database_catalog}}}}\]\.\[{{{{omop_database_schema}}}}\]\.{table_name.upper()} \()(.*)(\);)",
                 ddl,
             )
         )
@@ -228,7 +237,7 @@ class SqlServerEtlBase(EtlBase, ABC):
 
         logging.debug("Adding the table contraints to the omop tables")
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
-            futures = [executor.submit(self._db.run_query, ddl) for ddl in constraint_ddls]
+            futures = [executor.submit(self._db.run_query, f"use [{self._omop_database_catalog}];\n" + ddl) for ddl in constraint_ddls]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
@@ -248,7 +257,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             ddl = file.read()
         matches = list(
             re.finditer(
-                r"(ALTER TABLE {{omop_database_catalog}}\.{{omop_database_schema}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{omop_database_catalog}}\.{{omop_database_schema}}\.(.*) \()(.*)(\);)",
+                r"(ALTER TABLE \[{{omop_database_catalog}}\]\.\[{{omop_database_schema}}\]\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES \[{{omop_database_catalog}}\]\.\[{{omop_database_schema}}\]\.(.*) \()(.*)(\);)",
                 ddl,
             )
         )
@@ -263,7 +272,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
         )
-        self._db.run_query(f"use {self._omop_database_catalog};\n" + sql)
+        self._db.run_query(f"use [{self._omop_database_catalog}];\n" + sql)
 
     def _add_all_constraints(self) -> None:
         """Add all the foreign key constraints to the omop tables"""
@@ -280,7 +289,7 @@ class SqlServerEtlBase(EtlBase, ABC):
             ddl = file.read()
         matches = list(
             re.finditer(
-                r"(ALTER TABLE {{omop_database_catalog}}\.{{omop_database_schema}}\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES {{omop_database_catalog}}\.{{omop_database_schema}}\.(.*) \()(.*)(\);)",
+                r"(ALTER TABLE \[{{omop_database_catalog}}\]\.\[{{omop_database_schema}}\]\.)(.*)( ADD CONSTRAINT )(.*) (FOREIGN KEY \()(.*)( REFERENCES \[{{omop_database_catalog}}\]\.\[{{omop_database_schema}}\]\.(.*) \()(.*)(\);)",
                 ddl,
             )
         )

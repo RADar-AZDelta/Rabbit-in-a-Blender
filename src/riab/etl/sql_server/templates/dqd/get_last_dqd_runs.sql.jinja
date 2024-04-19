@@ -2,5 +2,5 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
 select top 15 startTimestamp as label, id as value
-from {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs
+from [{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_runs
 order by startTimestamp desc;

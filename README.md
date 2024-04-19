@@ -476,8 +476,7 @@ Ensure SQL allows non- Entra ID users
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/1187178/1ac67835-b467-4278-8c9a-171af0a98aa8)
 
    5. You need to use the same database catalog for omop, work, dqd and achilles. Because of the following limitation: To change database context to a different database in Azure SQL Database, you must create a new connection to that database. (see [T-SQL differences between SQL Server and Azure SQL Database](https://learn.microsoft.com/en-us/azure/azure-sql/database/transact-sql-tsql-differences-sql-server?view=azuresql)). So the omop_database_catalog, work_database_catalog, dqd_database_catalog and achilles_database_catalog must have the same value in the riab.ini!
-   6. Do not use special characters (ex: the minus sign) in the name of the database catalog and schemes. (The OHDSI DQD and Achilles queries do not contain the [] escape characters.)
-
+   6. It is best practices to avoid the usage of special characters (ex: the minus sign) in the name of the database catalog and schemes. 
 
 Windows
 ========

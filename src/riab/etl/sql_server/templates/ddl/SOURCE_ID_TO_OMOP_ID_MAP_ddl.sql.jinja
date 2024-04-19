@@ -1,8 +1,8 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-IF OBJECT_ID(N'{{omop_database_catalog}}.{{omop_database_schema}}.source_id_to_omop_id_map', N'U') IS NOT NULL
-	DROP TABLE {{omop_database_catalog}}.{{omop_database_schema}}.source_id_to_omop_id_map; 
-create table {{omop_database_catalog}}.{{omop_database_schema}}.source_id_to_omop_id_map (
+IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].source_id_to_omop_id_map', N'U') IS NOT NULL
+	DROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].source_id_to_omop_id_map; 
+create table [{{omop_database_catalog}}].[{{omop_database_schema}}].source_id_to_omop_id_map (
     omop_table varchar(50) not null,
     omop_id integer not null,
     source varchar(50),
@@ -11,4 +11,4 @@ create table {{omop_database_catalog}}.{{omop_database_schema}}.source_id_to_omo
     valid_end_date DATE not null,
     invalid_reason varchar(50)
 );
-ALTER TABLE {{omop_database_catalog}}.{{omop_database_schema}}.source_id_to_omop_id_map ADD CONSTRAINT xpk_source_id_to_omop_id_map PRIMARY KEY NONCLUSTERED (omop_table, omop_id);
+ALTER TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].source_id_to_omop_id_map ADD CONSTRAINT xpk_source_id_to_omop_id_map PRIMARY KEY NONCLUSTERED (omop_table, omop_id);

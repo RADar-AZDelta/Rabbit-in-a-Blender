@@ -81,12 +81,12 @@ def modify_sqlserver_cdm_ddl(sql: str, ddl_part: str) -> str:
     # Solve some issues with the DDL
     sql = re.sub(
         r"@cdmDatabaseSchema",
-        r"{{omop_database_catalog}}.{{omop_database_schema}}",
+        r"[{{omop_database_catalog}}].[{{omop_database_schema}}]",
         sql,
     )
     sql = re.sub(
-        r"(CREATE TABLE {{omop_database_catalog}}.{{omop_database_schema}}).(.*).(\([\S\s.]+?\);)",
-        r"IF OBJECT_ID(N'{{omop_database_catalog}}.{{omop_database_schema}}.\2', N'U') IS NOT NULL\n\tDROP TABLE {{omop_database_catalog}}.{{omop_database_schema}}.\2; \n\1.\2 \3",
+        r"(CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}]).(.*).(\([\S\s.]+?\);)",
+        r"IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].\2', N'U') IS NOT NULL\n\tDROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].\2; \n\1.\2 \3",
         sql,
     )
     # see https://github.com/OHDSI/Vocabulary-v5.0/issues/389#issuecomment-1977413290
@@ -98,7 +98,7 @@ def modify_sqlserver_cdm_ddl(sql: str, ddl_part: str) -> str:
         sql = (
             """
 -- use database
-USE {{omop_database_catalog}};
+USE [{{omop_database_catalog}}];
 
 -- drop constraints
 DECLARE @DropConstraints NVARCHAR(max) = ''
@@ -398,18 +398,18 @@ if __name__ == "__main__":
     )
     jpype.startJVM(classpath=[sqlrender_path])  # type: ignore
 
-    render_dqd_query(
-        Path(__file__).parent.parent.resolve()
-        / "src"
-        / "riab"
-        / "libs"
-        / "DataQualityDashboard"
-        / "inst"
-        / "sql"
-        / "sql_server"
-        / "table_person_completeness.sql",
-        "bigquery",
-    )
+    # render_dqd_query(
+    #     Path(__file__).parent.parent.resolve()
+    #     / "src"
+    #     / "riab"
+    #     / "libs"
+    #     / "DataQualityDashboard"
+    #     / "inst"
+    #     / "sql"
+    #     / "sql_server"
+    #     / "table_person_completeness.sql",
+    #     "bigquery",
+    # )
 
     for db_dialect in ["bigquery", "sql_server"]:
         # render_dqd_queries(db_dialect) #not yet stable, will need to convert SqlTranslate.translateSql JAVA method to Python

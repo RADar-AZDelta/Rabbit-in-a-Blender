@@ -1,8 +1,8 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
-IF OBJECT_ID(N'{{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs', N'U') IS NOT NULL
-	DROP TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs; 
-CREATE TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs
+IF OBJECT_ID(N'[{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_runs', N'U') IS NOT NULL
+	DROP TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_runs; 
+CREATE TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_runs
 (
   id                        VARCHAR(255) NOT NULL, 
   startTimestamp            DATETIME NOT NULL,
@@ -25,11 +25,11 @@ CREATE TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs
   countPassedConformance    INTEGER,
   countPassedCompleteness   INTEGER
 );
-ALTER TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_runs ADD CONSTRAINT xpk_dqdashboard_runs PRIMARY KEY NONCLUSTERED (id);
+ALTER TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_runs ADD CONSTRAINT xpk_dqdashboard_runs PRIMARY KEY NONCLUSTERED (id);
 
-IF OBJECT_ID(N'{{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results', N'U') IS NOT NULL
-	DROP TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results; 
-CREATE TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results
+IF OBJECT_ID(N'[{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_results', N'U') IS NOT NULL
+	DROP TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_results; 
+CREATE TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_results
 (
   run_id                VARCHAR(255) NOT NULL,
   checkid               VARCHAR(1024) NOT NULL,
@@ -55,4 +55,4 @@ CREATE TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_result
   threshold_value       INTEGER,
   notes_value           VARCHAR(8000)
 );
-ALTER TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}.dqdashboard_results ADD CONSTRAINT xpk_dqdashboard_results PRIMARY KEY NONCLUSTERED (run_id,checkid);
+ALTER TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}].dqdashboard_results ADD CONSTRAINT xpk_dqdashboard_results PRIMARY KEY NONCLUSTERED (run_id,checkid);
