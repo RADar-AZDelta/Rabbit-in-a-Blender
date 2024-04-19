@@ -483,6 +483,36 @@ Windows
 
 Use a terminal that supports colors (like [Hyper](https://hyper.is/))
 
+Container
+========
+
+A containerized version is under development. (so for the moment it will not work)
+I wil hold all the necessary components (Python, Java, BCP, ...)
+
+```bash
+podman run \
+  --rm \
+  -it \
+  -v ./riab.ini:/riab.ini \
+  -v .:/cdm_folder \
+  -e RIAB_CONFIG=/riab.ini \
+  ghcr.io/radar-azdelta/rabbit-in-a-blender:main --version
+```
+
+You can create an alias for this command, an put it in your .bashrc file. For example:
+
+```bash
+alias riab='podman run \
+  --rm \
+  -it \
+  -v ./riab.ini:/riab.ini \
+  -v .:/cdm_folder \
+  -e RIAB_CONFIG=/riab.ini \
+  ghcr.io/radar-azdelta/rabbit-in-a-blender:main'
+
+riab --version
+riab -r /cdm_folder -v
+```
 
 Authors
 ========

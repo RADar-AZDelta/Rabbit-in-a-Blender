@@ -4,9 +4,9 @@ ARG MSODBC_VERSION=17
 
 LABEL org.opencontainers.image.authors="radar@azdelta.be"
 
-# Install MSSQL
+# Install software
 RUN apt update && \
-  apt install -y --no-install-recommends curl ca-certificates debian-keyring gnupg && \
+  apt install -y --no-install-recommends curl ca-certificates debian-keyring gnupg default-jre && \
   curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
   curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list | tee /etc/apt/sources.list.d/mssql-release.list && \
   apt update && \
@@ -18,5 +18,8 @@ ENV PATH="$PATH:/opt/mssql-tools/bin"
 
 # install riab
 RUN python -m pip install --no-cache-dir Rabbit-in-a-Blender
+
+ENV RIAB_CONFIG="/cdm_folder/riab.ini"
+WORKDIR /cdm_folder
 
 ENTRYPOINT ["/usr/local/bin/riab"]
