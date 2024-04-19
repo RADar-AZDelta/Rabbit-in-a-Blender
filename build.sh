@@ -18,3 +18,9 @@ pip install --no-cache-dir Rabbit-in-a-Blender==0.0.51
 #git tag -a 0.0.51 -m "0.0.51"
 #git tag
 #git push origin 0.0.51
+
+
+# buildah build \
+#     --format oci \
+#     -t "radar/riab:0.0.51" \
+#     -f ./Containerfile
