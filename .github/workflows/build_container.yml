@@ -5,7 +5,7 @@ on:
     branches:
       - 'main'
     tags: 
-      - *
+      - '*'
 
 env:
   # Use docker.io for Docker Hub if empty
