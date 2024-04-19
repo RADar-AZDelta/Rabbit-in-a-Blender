@@ -65,34 +65,34 @@ Most CDM tables have foreign keys (FKs) to other tables. Some tables can be proc
 The ETL flow for v5.4 is as follows:
 
 ```
-├──vocabulary
-├──cdm_source
-├──metadata
-├──cost
-├──fact_relationship
-└──location
-  └──care_site
-    └──provider
-      └──person
-        ├──condition_era
-        ├──death
-        ├──dose_era
-        ├──drug_era
-        ├──episode
-        ├──observation_period
-        ├──payer_plan_period
-        ├──specimen
-        └──visit_occurrence
-          ├──episode_event
-          └──visit_detail
-            ├──condition_occurrence
-            ├──device_exposure
-            ├──drug_exposure
-            ├──measurement
-            ├──note
-            ├──observation
-            └──procedure_occurrence
-              └──note_nlp
+├──vocabulary                                 # custom concepts must have a vocabulary
+  └──cdm_source
+  ├──metadata
+  ├──cost
+  ├──fact_relationship
+  └──location
+    └──care_site
+      └──provider
+        └──person
+          ├──condition_era
+          ├──death
+          ├──dose_era
+          ├──drug_era
+          ├──episode
+          ├──observation_period
+          ├──payer_plan_period
+          ├──specimen
+          └──visit_occurrence
+            ├──episode_event
+            └──visit_detail
+              ├──condition_occurrence
+              ├──device_exposure
+              ├──drug_exposure
+              ├──measurement
+              ├──note
+              ├──observation
+              └──procedure_occurrence
+                └──note_nlp
 ```
 
 Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.

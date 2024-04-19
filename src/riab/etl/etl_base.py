@@ -157,11 +157,9 @@ class EtlBase(ABC):
 
         tables_with_no_fks = set(k for k, v in tables_with_fks.items() if not v)
 
-        first_tables = ["vocabulary", "cdm_source", "metadata"]
-        temp2 = set(tables_with_no_fks).difference(first_tables)
-        sorted_tables = [a for a in first_tables if a in tables_with_no_fks] + sorted(list(temp2))
+        fk_dependency_tree.append(["vocabulary"])
+        fk_dependency_tree.append([t for t in tables_with_no_fks if t != "vocabulary"])
 
-        fk_dependency_tree.append(sorted_tables)
         tables_with_fks = dict(
             ((k, set(v) - tables_with_no_fks) for k, v in tables_with_fks.items() if k not in tables_with_no_fks)
         )
