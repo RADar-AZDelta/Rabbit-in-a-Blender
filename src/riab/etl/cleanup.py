@@ -4,7 +4,6 @@
 import logging
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List
 
 from .etl_base import EtlBase
 

@@ -4,7 +4,7 @@
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import dash_bootstrap_components as dbc
 import polars as pl

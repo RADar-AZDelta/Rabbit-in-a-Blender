@@ -3,13 +3,9 @@
 
 import logging
 import traceback
-from pathlib import Path
-from time import time
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import polars as pl
-import pyarrow as pa
-
 from ..data_quality import DataQuality
 from .etl_base import BigQueryEtlBase
 
@@ -40,10 +36,8 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
 
             sql = self._render_sqlfile(check["sqlFile"], parameters)
 
-            start = time()
-            rows = self._gcp.run_query_job(sql)
-            end = time()
-            execution_time = end - start
+            rows, execution_time = self._gcp.run_query_job_with_benchmark(sql)
+
             result = dict(next(rows))
         except Exception as ex:
             logging.warn(traceback.format_exc())

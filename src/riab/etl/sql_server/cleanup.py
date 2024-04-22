@@ -2,10 +2,8 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
-import re
-from pathlib import Path
 from threading import Lock
-from typing import List, Sequence, cast
+from typing import Sequence, cast
 
 from ..cleanup import Cleanup
 from ..etl_base import EtlBase

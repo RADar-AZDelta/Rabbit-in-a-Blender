@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from pathlib import Path
 from threading import Lock
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import polars as pl
 

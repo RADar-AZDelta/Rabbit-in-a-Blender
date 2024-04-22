@@ -3,8 +3,6 @@
 
 import logging
 
-from sqlalchemy import text
-
 from ..create_omop_db import CreateOmopDb
 from .etl_base import SqlServerEtlBase
 

@@ -10,8 +10,7 @@ import platform
 import tempfile
 from abc import ABC
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import Dict, List, Optional, cast
+from typing import Dict, Optional, cast
 
 import google.auth
 import google.cloud.bigquery as bq

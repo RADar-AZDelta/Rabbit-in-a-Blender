@@ -3,7 +3,6 @@
 
 import logging
 from threading import Lock
-from typing import List
 
 from google.cloud.exceptions import NotFound
 

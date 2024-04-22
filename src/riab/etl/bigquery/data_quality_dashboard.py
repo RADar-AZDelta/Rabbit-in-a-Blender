@@ -1,7 +1,7 @@
 # Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
-from typing import Any, List, cast
+from typing import Any, cast
 
 import google.cloud.bigquery as bq
 import polars as pl

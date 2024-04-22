@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from time import time
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import polars as pl
 from humanfriendly import format_timespan

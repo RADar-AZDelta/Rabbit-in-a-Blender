@@ -1,9 +1,7 @@
 from typing import Any, cast
 from sqlparse import parse
-from sqlparse.tokens import Keyword, CTE, DML
+from sqlparse.tokens import CTE
 from sqlparse.sql import Identifier, IdentifierList, Parenthesis
-from collections import namedtuple
-#from .meta import TableMetadata, ColumnMetadata
 
 def extract_ctes(sql):
     """ Extract constant table expresseions from a query"""

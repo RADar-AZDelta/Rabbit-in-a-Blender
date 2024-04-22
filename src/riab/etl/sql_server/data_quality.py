@@ -3,13 +3,9 @@
 
 import logging
 import traceback
-from os import XATTR_SIZE_MAX
-from pathlib import Path
-from time import time
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import polars as pl
-import pyarrow as pa
 
 from ..data_quality import DataQuality
 from .etl_base import SqlServerEtlBase

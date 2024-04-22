@@ -2,13 +2,7 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
-import os
-import re
-import subprocess
 from pathlib import Path
-from threading import Lock
-
-import polars as pl
 
 from ..import_vocabularies import ImportVocabularies
 from .etl_base import SqlServerEtlBase

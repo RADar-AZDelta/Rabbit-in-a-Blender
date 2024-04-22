@@ -3,7 +3,7 @@
 
 import logging
 import traceback
-from typing import Optional, Tuple, cast
+from typing import Tuple
 
 import polars as pl
 

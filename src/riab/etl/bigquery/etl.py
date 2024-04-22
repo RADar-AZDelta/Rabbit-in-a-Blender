@@ -4,7 +4,7 @@
 import logging
 from datetime import date
 from pathlib import Path
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import google.cloud.bigquery as bq
 import polars as pl

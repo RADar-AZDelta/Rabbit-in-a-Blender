@@ -11,7 +11,7 @@ import os
 import time
 from pathlib import Path
 from threading import Lock
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
 import google.cloud.bigquery as bq

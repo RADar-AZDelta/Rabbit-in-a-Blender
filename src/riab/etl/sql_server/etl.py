@@ -5,7 +5,7 @@ import logging
 from datetime import date
 from pathlib import Path
 from threading import Lock
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import polars as pl
 
