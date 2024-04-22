@@ -2,8 +2,10 @@ name: Docker Image Publish
 
 on:
   push:
-    tags: 
+    tags:
       - '*'
+    branches:
+      - '**'
 
 env:
   # Use docker.io for Docker Hub if empty
