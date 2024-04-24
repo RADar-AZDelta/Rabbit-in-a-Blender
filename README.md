@@ -198,7 +198,10 @@ raw_database_catalog=raw
 raw_database_schema=dbo
 ; Optional
 ; The SQL Server database schema that holds the raw tables
-disable_fk_constraints=true
+; Changing this flag requires that you re-run the following commands: --create-db, --cleanup and --import-vocabularies
+; Default value is false
+; Set to false for better data quality
+disable_fk_constraints=false
 ; Optional
 ; By default foreign key constraints are disabled, because they are very resource consuming. (true or false are allowes as value)
 bcp_code_page=ACP
@@ -478,7 +481,7 @@ Ensure SQL allows non- Entra ID users
    1. Open Azure portal
    2. Go to SQL **server** instance (not database)
    3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
-   4. You might need to [scale up](https://learn.microsoft.com/en-us/azure/azure-sql/database/scale-resources?view=azuresql) the number of max vCores to speed up for instance the import of the vocabularies.
+   4. You might need to [scale up](https://learn.microsoft.com/en-us/azure/azure-sql/database/scale-resources?view=azuresql) the number of max vCores to speed up for instance the import of the vocabularies. Especially with a high **max_parallel_tables** value, setting max vCores to 16 or more is recommended.
 
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/1187178/1ac67835-b467-4278-8c9a-171af0a98aa8)
 

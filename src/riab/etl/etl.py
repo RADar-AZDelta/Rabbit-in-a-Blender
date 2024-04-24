@@ -55,6 +55,30 @@ class Etl(EtlBase):
         self._lock_custom_concepts = Lock()
         self._lock_source_value_to_concept_id_mapping = Lock()
 
+        self._usagi_polars_schema: dict[str, pl.DataType] = {  # type: ignore
+            "sourceCode": pl.Utf8,  # type: ignore
+            "sourceName": pl.Utf8,  # type: ignore
+            "mappingStatus": pl.Utf8,  # type: ignore
+            "conceptId": pl.Int64,  # type: ignore
+            "conceptName": pl.Utf8,  # type: ignore
+            "domainId": pl.Utf8,  # type: ignore
+        }
+
+        self._custom_concepts_polars_schema: dict[str, pl.DataType] = {  # type: ignore
+            "concept_id": pl.Int64,  # type: ignore
+            "concept_name": pl.Utf8,  # type: ignore
+            "domain_id": pl.Utf8,  # type: ignore
+            "vocabulary_id": pl.Utf8,  # type: ignore
+            "concept_class_id": pl.Utf8,  # type: ignore
+            "standard_concept": pl.Utf8,  # type: ignore
+            "concept_code": pl.Utf8,  # type: ignore
+            "valid_start_date": pl.Date,  # type: ignore
+            "valid_end_date": pl.Date,  # type: ignore
+            "invalid_reason": pl.Utf8,  # type: ignore
+        }
+
+        self._git_cdm_folder_commit_hash = None
+
     def run(self):
         """
         Start the ETL process.\n
@@ -220,6 +244,10 @@ class Etl(EtlBase):
         if only_queries:
             sql_files = only_queries
 
+        if omop_table == "metadata":
+            self._upload_riab_version_in_metadata_table()
+            self._upload_cdm_folder_git_commit_hash_in_metadata_table()
+
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
             # upload an apply the custom concept CSV's
             futures = [
@@ -235,15 +263,25 @@ class Etl(EtlBase):
                 result.result()
 
         upload_tables = [Path(Path(sql_file).stem).stem for sql_file in sql_files]  # remove file extensions
+        if omop_table == "metadata":
+            upload_tables.append("riab_version")
+            if self._git_cdm_folder_commit_hash:
+                upload_tables.append("git_commit_hash")
 
         if pk_auto_numbering:
+            sql_files = [Path(sql_file).name for sql_file in sql_files]
+            if omop_table == "metadata":
+                sql_files.append("cdm_metadata_riab_version")
+                if self._git_cdm_folder_commit_hash:
+                    sql_files.append("cdm_metadata_git_commit_hash")
+
             # swap the primary key with an auto number
             self._swap_primary_key_auto_numbering_column(
                 omop_table=omop_table,
                 primary_key_column=cast(str, primary_key_column),
                 concept_id_columns=concept_columns,
                 events=events,
-                sql_files=[Path(sql_file).name for sql_file in sql_files],
+                sql_files=sql_files,
                 upload_tables=upload_tables,
             )
             # store the ID swap in our 'source_id_to_omop_id_swap' table
@@ -470,6 +508,53 @@ class Etl(EtlBase):
             # concat the Arrow tables into one large Arrow table
             df = df_temp if df.is_empty() else pl.concat([df, df_temp])
 
+        if omop_table == "metadata" and concept_id_column == "metadata_concept_id":
+            df_temp = pl.from_dicts(
+                [
+                    {
+                        "sourceCode": f"RIAB_OMOPCDM{self._omop_cdm_version}",
+                        "sourceName": f"OMOPCDM{self._omop_cdm_version}",
+                        "mappingStatus": "APPROVED",
+                        "conceptId": "756265",
+                        "conceptName": "OMOP CDM Version 5.4.0",
+                        "domainId": "Metadata",
+                    },
+                    {
+                        "sourceCode": f"GIT_OMOPCDM{self._omop_cdm_version}",
+                        "sourceName": f"OMOPCDM{self._omop_cdm_version}",
+                        "mappingStatus": "APPROVED",
+                        "conceptId": "756265",
+                        "conceptName": "OMOP CDM Version 5.4.0",
+                        "domainId": "Metadata",
+                    },
+                ],
+                schema=self._usagi_polars_schema,
+            )
+            df = df_temp if df.is_empty() else pl.concat([df, df_temp])
+        if omop_table == "metadata" and concept_id_column == "metadata_type_concept_id":
+            df_temp = pl.from_dicts(
+                [
+                    {
+                        "sourceCode": "RIAB_EHR",
+                        "sourceName": "EHR",
+                        "mappingStatus": "APPROVED",
+                        "conceptId": "32817",
+                        "conceptName": "EHR",
+                        "domainId": "Type Concept",
+                    },
+                    {
+                        "sourceCode": "GIT_EHR",
+                        "sourceName": "EHR",
+                        "mappingStatus": "APPROVED",
+                        "conceptId": "32817",
+                        "conceptName": "EHR",
+                        "domainId": "Type Concept",
+                    },
+                ],
+                schema=self._usagi_polars_schema,
+            )
+            df = df_temp if df.is_empty() else pl.concat([df, df_temp])
+
         if not df.is_empty():
             df_duplicates = (
                 df.filter(
@@ -662,21 +747,12 @@ class Etl(EtlBase):
             pl.DataFrame: Polars dataframe
         """
         logging.debug("Converting Concept csv '%s' to polars dataframe", str(concept_csv_file))
-        polars_schema: dict[str, pl.DataType] = {
-            "concept_id": pl.Int64,  # type: ignore
-            "concept_name": pl.Utf8,  # type: ignore
-            "domain_id": pl.Utf8,  # type: ignore
-            "vocabulary_id": pl.Utf8,  # type: ignore
-            "concept_class_id": pl.Utf8,  # type: ignore
-            "standard_concept": pl.Utf8,  # type: ignore
-            "concept_code": pl.Utf8,  # type: ignore
-            "valid_start_date": pl.Date,  # type: ignore
-            "valid_end_date": pl.Date,  # type: ignore
-            "invalid_reason": pl.Utf8,  # type: ignore
-        }
         try:
             df = pl.read_csv(
-                str(concept_csv_file), try_parse_dates=True, missing_utf8_is_empty_string=True, dtypes=polars_schema
+                str(concept_csv_file),
+                try_parse_dates=True,
+                missing_utf8_is_empty_string=True,
+                dtypes=self._custom_concepts_polars_schema,
             ).select(
                 "concept_id",
                 "concept_name",
@@ -703,15 +779,7 @@ class Etl(EtlBase):
             pa.Table: Arrow table.
         """
         logging.debug("Converting Usagi csv '%s' to polars DataFrame", str(usagi_csv_file))
-        polars_schema: dict[str, pl.DataType] = {
-            "sourceCode": pl.Utf8,  # type: ignore
-            "sourceName": pl.Utf8,  # type: ignore
-            "mappingStatus": pl.Utf8,  # type: ignore
-            "conceptId": pl.Int64,  # type: ignore
-            "conceptName": pl.Utf8,  # type: ignore
-            "domainId": pl.Utf8,  # type: ignore
-        }
-        df = pl.read_csv(str(usagi_csv_file), dtypes=polars_schema).select(
+        df = pl.read_csv(str(usagi_csv_file), dtypes=self._usagi_polars_schema).select(
             "sourceCode",
             "sourceName",
             "mappingStatus",
@@ -962,4 +1030,14 @@ class Etl(EtlBase):
             concept_id_column (str): The conept id column
             domains (list[str]): The allowed domains
         """
+        pass
+
+    @abstractmethod
+    def _upload_riab_version_in_metadata_table(self) -> None:
+        """Upload the riab version in the metadata table."""
+        pass
+
+    @abstractmethod
+    def _upload_cdm_folder_git_commit_hash_in_metadata_table(self) -> None:
+        """Upload the cdm folder git commit hash in the metadata table."""
         pass

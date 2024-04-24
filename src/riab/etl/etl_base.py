@@ -366,3 +366,18 @@ class EtlBase(ABC):
     def _test_db_connection(self):
         """Test the connection to the database."""
         pass
+
+    def _get_git_commmit_hash(self, base_path: Path):
+        git_dir = base_path / ".git"
+
+        if not git_dir.exists():
+            return None
+
+        try:
+            with (git_dir / "HEAD").open("r") as head:
+                ref = head.readline().split(" ")[-1].strip()
+
+            with (git_dir / ref).open("r") as git_hash:
+                return git_hash.readline().strip()
+        except Exception:
+            return None
