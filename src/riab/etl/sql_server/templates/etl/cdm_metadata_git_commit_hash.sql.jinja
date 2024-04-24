@@ -1,0 +1,12 @@
+{#- Copyright 2024 RADar-AZDelta -#}
+{#- SPDX-License-Identifier: gpl3+ -#}
+SELECT
+    CONCAT('GIT_', 'VERSION') AS metadata_id,
+    CONCAT('GIT_', 'OMOPCDM{{cdm_version}}') AS metadata_concept_id,
+    CONCAT('GIT_', 'EHR') AS metadata_type_concept_id,
+    'Git commit hash of the CDM folder' AS name,
+    '{{git_commit_hash}}' AS value_as_string,
+    NULL AS value_as_concept_id,
+    NULL AS value_as_number,
+    CONVERT(date, GETDATE()) AS metadata_date,
+    GETDATE() AS metadata_datetime

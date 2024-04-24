@@ -3,6 +3,7 @@
 
 import logging
 from datetime import date
+from importlib import metadata
 from pathlib import Path
 from typing import Any, Optional, cast
 
@@ -614,3 +615,32 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
                 raise Exception(
                     f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
                 )
+
+    def _upload_riab_version_in_metadata_table(self) -> None:
+        """Upload the riab version in the metadata table."""
+        template = self._template_env.get_template("etl/cdm_metadata_riab_version.sql.jinja")
+        sql = template.render(
+            cdm_version=self._omop_cdm_version,
+            riab_version=metadata.version("Rabbit-in-a-Blender"),
+        )
+
+        # load the results of the query in the tempopary work table
+        self._query_into_upload_table("metadata__upload__riab_version", sql, "metadata")
+
+    def _upload_cdm_folder_git_commit_hash_in_metadata_table(self) -> None:
+        """Upload the cdm folder git commit hash in the metadata table."""
+        if not self._cdm_folder_path:
+            return
+
+        self._git_cdm_folder_commit_hash = self._get_git_commmit_hash(self._cdm_folder_path)
+        if not self._git_cdm_folder_commit_hash:
+            return
+
+        template = self._template_env.get_template("etl/cdm_metadata_git_commit_hash.sql.jinja")
+        sql = template.render(
+            cdm_version=self._omop_cdm_version,
+            git_commit_hash=self._git_cdm_folder_commit_hash,
+        )
+
+        # load the results of the query in the tempopary work table
+        self._query_into_upload_table("metadata__upload__git_commit_hash", sql, "metadata")
