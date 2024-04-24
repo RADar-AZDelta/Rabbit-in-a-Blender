@@ -159,7 +159,7 @@ class Cli:
                             )
                             etl._test_db_connection()
                         case _:
-                            raise ValueError("Not a supported database engine")                        
+                            raise ValueError("Not a supported database engine")
                 elif args.create_folders:  # create the ETL folder structure
                     match db_engine:
                         case "bigquery":
@@ -279,7 +279,7 @@ class Cli:
                                 json_path=args.json,
                                 **sqlserver_kwargs,
                             ) as data_quality:
-                                data_quality.run()                                
+                                data_quality.run()
                         case _:
                             raise ValueError("Not a supported database engine")
                 elif args.data_quality_dashboard:  # view data quality results
@@ -301,7 +301,7 @@ class Cli:
                                 dqd_port=args.port if args.port else 8050,
                                 **sqlserver_kwargs,
                             ) as data_quality_dashboard:
-                                data_quality_dashboard.run()                                
+                                data_quality_dashboard.run()
                         case _:
                             raise ValueError("Not a supported database engine")
                 elif args.achilles:  # run descriptive statistics
@@ -371,7 +371,6 @@ class Cli:
             "-V",
             "--version",
             action="version",
-            # version=f"Version: {metadata.version('Rabbit-in-a-Blender')}"
             version=rf"""
 ______      _     _     _ _     _                ______ _                _           
 | ___ \    | |   | |   (_) |   (_)               | ___ \ |              | |          
@@ -443,7 +442,9 @@ ______      _     _     _ _     _                ______ _                _
         parser = ArgumentParserWithBetterErrorPrinting(add_help=False, parents=parents)
         argument_group = parser.add_argument_group("ETL commands")
         argument_group.add_argument("-cd", "--create-db", help="Create the OMOP CDM tables", action="store_true")
-        argument_group.add_argument("-tdc", "--test-db-connection", help="Test connection to the database", action="store_true")
+        argument_group.add_argument(
+            "-tdc", "--test-db-connection", help="Test connection to the database", action="store_true"
+        )
         argument_group.add_argument(
             "-cf",
             "--create-folders",
