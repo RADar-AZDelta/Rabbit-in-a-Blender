@@ -332,7 +332,7 @@ System Requirements
 ===================
 
 The amount of CPU/RAM of the system running RiaB is dependent of the **max_parallel_tables** variable in the **riab.ini** file.
-Running the --import-vocabularies with a max_parallel_tables value, will result in a large CPU and RAM load of the system running RiaB.
+Running the --import-vocabularies with a high max_parallel_tables value, will result in a large CPU and RAM load of the system running RiaB.
 The other commands require less resources of the system running RiaB.
 
 
