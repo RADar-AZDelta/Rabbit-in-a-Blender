@@ -25,12 +25,7 @@ class ImportVocabularies(EtlBase, ABC):
     ):
         super().__init__(**kwargs)
 
-    def run(self, path_to_zip_file: str):
-        """import vocabularies, as zip-file downloaded from athena.ohdsi.org, into"""
-
-        self._pre_load()
-
-        vocabulary_tables = [
+        self._vocabulary_tables = [
             "concept",
             "concept_ancestor",
             "concept_class",
@@ -42,6 +37,13 @@ class ImportVocabularies(EtlBase, ABC):
             "vocabulary",
         ]
 
+    def run(self, path_to_zip_file: str):
+        """import vocabularies, as zip-file downloaded from athena.ohdsi.org, into"""
+
+
+
+        self._pre_load()
+
         with ThreadPoolExecutor(max_workers=self._max_parallel_tables) as executor:
             logging.info("Deleting vocabulary upload tables.")
             futures = [
@@ -49,7 +51,7 @@ class ImportVocabularies(EtlBase, ABC):
                     self._clear_vocabulary_upload_table,
                     vocabulary_table,
                 )
-                for vocabulary_table in vocabulary_tables
+                for vocabulary_table in self._vocabulary_tables
             ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
@@ -80,6 +82,16 @@ class ImportVocabularies(EtlBase, ABC):
                 #     result.result()
                 zip_ref.extractall(temp_dir_path)
 
+                for csv_file in Path(temp_dir_path).glob("*.csv"):
+                    def blocks(files, size=65536):
+                        while True:
+                            b = files.read(size)
+                            if not b: break
+                            yield b
+                    with open(csv_file, "r",encoding="utf-8",errors='ignore') as f:
+                        number_of_lines = sum(bl.count("\n") for bl in blocks(f))
+                    logging.info(f"Vocabulary '{csv_file.name}' holds {number_of_lines} records")
+
                 logging.info("Uploading vocabulary CSV's")
                 futures = [
                     executor.submit(
@@ -88,7 +100,7 @@ class ImportVocabularies(EtlBase, ABC):
                         Path(temp_dir_path)
                         / f"{vocabulary_table.upper()}.csv",  # Uppercase because files in zip-file are still in uppercase, against the CDM 5.4 convention
                     )
-                    for vocabulary_table in vocabulary_tables
+                    for vocabulary_table in self._vocabulary_tables
                 ]
                 # wait(futures, return_when=ALL_COMPLETED)
                 for result in as_completed(futures):
@@ -100,7 +112,7 @@ class ImportVocabularies(EtlBase, ABC):
                     self._refill_vocabulary_table,
                     vocabulary_table,
                 )
-                for vocabulary_table in vocabulary_tables
+                for vocabulary_table in self._vocabulary_tables
             ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
@@ -141,6 +153,9 @@ class ImportVocabularies(EtlBase, ABC):
         """
         logging.debug("Converting '%s.csv' to parquet", vocabulary_table)
         df_vocabulary_table = self._read_vocabulary_csv(vocabulary_table, csv_file)
+
+        # sort the dataframe on the first column (the _id column), this will speed up the import
+        df_vocabulary_table = df_vocabulary_table.sort(df_vocabulary_table.columns[0]) 
 
         parquet_file = csv_file.parent / f"{vocabulary_table}.parquet"
         df_vocabulary_table.write_parquet(parquet_file)

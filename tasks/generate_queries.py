@@ -85,7 +85,7 @@ def modify_sqlserver_cdm_ddl(sql: str, ddl_part: str) -> str:
         sql,
     )
     sql = re.sub(
-        r"(CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}]).(.*).(\([\S\s.]+?\);)",
+        r"(CREATE TABLE \[{{omop_database_catalog}}\].\[{{omop_database_schema}}\]).(.*).(\([\S\s.]+?\);)",
         r"IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].\2', N'U') IS NOT NULL\n\tDROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].\2; \n\1.\2 \3",
         sql,
     )
