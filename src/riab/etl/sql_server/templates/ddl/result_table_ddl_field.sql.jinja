@@ -1,7 +1,7 @@
 --DDL to create dqdashboard_results table.
-IF OBJECT_ID('[{{dqd_database_catalog}}].[{{dqd_database_schema}}]', 'U') IS NOT NULL
-	DROP TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}];  
-CREATE TABLE [{{dqd_database_catalog}}].[{{dqd_database_schema}}]
+IF OBJECT_ID('{{dqd_database_catalog}}.{{dqd_database_schema}}', 'U') IS NOT NULL
+	DROP TABLE {{dqd_database_catalog}}.{{dqd_database_schema}};  
+CREATE TABLE {{dqd_database_catalog}}.{{dqd_database_schema}}
 (
   num_violated_rows     BIGINT,
   pct_violated_rows     FLOAT,
