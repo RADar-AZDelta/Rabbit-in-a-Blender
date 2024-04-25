@@ -3,7 +3,6 @@ name = "Rabbit-in-a-Blender"
 version = "0.0.53"
 authors = [
   { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
-  { name="Dupulthys Stijn", email="stijn.dupulthys@azdelta.be" },
   { name="De Jaeger Peter", email="peter.dejaeger@azdelta.be" }
 ]
 description = "An ETL pipeline to transform your EMP data to OMOP."
