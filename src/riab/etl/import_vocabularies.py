@@ -80,6 +80,16 @@ class ImportVocabularies(EtlBase, ABC):
                 #     result.result()
                 zip_ref.extractall(temp_dir_path)
 
+                for csv_file in Path(temp_dir_path).glob("*.csv"):
+                    def blocks(files, size=65536):
+                        while True:
+                            b = files.read(size)
+                            if not b: break
+                            yield b
+                    with open(csv_file, "r",encoding="utf-8",errors='ignore') as f:
+                        number_of_lines = sum(bl.count("\n") for bl in blocks(f))
+                    logging.info(f"Vocabulary '{csv_file.name}' holds {number_of_lines} records")
+
                 logging.info("Uploading vocabulary CSV's")
                 futures = [
                     executor.submit(
@@ -141,6 +151,9 @@ class ImportVocabularies(EtlBase, ABC):
         """
         logging.debug("Converting '%s.csv' to parquet", vocabulary_table)
         df_vocabulary_table = self._read_vocabulary_csv(vocabulary_table, csv_file)
+
+        # sort the dataframe on the first column (the _id column), this will speed up the import
+        df_vocabulary_table = df_vocabulary_table.sort(df_vocabulary_table.columns[0]) 
 
         parquet_file = csv_file.parent / f"{vocabulary_table}.parquet"
         df_vocabulary_table.write_parquet(parquet_file)
