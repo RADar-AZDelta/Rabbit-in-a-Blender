@@ -190,7 +190,7 @@ dqd_database_schema=dbo
 ; The SQL Server database schema that holds the data quality tables
 achilles_database_catalog=achilles
 ; The SQL Server database catalog that holds the data achilles tables
-achilles_database_schama=dbo
+achilles_database_schema=dbo
 ; The SQL Server database schema that holds the data achilles tables
 raw_database_catalog=raw
 ; Optional
