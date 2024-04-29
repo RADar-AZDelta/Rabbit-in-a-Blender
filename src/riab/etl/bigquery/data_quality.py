@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
-import traceback
 from typing import Any, Optional
 
 import polars as pl
+
 from ..data_quality import DataQuality
 from .etl_base import BigQueryEtlBase
 
@@ -40,7 +40,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
 
             result = dict(next(rows))
         except Exception as ex:
-            logging.warn(traceback.format_exc())
+            logging.warn(f"Failed to run QDQ check {check['checkName']}\nquery:\n{sql}\n{ex}")
             # with open(
             #     Path(__file__).parent.parent.parent.resolve()
             #     / "libs"
