@@ -575,6 +575,12 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         if not (events or omop_table == "vocabulary"):
             return
 
+        logging.info(
+            "Merging work table '%s' into omop table '%s'",
+            omop_table,
+            omop_table,
+        )
+
         self._remove_constraints(omop_table)
         event_tables = {}
         try:

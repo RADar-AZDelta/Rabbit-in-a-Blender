@@ -512,6 +512,12 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         if not events:
             return
 
+        logging.info(
+            "Merging work table '%s' into omop table '%s'",
+            omop_table,
+            omop_table,
+        )
+
         event_tables = {}
         try:
             if not self._skip_event_fks_step and len(events) > 0:  # we have event columns
@@ -618,11 +624,17 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
 
     def _upload_riab_version_in_metadata_table(self) -> None:
         """Upload the riab version in the metadata table."""
+        if __debug__:
+            import tomllib
+
+            with open("pyproject.toml", "rb") as f:
+                pyproject_data = tomllib.load(f)
+                riab_version = pyproject_data["project"]["version"]
+        else:
+            riab_version = metadata.version("Rabbit-in-a-Blender")
+
         template = self._template_env.get_template("etl/cdm_metadata_riab_version.sql.jinja")
-        sql = template.render(
-            cdm_version=self._omop_cdm_version,
-            riab_version=metadata.version("Rabbit-in-a-Blender"),
-        )
+        sql = template.render(cdm_version=self._omop_cdm_version, riab_version=riab_version)
 
         # load the results of the query in the tempopary work table
         self._query_into_upload_table("metadata__upload__riab_version", sql, "metadata")

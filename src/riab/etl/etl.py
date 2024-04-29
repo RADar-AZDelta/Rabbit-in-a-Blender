@@ -629,6 +629,11 @@ class Etl(EtlBase):
             omop_table_name (str): OMOP table
             omop_table_props (Any): Primary key, foreign key(s) and event(s) of the OMOP table
         """
+        omop_table_path = cast(Path, self._cdm_folder_path) / f"{omop_table}/"
+        sql_files = [sql_file for suffix in ["*.sql", "*.sql.jinja"] for sql_file in omop_table_path.glob(suffix)]
+        if not len(sql_files):
+            return
+
         events = self._omop_event_fields.get(omop_table, {})
 
         # get all the columns from the destination OMOP table
@@ -636,12 +641,6 @@ class Etl(EtlBase):
 
         primary_key_column = self._get_pk(omop_table)
 
-        # merge everything in the destination OMOP work table
-        logging.info(
-            "Merging work table '%s' into omop table '%s'",
-            omop_table,
-            omop_table,
-        )
         self._merge_event_columns(
             omop_table=omop_table,
             columns=columns,
