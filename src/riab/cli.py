@@ -32,6 +32,7 @@ class Cli:
 
         with self.init_logging() as logger_file_handle:
             try:
+                logging.info("Running Rabbit-in-a-Blender version %s", self._get_version())
                 logging.warning("Logs are written to %s", logger_file_handle.name)
                 if __debug__:
                     print(args)
@@ -356,6 +357,16 @@ class Cli:
 
         return config
 
+    def _get_version(self) -> str:
+        if __debug__:
+            import tomllib
+
+            with open("pyproject.toml", "rb") as f:
+                pyproject_data = tomllib.load(f)
+                return pyproject_data["project"]["version"]
+        else:
+            return metadata.version("Rabbit-in-a-Blender")
+
     def _create_default_options_argument_parser(self) -> ArgumentParser:
         """Argument parser for the required named arguments"""
 
@@ -379,7 +390,7 @@ ______      _     _     _ _     _                ______ _                _
 | |\ \ (_| | |_) | |_) | | |_  | | | | | | (_| | | |_/ / |  __/ | | | (_| |  __/ |   
 \_| \_\__,_|_.__/|_.__/|_|\__| |_|_| |_|  \__,_| \____/|_|\___|_| |_|\__,_|\___|_|   
 
-                            VERSION     {metadata.version('Rabbit-in-a-Blender')}    
+                            VERSION     {self._get_version()}    
                                                                                 
                                   ,/,(((                                        
                                   *((((((.                                      
