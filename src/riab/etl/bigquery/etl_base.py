@@ -46,6 +46,7 @@ class BigQueryEtlBase(EtlBase, ABC):
 
         import google.auth
 
+        logging.debug("Creating GCP credentials")
         if credentials_file:
             credentials, project_id = google.auth.load_credentials_from_file(credentials_file)
         else:

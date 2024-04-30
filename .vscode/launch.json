@@ -18,25 +18,27 @@
         
         //"--print-etl-flow"
 
+        "--test-db-connection"
+
         //"--create-db"
         
         //"--import-vocabularies", "~/vocabulary_20240307.zip"
         
         //"--create-folders", "~/tmp/radar_omop-cdm/"
         
-        "--run-etl", "~/git/radar_omop-cdm/"
-        ,"--table", "observation"
+        //"--run-etl", "~/git/radar_omop-cdm/"
+        //,"--table", "observation"
         //,"--table", "condition_occurrence"
-        //,"--table", "metadata"
-        //,"--table", "vocabulary"
-        //,"--table", "cdm_source"
-        //,"--table", "location"
-        //,"--table", "care_site"
+        // ,"--table", "metadata"
+        // ,"--table", "vocabulary"
+        // ,"--table", "cdm_source"
+        // ,"--table", "location"
+        // ,"--table", "care_site"
         //,"--table", "provider"
         //,"--table", "visit_occurrence"
         //,"--table", "fact_relationship"
         //,"--only-query", "measurement/labo.sql.jinja"
-        ,"--skip-usagi-and-custom-concept-upload"
+        //,"--skip-usagi-and-custom-concept-upload"
         //,"--process-semi-approved-mappings"
         //,"--skip-event-fks-step"
 

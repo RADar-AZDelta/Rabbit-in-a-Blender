@@ -53,7 +53,6 @@ class EtlBase(ABC):
         self._template_env = jj.Environment(autoescape=select_autoescape(["sql"]), loader=template_loader)
 
         logging.debug(f"Processing OMOP_CDMv{omop_cdm_version}_Table_Level.csv")
-
         self._df_omop_tables: DataFrame = read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
@@ -103,6 +102,7 @@ class EtlBase(ABC):
 
         self._resolve_cdm_tables_fks_dependencies()
 
+        logging.debug(f"Processing cdm_{omop_cdm_version}_events.json")
         with open(
             str(Path(__file__).parent.resolve() / f"cdm_{omop_cdm_version}_events.json"),
             "r",

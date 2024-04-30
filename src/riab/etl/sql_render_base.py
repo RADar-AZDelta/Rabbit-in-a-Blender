@@ -1,6 +1,7 @@
 # Copyright 2024 RADar-AZDelta
 # SPDX-License-Identifier: gpl3+
 
+import logging
 from abc import ABC
 from pathlib import Path
 from threading import Lock
@@ -9,7 +10,7 @@ import jpype
 import jpype.imports
 
 
-class SqlRenderBase(ABC):  
+class SqlRenderBase(ABC):
     """
     Base class for the Java SQLRender
     """
@@ -28,6 +29,7 @@ class SqlRenderBase(ABC):
         sqlrender_path = str(
             Path(__file__).parent.parent.resolve() / "libs" / "SqlRender" / "inst" / "java" / "SqlRender.jar"
         )
+        logging.debug("Starting JVM")
         jpype.startJVM(classpath=[sqlrender_path])  # type: ignore
         self._lock_translate_sql = Lock()
 

@@ -1,7 +1,7 @@
 buildah build \
   --format oci \
   -t "radar/riab:0.0.56" \
-  -f ./Dockerfile
+  -f ../Dockerfile
 
 podman run \
   --rm \

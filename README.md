@@ -1,5 +1,5 @@
-![Rabbit in a Blender](resources/img/rabbitinablenderlogo.png)
-===========
+# ![Rabbit in a Blender](resources/img/rabbitinablenderlogo.png)
+
 
 **Rabbit in a Blender (RiaB)** is an [ETL](https://en.wikipedia.org/wiki/Extract,_transform,_load) pipeline [CLI](https://nl.wikipedia.org/wiki/Command-line-interface) to transform your [EMR](https://en.wikipedia.org/wiki/Electronic_health_record) data to [OMOP](https://www.ohdsi.org/data-standardization/the-common-data-model/).
 
@@ -97,103 +97,19 @@ see [installation](docs/installation.md)
 
 # Database engines
 
-For the moment we only implemented a **BigQuery** and **SQL Server** backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
+For the moment we only implemented a **BigQuery** and **SQL Server** (on-premise and in Azure) backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 
 see [database engines](docs/database_engines.md)
 
 
-Config
-========
+# Config
 
 With the addition of additional database engines, we switched to a [ini](https://en.wikipedia.org/wiki/INI_file) config file for database specific configurations.
 This makes the CLI arguments less cumbersome.
 
-RiaB searches for the ini config file by using the following cascade:
-1. CLI --config argument
-2. RIAB_CONFIG environment variable (the RIAB_CONFIG environment variable can also be placed in a .env file in the current folder)
-3. riab.ini in the current folder
+see [riab.ini](docs/config.md) config 
 
-Below an example of a config:
-
-```ini
-[riab]
-db_engine=bigquery
-; Required
-; What database are you using? (bigquery or sql_server)
-max_parallel_tables=9
-; Optional
-; The number of tables, that RiaB will process in parallel. On a server with a performant db_engine (like BigQuery), this number can be high. On slower machines/database set this to a low number to avoid overwhelming the database or server. (if you have problems importing the vocabularies, try lowering this number to 1 or 2)
-; The default value is 9
-max_worker_threads_per_table=16
-; Optional
-; The number of worker threads that RiaB will use, per table, to run stuff in parallel. On a server with a performant db_engine (like BigQuery), this number can be high. On slower machines/database set this to a low number to avoid overwhelming the database or server.
-; The default value is 16
-
-[bigquery]
-credentials_file=service_account.json
-; Optional
-; The credentials file must be a service account key, stored authorized user credentials, external account credentials, or impersonated service account credentials. (see https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.load_credentials_from_file)
-; Alternatively, you can also use 'Application Default Credentials' (ADC) (see https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login)
-location=EU
-; Location where to run the BigQuery jobs. Must match the location of the datasets used in the query. (important for GDPR)
-project_raw=my_omop_project
-; Optional
-; Can be handy if you use jinja templates for your ETL queries (ex if you are using development-staging-production environments). Must have the following format: PROJECT_ID
-dataset_work=my_omop_project.work
-; The dataset that will hold RiaB's housekeeping tables. Must have the following format: PROJECT_ID.DATASET_ID
-dataset_omop=my_omop_project.omop
-; The dataset that will hold the OMOP tables. Must have the following format: PROJECT_ID.DATASET_ID
-dataset_dqd=my_omop_project.dqd
-; The dataset that will hold the data quality tables. Must have the following format: PROJECT_ID.DATASET_ID
-dataset_achilles=my_omop_project.achilles
-; The dataset that will hold the data achilles tables. Must have the following format: PROJECT_ID.DATASET_ID
-bucket=gs://my_omop_bucket/upload
-; The Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
-
-[sql_server]
-server=127.0.0.1
-; The SQL Server host
-port=1433
-; The SQL Server port (defaults to 1433)
-user=riab
-; The SQL Server user
-password=?????
-; The SQL Server password
-omop_database_catalog=omop
-; The SQL Server database catalog that holds the OMOP tables
-omop_database_schema=dbo
-; The SQL Server database schema that holds the OMOP tables
-work_database_catalog=work
-; The SQL Server database catalog that holds the RiaB's housekeeping tables
-work_database_schema=dbo
-; The SQL Server database schema that holds the RiaB's housekeeping tables
-dqd_database_catalog=dqd
-; The SQL Server database catalog that holds the data quality tables
-dqd_database_schema=dbo
-; The SQL Server database schema that holds the data quality tables
-achilles_database_catalog=achilles
-; The SQL Server database catalog that holds the data achilles tables
-achilles_database_schema=dbo
-; The SQL Server database schema that holds the data achilles tables
-raw_database_catalog=raw
-; Optional
-; The SQL Server database catalog that holds the raw tables
-raw_database_schema=dbo
-; Optional
-; The SQL Server database schema that holds the raw tables
-; Changing this flag requires that you re-run the following commands: --create-db, --cleanup and --import-vocabularies
-; Default value is false
-; Set to false for better data quality
-disable_fk_constraints=false
-; Optional
-; By default foreign key constraints are disabled, because they are very resource consuming. (true or false are allowes as value)
-bcp_code_page=ACP
-; Optional
-; Default value is ACP. For more info see https://learn.microsoft.com/en-us/sql/tools/bcp-utility?view=sql-server-ver16#-c--acp--oem--raw--code_page-
-```
-
-CLI Usage
-========
+# CLI Usage
 
 * **Options**:
     |  command | help  
@@ -235,8 +151,7 @@ CLI Usage
     |---|---  
     | --port [PORT] | The port the dashboard schould listen on.
 
-CLI Examples
-========
+# CLI Examples
 
 Create the OMOP CDM database:
 ```bash
@@ -312,201 +227,14 @@ riab --data-quality-dashboard
 ```
 
 
-BigQuery
-========
-
-There are 2 ways to [authenticate](https://cloud.google.com/docs/authentication/getting-started) with GCP:
-* Use a [Service Account key file](https://cloud.google.com/docs/authentication/production) with **--google-credentials-file** cli option
-* When developing or testing you can use [Application Default Credentials (ADC)](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login)
-
-    [Install](https://cloud.google.com/sdk/docs/install-sdk#installing_the_latest_version) the gcloud CLI!
-
-    For example for windows run the folowing powershell script:
-    ```powershell
-    (New-Object Net.WebClient).DownloadFile("https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe", "$env:Temp\GoogleCloudSDKInstaller.exe")
-    & $env:Temp\GoogleCloudSDKInstaller.exe
-    ```
-
-    Authenticate:
-    ```bash
-    # login
-    gcloud auth application-default login
-    # set our project
-    PROJECT_ID="our_omop_etl_project_id_on_GCP" #you need to change this
-    gcloud config set project ${PROJECT_ID}
-    # you can alternatively set the project_id with a environment variable
-    export GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
-    ```
-
-    More info can also be found in the [Python API for GCP authentication](https://googleapis.dev/python/google-api-core/1.19.1/auth.html#overview)
-
-The creation of different datasets in needed before config settings.
-
-SQL Server
-==========
-
-Difference between [catalogue, schema](https://medium.com/@diehardankush/catalogue-schema-and-table-understanding-database-structures-ec54347f85c7) in the riab.ini.
-
-### Prerequisites
-
-Only SQL Server 2017 or later are supported.
-
-RiaB has a dependency on the [BCP utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility) to upload the CSV's to SQL Server.
-
-Add the BCP dependency to the PATH environment variable.
-
-Install bcp on machine that will run RIAB:
-
-1. Go to website [bcp utility](https://learn.microsoft.com/en-us/sql/tools/bcp-utility?view=sql-server-ver16)
-2. Download ODBC driver (x64) and command line util (x64) for windows
-3. Install both
-4. Restart machine, to update PATH environment variables
-
-Validate that you can run the BCP command: 
-```
-bcp.exe --version
-```
-
-**Warning**: Under linux, the bcp command uses the current [locale](https://www.tecmint.com/set-system-locales-in-linux/) to convert floats. So make sure your current locale has a . as decimal sepertor!
-
-```bash
-sudo localectl set-locale LC_NUMERIC=en_IN.UTF-8
-```
-
-### SQL Server rights
-
-The SQL user (configured in the riab.ini configuration file) requires the [db_ddladmin](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles?view=sql-server-ver16) role (see line user=riab). Ask your Database Adminstrator (DBA), to create the user and grant the required rights.
 
 
-```sql
-CREATE USER riab WITH password='?????';
-EXEC sp_addrolemember 'db_datareader', 'riab';
-EXEC sp_addrolemember 'db_datawriter', 'riab';
-EXEC sp_addrolemember 'db_ddladmin', 'riab';
-```
-
-### SQL Server databases and schemes
-
-
-The creation of different database [schemas](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/create-a-database-schema) or [databases](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql) (work, omop, dqd, achilles) is needed.
-
-```sql
-CREATE DATABASE omop; 
---dbo is default schema for a new database
-CREATE DATABASE work;
-CREATE DATABASE dqd;
-CREATE DATABASE achilles;
-```
-
-or
-
-```sql
-CREATE DATABASE omop;
-USE omop;
-CREATE SCHEMA omop;
-CREATE SCHEMA work;
-CREATE SCHEMA dqd;
-CREATE SCHEMA achilles;
-```
-
-Change the recovery mode to Simple. (ask your DBA for best practices)
-
-```sql
-ALTER DATABASE omop SET RECOVERY SIMPLE;
-ALTER DATABASE work SET RECOVERY SIMPLE;
-ALTER DATABASE dqd SET RECOVERY SIMPLE;
-ALTER DATABASE achilles SET RECOVERY SIMPLE;
-```
-
-or
-
-```sql
-ALTER DATABASE omop SET RECOVERY SIMPLE;
-```
-
-**Tip**: Make sure you've chosen the right [collation](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql?view=azuresqldb-current&preserve-view=true&tabs=sqlpool#collation_name), that is compatible with your raw data.
-
-### Linked server to the raw data
-
-If the raw EMR data is not on the same server defined in the riab.ini file, you will need to ask your database administrator, to add it as linked server.
-
-Example:
-
-```sql
-USE master;  
-GO  
-EXEC sp_addlinkedserver   
-   N'raw-emr-database-server,1433',  
-   N'SQL Server';
-GO
-
-EXEC sp_addlinkedsrvlogin
-   @rmtsrvname = N'raw-emr-database-server,1433',
-   @useself = N'False',
-   @locallogin = N'sa',
-   @rmtuser = N'remote_user',
-   @rmtpassword = N'???';
-GO
-
-sp_testlinkedserver N'raw-emr-database-server,1433';
-```
-
-### Azure SQL Server
-
-Ensure SQL allows non- Entra ID users
-   1. Open Azure portal
-   2. Go to SQL **server** instance (not database)
-   3. Under settings, make sure "Support only Microsoft Entra authentication for this server" is **NOT** checked.
-   4. You might need to [scale up](https://learn.microsoft.com/en-us/azure/azure-sql/database/scale-resources?view=azuresql) the number of max vCores to speed up for instance the import of the vocabularies. Especially with a high **max_parallel_tables** value, setting max vCores to 16 or more is recommended.
-
-![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/1187178/1ac67835-b467-4278-8c9a-171af0a98aa8)
-
-   5. You need to use the same database catalog for omop, work, dqd and achilles. Because of the following limitation: To change database context to a different database in Azure SQL Database, you must create a new connection to that database. (see [T-SQL differences between SQL Server and Azure SQL Database](https://learn.microsoft.com/en-us/azure/azure-sql/database/transact-sql-tsql-differences-sql-server?view=azuresql)). So the omop_database_catalog, work_database_catalog, dqd_database_catalog and achilles_database_catalog must have the same value in the riab.ini!
-   6. It is best practices to avoid the usage of special characters (ex: the minus sign) in the name of the database catalog and schemes. 
-
-Windows
-========
-
-Use a terminal that supports colors (like [Hyper](https://hyper.is/))
-
-Container
-========
-
-The container holds all the necessary components (Python, Java, BCP, ...)
-
-```bash
-docker run \
-  --rm \
-  -it \
-  -v ./riab.ini:/riab.ini \
-  -v .:/cdm_folder \
-  -e RIAB_CONFIG=/riab.ini \
-  ghcr.io/radar-azdelta/rabbit-in-a-blender:latest --version
-```
-
-You can create an alias for this command, an put it in your .bashrc file. For example:
-
-```bash
-alias riab='docker run \
-  --rm \
-  -it \
-  -v ./riab.ini:/riab.ini \
-  -v .:/cdm_folder \
-  -e RIAB_CONFIG=/riab.ini \
-  ghcr.io/radar-azdelta/rabbit-in-a-blender:latest'
-
-riab --version
-riab -r /cdm_folder -v
-```
-
-Authors
-========
+# Authors
 
 * [Lammertyn Pieter-Jan](https://github.com/pjlammertyn)
 * [De Jaeger Peter](https://github.com/peterdejaeger)
 
-License
-========
+# License
 
 Copyright © 2024, [RADar-AZDelta](mailto:radar@azdelta.be).
 Released under the [GNU General Public License v3.0](LICENSE).

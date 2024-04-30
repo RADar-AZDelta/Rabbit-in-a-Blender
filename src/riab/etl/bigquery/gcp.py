@@ -40,7 +40,9 @@ class Gcp:
             credentials (Credentials): The Google auth credentials (see https://google-auth.readthedocs.io/en/stable/reference/google.auth.credentials.html)
             location (str): The location in GCP (see https://cloud.google.com/about/locations/)
         """  # noqa: E501 # pylint: disable=line-too-long
+        logging.debug("Creating Google Cloud Storage client")
         self._cs_client = cs.Client(credentials=credentials)
+        logging.debug("Creating BigQuery client")
         self._bq_client = bq.Client(credentials=credentials)
         self._location = location
         self._total_cost = 0

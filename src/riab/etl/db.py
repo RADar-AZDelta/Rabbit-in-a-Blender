@@ -1,13 +1,16 @@
 import logging
 import time
 from typing import Optional
+
 import backoff
 from sqlalchemy import CursorResult, create_engine, engine, text
+
 
 class Db:
     """SQLAlchemy database connection."""
 
     def __init__(self, url: engine.URL):
+        logging.debug("Creating SQL Alchemy engine to database: %s", url)
         self._engine = create_engine(
             url,
             use_insertmanyvalues=True,
@@ -35,8 +38,10 @@ class Db:
         except Exception as ex:
             logging.debug("FAILED QUERY: %s", sql)
             raise ex
-        
-    def run_query_with_benchmark(self, sql: str, parameters: Optional[dict] = None) -> tuple[Optional[list[dict]], float]:
+
+    def run_query_with_benchmark(
+        self, sql: str, parameters: Optional[dict] = None
+    ) -> tuple[Optional[list[dict]], float]:
         """Runs a SQL query and returns the results as a list of dictionaries and also the duration in time the query took to complete.
 
         Args:
