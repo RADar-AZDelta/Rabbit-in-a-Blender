@@ -12,17 +12,17 @@ pip uninstall -y Rabbit-in-a-Blender
 # wait a moment
 sleep 10
 #pip install -i https://test.pypi.org/simple/ Rabbit-in-a-Blender # install from test repo
-pip install --no-cache-dir Rabbit-in-a-Blender==0.0.53
+pip install --no-cache-dir Rabbit-in-a-Blender==0.0.54
 
 
-#git tag -a 0.0.53 -m "0.0.53"
+#git tag -a 0.0.54 -m "0.0.54"
 #git tag
-#git push origin 0.0.53
+#git push origin 0.0.54
 
 
 # buildah build \
 #   --format oci \
-#   -t "radar/riab:0.0.53" \
+#   -t "radar/riab:0.0.54" \
 #   -f ./Dockerfile
 
 # podman run \
@@ -31,7 +31,7 @@ pip install --no-cache-dir Rabbit-in-a-Blender==0.0.53
 #   -v ./riab.ini:/riab.ini \
 #   -v .:/cdm_folder \
 #   -e RIAB_CONFIG=/riab.ini \
-#   localhost/radar/riab:0.0.53 -r /cdm_folder -t cdm_source
+#   localhost/radar/riab:0.0.54 -r /cdm_folder -t cdm_source
 
 # podman run \
 #   --rm \
@@ -40,4 +40,4 @@ pip install --no-cache-dir Rabbit-in-a-Blender==0.0.53
 #   -v .:/cdm_folder \
 #   -e RIAB_CONFIG=/riab.ini \
 #   --entrypoint sh \
-#   localhost/radar/riab:0.0.53
+#   localhost/radar/riab:0.0.54
