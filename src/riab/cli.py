@@ -8,13 +8,10 @@ import sys
 import traceback
 from argparse import ArgumentParser, RawTextHelpFormatter
 from configparser import ConfigParser
-from importlib import metadata
 from os import environ as env
 from os import getcwd, linesep, path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Sequence, cast
-
-from dotenv import load_dotenv
 
 
 class SafeConfigParser(ConfigParser):
@@ -48,6 +45,7 @@ class Cli:
                 if not db_engine:
                     raise Exception("Config file holds no db_engine option!")
 
+                logging.debug("Database engine: %s", db_engine)
                 etl_kwargs = {
                     "db_engine": db_engine.lower(),
                     "max_parallel_tables": int(cast(str, config.safe_get("riab", "max_parallel_tables", "9"))),
@@ -98,7 +96,7 @@ class Cli:
                 if args.print_etl_flow:
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryEtl
+                            from .etl.bigquery.etl import BigQueryEtl
 
                             etl = BigQueryEtl(
                                 **etl_kwargs,
@@ -109,7 +107,7 @@ class Cli:
                                 etl.print_cdm_tables_fks_dependencies_tree(),
                             )
                         case "sql_server":
-                            from .etl.sql_server import SqlServerEtl
+                            from .etl.sql_server.etl import SqlServerEtl
 
                             etl = SqlServerEtl(
                                 **etl_kwargs,
@@ -124,7 +122,7 @@ class Cli:
                 elif args.create_db:  # create OMOP CDM Database
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryCreateOmopDb
+                            from .etl.bigquery.create_omop_db import BigQueryCreateOmopDb
 
                             with BigQueryCreateOmopDb(
                                 **etl_kwargs,
@@ -132,7 +130,7 @@ class Cli:
                             ) as create_omop_db:
                                 create_omop_db.run()
                         case "sql_server":
-                            from .etl.sql_server import SqlServerCreateOmopDb
+                            from .etl.sql_server.create_omop_db import SqlServerCreateOmopDb
 
                             with SqlServerCreateOmopDb(
                                 **etl_kwargs,
@@ -144,7 +142,7 @@ class Cli:
                 elif args.test_db_connection:
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryEtl
+                            from .etl.bigquery.etl import BigQueryEtl
 
                             etl = BigQueryEtl(
                                 **etl_kwargs,
@@ -152,7 +150,7 @@ class Cli:
                             )
                             etl._test_db_connection()
                         case "sql_server":
-                            from .etl.sql_server import SqlServerEtl
+                            from .etl.sql_server.etl import SqlServerEtl
 
                             etl = SqlServerEtl(
                                 **etl_kwargs,
@@ -164,7 +162,7 @@ class Cli:
                 elif args.create_folders:  # create the ETL folder structure
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryCreateCdmFolders
+                            from .etl.bigquery.create_cdm_folders import BigQueryCreateCdmFolders
 
                             with BigQueryCreateCdmFolders(
                                 **etl_kwargs,
@@ -173,7 +171,7 @@ class Cli:
                             ) as create_folders:
                                 create_folders.run()
                         case "sql_server":
-                            from .etl.sql_server import SqlServerCreateCdmFolders
+                            from .etl.sql_server.create_cdm_folders import SqlServerCreateCdmFolders
 
                             with SqlServerCreateCdmFolders(
                                 **etl_kwargs,
@@ -186,7 +184,7 @@ class Cli:
                 elif args.import_vocabularies:  # impoprt OMOP CDM vocabularies
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryImportVocabularies
+                            from .etl.bigquery.import_vocabularies import BigQueryImportVocabularies
 
                             with BigQueryImportVocabularies(
                                 **etl_kwargs,
@@ -194,7 +192,7 @@ class Cli:
                             ) as import_vocabularies:
                                 import_vocabularies.run(args.import_vocabularies)
                         case "sql_server":
-                            from .etl.sql_server import SqlServerImportVocabularies
+                            from .etl.sql_server.import_vocabularies import SqlServerImportVocabularies
 
                             with SqlServerImportVocabularies(
                                 **etl_kwargs,
@@ -206,7 +204,7 @@ class Cli:
                 elif args.run_etl:  # run ETL
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryEtl
+                            from .etl.bigquery.etl import BigQueryEtl
 
                             with BigQueryEtl(
                                 **etl_kwargs,
@@ -220,7 +218,7 @@ class Cli:
                             ) as etl:
                                 etl.run()
                         case "sql_server":
-                            from .etl.sql_server import SqlServerEtl
+                            from .etl.sql_server.etl import SqlServerEtl
 
                             with SqlServerEtl(
                                 **etl_kwargs,
@@ -238,7 +236,7 @@ class Cli:
                 elif args.cleanup:  # cleanup OMOP DB
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryCleanup
+                            from .etl.bigquery.cleanup import BigQueryCleanup
 
                             with BigQueryCleanup(
                                 **etl_kwargs,
@@ -248,7 +246,7 @@ class Cli:
                             ) as cleanup:
                                 cleanup.run(args.cleanup)
                         case "sql_server":
-                            from .etl.sql_server import SqlServerCleanup
+                            from .etl.sql_server.cleanup import SqlServerCleanup
 
                             with SqlServerCleanup(
                                 **etl_kwargs,
@@ -262,7 +260,7 @@ class Cli:
                 elif args.data_quality:  # check data quality
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryDataQuality
+                            from .etl.bigquery.data_quality import BigQueryDataQuality
 
                             with BigQueryDataQuality(
                                 **etl_kwargs,
@@ -272,7 +270,7 @@ class Cli:
                             ) as data_quality:
                                 data_quality.run()
                         case "sql_server":
-                            from .etl.sql_server import SqlServerDataQuality
+                            from .etl.sql_server.data_quality import SqlServerDataQuality
 
                             with SqlServerDataQuality(
                                 **etl_kwargs,
@@ -286,7 +284,7 @@ class Cli:
                 elif args.data_quality_dashboard:  # view data quality results
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryDataQualityDashboard
+                            from .etl.bigquery.data_quality_dashboard import BigQueryDataQualityDashboard
 
                             with BigQueryDataQualityDashboard(
                                 **etl_kwargs,
@@ -295,7 +293,7 @@ class Cli:
                             ) as data_quality_dashboard:
                                 data_quality_dashboard.run()
                         case "sql_server":
-                            from .etl.sql_server import SqlServerDataQualityDashboard
+                            from .etl.sql_server.data_quality_dashboard import SqlServerDataQualityDashboard
 
                             with SqlServerDataQualityDashboard(
                                 **etl_kwargs,
@@ -308,7 +306,7 @@ class Cli:
                 elif args.achilles:  # run descriptive statistics
                     match db_engine:
                         case "bigquery":
-                            from .etl.bigquery import BigQueryAchilles
+                            from .etl.bigquery.achilles import BigQueryAchilles
 
                             with BigQueryAchilles(
                                 **etl_kwargs,
@@ -316,7 +314,7 @@ class Cli:
                             ) as achilles:
                                 achilles.run()
                         case "sql_server":
-                            from .etl.sql_server import SqlServerAchilles
+                            from .etl.sql_server.achilles import SqlServerAchilles
 
                             with SqlServerAchilles(
                                 **etl_kwargs,
@@ -336,6 +334,8 @@ class Cli:
                 logging.warning("Logs were written to %s", logger_file_handle.name)
 
     def _read_config_file(self, args_config: str) -> SafeConfigParser:
+        from dotenv import load_dotenv
+
         # load the ini config file by using the cascade:
         # 1) check if passed as an argument
         # 2) check if passed as the RIAB_CONFIG environment variable
@@ -359,18 +359,18 @@ class Cli:
 
     def _get_version(self) -> str:
         try:
-            return metadata.version("Rabbit-in-a-Blender")
+            if "debugpy" in sys.modules:
+                import tomllib
+
+                with open("pyproject.toml", "rb") as f:
+                    pyproject_data = tomllib.load(f)
+                    return pyproject_data["project"]["version"]
         except Exception:
             pass
 
-        try:
-            import tomllib
+        from importlib import metadata
 
-            with open("pyproject.toml", "rb") as f:
-                pyproject_data = tomllib.load(f)
-                return pyproject_data["project"]["version"]
-        except Exception:
-            return "?"
+        return metadata.version("Rabbit-in-a-Blender")
 
     def _create_default_options_argument_parser(self) -> ArgumentParser:
         """Argument parser for the required named arguments"""

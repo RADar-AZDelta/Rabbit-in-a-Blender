@@ -9,9 +9,7 @@ import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-import jinja2 as jj
-import polars as pl
-from jinja2.utils import select_autoescape
+from polars import DataFrame, DataType, Datetime, Float64, Int64, Utf8, col, element, read_csv
 
 
 class EtlBase(ABC):
@@ -46,11 +44,17 @@ class EtlBase(ABC):
 
         self._cdm_tables_fks_dependencies_resolved: list[list[str]] = []
 
+        logging.debug("Loading Jinja environment")
+        import jinja2 as jj
+        from jinja2.utils import select_autoescape
+
         template_dir = Path(__file__).resolve().parent / self._db_engine / "templates"
         template_loader = jj.FileSystemLoader(searchpath=template_dir)
         self._template_env = jj.Environment(autoescape=select_autoescape(["sql"]), loader=template_loader)
 
-        self._df_omop_tables: pl.DataFrame = pl.read_csv(
+        logging.debug(f"Processing OMOP_CDMv{omop_cdm_version}_Table_Level.csv")
+
+        self._df_omop_tables: DataFrame = read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "libs"
@@ -60,23 +64,24 @@ class EtlBase(ABC):
                 / f"OMOP_CDMv{omop_cdm_version}_Table_Level.csv"
             )
         )
-        # ctx = pl.SQLContext(omop_tables=self._df_omop_tables, eager_execution=True)
+        # ctx = SQLContext(omop_tables=self._df_omop_tables, eager_execution=True)
         # self._omop_cdm_tables = ctx.execute("SELECT lower(cdmTableName) FROM omop_tables WHERE schema = 'CDM'")["cdmTableName"].to_list()
         self._omop_cdm_tables: list[str] = (
-            self._df_omop_tables.filter(pl.col("schema") == "CDM")
-            .select(cdmTableName=(pl.col("cdmTableName").str.to_lowercase()))["cdmTableName"]
+            self._df_omop_tables.filter(col("schema") == "CDM")
+            .select(cdmTableName=(col("cdmTableName").str.to_lowercase()))["cdmTableName"]
             .to_list()
         )
 
         self._omop_etl_tables: list[str] = (
             self._df_omop_tables.filter(
-                (pl.col("schema") == "CDM") | (pl.col("cdmTableName").str.to_lowercase() == "vocabulary")
+                (col("schema") == "CDM") | (col("cdmTableName").str.to_lowercase() == "vocabulary")
             )
-            .select(cdmTableName=(pl.col("cdmTableName").str.to_lowercase()))["cdmTableName"]
+            .select(cdmTableName=(col("cdmTableName").str.to_lowercase()))["cdmTableName"]
             .to_list()
         )
 
-        self._df_omop_fields: pl.DataFrame = pl.read_csv(
+        logging.debug(f"Processing OMOP_CDMv{omop_cdm_version}_Field_Level.csv")
+        self._df_omop_fields: DataFrame = read_csv(
             str(
                 Path(__file__).parent.parent.resolve()
                 / "libs"
@@ -89,8 +94,8 @@ class EtlBase(ABC):
 
         # the NOTE_NLP has a FK to NOTES see issue https://github.com/OHDSI/CommonDataModel/issues/539
         row_nr = self._df_omop_fields.filter(
-            (pl.col("cdmTableName").str.to_uppercase() == "NOTE_NLP")
-            & (pl.col("cdmFieldName").str.to_uppercase() == "NOTE_ID")
+            (col("cdmTableName").str.to_uppercase() == "NOTE_NLP")
+            & (col("cdmFieldName").str.to_uppercase() == "NOTE_ID")
         ).select("row_nr")["row_nr"][0]
         self._df_omop_fields[row_nr, "isForeignKey"] = "Yes"
         self._df_omop_fields[row_nr, "fkTableName"] = "NOTE"
@@ -120,7 +125,7 @@ class EtlBase(ABC):
         """Resolves the ETL dependency"""
         tables = (
             self._df_omop_tables.filter(
-                (pl.col("schema") == "CDM") | (pl.col("cdmTableName").is_in(["CDM_SOURCE", "VOCABULARY"]))
+                (col("schema") == "CDM") | (col("cdmTableName").is_in(["CDM_SOURCE", "VOCABULARY"]))
             )
             .select("cdmTableName")["cdmTableName"]
             .to_list()
@@ -139,12 +144,12 @@ class EtlBase(ABC):
 
         tables_with_fks = dict(
             self._df_omop_fields.filter(
-                (pl.col("cdmTableName").is_in(tables))
-                & ((pl.col("fkTableName").is_null()) | (pl.col("fkTableName").is_in(tables)))
+                (col("cdmTableName").is_in(tables))
+                & ((col("fkTableName").is_null()) | (col("fkTableName").is_in(tables)))
             )
             .group_by("cdmTableName")
-            .agg(pl.col("fkTableName"))
-            .with_columns(pl.col("fkTableName").list.drop_nulls().alias("fkTableName"))
+            .agg(col("fkTableName"))
+            .with_columns(col("fkTableName").list.drop_nulls().alias("fkTableName"))
             .iter_rows()
         )
 
@@ -197,7 +202,7 @@ class EtlBase(ABC):
         Returns:
             list[str]: list of column names
         """
-        fields = self._df_omop_fields.filter((pl.col("cdmTableName").str.to_lowercase() == omop_table_name))[
+        fields = self._df_omop_fields.filter((col("cdmTableName").str.to_lowercase() == omop_table_name))[
             "cdmFieldName"
         ].to_list()
         return fields
@@ -212,7 +217,7 @@ class EtlBase(ABC):
             list[str]: list of column names
         """
         fields = self._df_omop_fields.filter(
-            (pl.col("cdmTableName").str.to_lowercase() == omop_table_name) & (pl.col("isRequired") == "Yes")
+            (col("cdmTableName").str.to_lowercase() == omop_table_name) & (col("isRequired") == "Yes")
         )["cdmFieldName"].to_list()
         return fields
 
@@ -230,9 +235,9 @@ class EtlBase(ABC):
         pk_auto_numbering = (
             len(
                 self._df_omop_fields.filter(
-                    (pl.col("cdmTableName").str.to_lowercase() == omop_table_name)
-                    & (pl.col("isPrimaryKey") == "Yes")
-                    & (pl.col("cdmDatatype") == "integer")
+                    (col("cdmTableName").str.to_lowercase() == omop_table_name)
+                    & (col("isPrimaryKey") == "Yes")
+                    & (col("cdmDatatype") == "integer")
                 )
             )
             > 0
@@ -250,7 +255,7 @@ class EtlBase(ABC):
         """
         fks = (
             self._df_omop_fields.filter(
-                (pl.col("cdmTableName").str.to_lowercase() == omop_table_name) & (pl.col("isPrimaryKey") == "Yes")
+                (col("cdmTableName").str.to_lowercase() == omop_table_name) & (col("isPrimaryKey") == "Yes")
             )
             .select("cdmFieldName")["cdmFieldName"]
             .to_list()
@@ -269,11 +274,11 @@ class EtlBase(ABC):
         """
         fks = dict(
             self._df_omop_fields.filter(
-                (pl.col("cdmTableName").str.to_lowercase() == omop_table_name)
-                & (pl.col("isForeignKey") == "Yes")
-                & (pl.col("fkTableName").str.to_lowercase() != "concept")
+                (col("cdmTableName").str.to_lowercase() == omop_table_name)
+                & (col("isForeignKey") == "Yes")
+                & (col("fkTableName").str.to_lowercase() != "concept")
             )
-            .select("cdmFieldName", pl.col("fkTableName").str.to_lowercase())
+            .select("cdmFieldName", col("fkTableName").str.to_lowercase())
             .iter_rows()
         )
 
@@ -290,14 +295,10 @@ class EtlBase(ABC):
         """
         fk_domains = dict(
             self._df_omop_fields.filter(
-                (pl.col("cdmTableName").str.to_lowercase() == omop_table_name) & (pl.col("fkDomain").is_not_null())
+                (col("cdmTableName").str.to_lowercase() == omop_table_name) & (col("fkDomain").is_not_null())
             )
             .with_columns(
-                pl.col("fkDomain")
-                .str.to_lowercase()
-                .str.split(",")
-                .list.eval(pl.element().str.strip())
-                .alias("fkDomain")
+                col("fkDomain").str.to_lowercase().str.split(",").list.eval(element().str.strip()).alias("fkDomain")
             )
             .select("cdmFieldName", "fkDomain")
             .iter_rows()
@@ -305,57 +306,57 @@ class EtlBase(ABC):
 
         return fk_domains
 
-    def _get_polars_type(self, cdmDatatype: str) -> pl.DataType:
+    def _get_polars_type(self, cdmDatatype: str) -> DataType:
         match cdmDatatype:
             case "integer":
-                return pl.Int64  # type: ignore
+                return Int64  # type: ignore
             case "datetime":
-                return pl.Datetime  # type: ignore
+                return Datetime  # type: ignore
             case "varchar(50)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "date":
-                return pl.Utf8  # type: ignore
-            # WARNING: pl.Date # Data not parsed well --> will do it manually
+                return Utf8  # type: ignore
+            # WARNING: Date # Data not parsed well --> will do it manually
             case "Integer":
-                return pl.Int64  # type: ignore
+                return Int64  # type: ignore
             case "varchar(20)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "float":
-                return pl.Float64  # type: ignore
+                return Float64  # type: ignore
             case "varchar(MAX)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(255)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(10)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(60)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(250)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(1)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(2000)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(2)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(9)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(80)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(3)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(25)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case "varchar(1000)":
-                return pl.Utf8  # type: ignore
+                return Utf8  # type: ignore
             case _:
                 raise ValueError(f"Unknown cdmDatatype: {cdmDatatype}")
 
-    def _get_polars_schema_for_cdm_table(self, vocabulary_table: str) -> dict[str, pl.DataType]:
+    def _get_polars_schema_for_cdm_table(self, vocabulary_table: str) -> dict[str, DataType]:
         df_table_fields = self._df_omop_fields.filter(
-            pl.col("cdmTableName").str.to_lowercase() == vocabulary_table
+            col("cdmTableName").str.to_lowercase() == vocabulary_table
         ).select(["cdmFieldName", "cdmDatatype"])
-        polars_schema: dict[str, pl.DataType] = {}
+        polars_schema: dict[str, DataType] = {}
         cdmFieldName: str
         cdmDatatype: str
         for cdmFieldName, cdmDatatype in df_table_fields.iter_rows():

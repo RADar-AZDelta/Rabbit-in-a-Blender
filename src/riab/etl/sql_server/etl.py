@@ -3,12 +3,12 @@
 
 import logging
 from datetime import date
-from importlib import metadata
 from pathlib import Path
 from threading import Lock
 from typing import Any, Optional
 
-import polars as pl
+from polars import Config as pl_Config
+from polars import col, from_dicts
 
 from ..etl import Etl
 from .ctes import extract_ctes
@@ -169,8 +169,8 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         rows = self._db.run_query(sql)
         if rows:
-            df = pl.from_dicts(rows)
-            with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
+            df = from_dicts(rows)
+            with pl_Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
                 raise Exception(
                     f"Invalid domain_id, vocabulary_id or concept_class_id supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
                 )
@@ -184,8 +184,8 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         rows = self._db.run_query(sql)
         if rows:
-            df = pl.from_dicts(rows)
-            with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
+            df = from_dicts(rows)
+            with pl_Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
                 raise Exception(
                     f"Duplicate custom concepts supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
                 )
@@ -312,8 +312,8 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         rows = self._db.run_query(sql_doubles)
         if rows:
-            df = pl.from_dicts(rows)
-            with pl.Config(fmt_str_lengths=1000):
+            df = from_dicts(rows)
+            with pl_Config(fmt_str_lengths=1000):
                 raise Exception(
                     f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck for duplicate mappings in the Usagi CSV's and custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}"
                 )
@@ -387,7 +387,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         finally:
             self._lock_parse_sql.release()
 
-        columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
+        columns = self._df_omop_fields.filter(col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
         events = self._omop_event_fields[omop_table] if omop_table in self._omop_event_fields else {}
         primary_key_column = self._get_pk(omop_table)
         # concept_columns = [
@@ -498,8 +498,8 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         rows = self._db.run_query(sql_doubles)
         if rows:
-            df = pl.from_dicts(rows)
-            with pl.Config(fmt_str_lengths=1000):
+            df = from_dicts(rows)
+            with pl_Config(fmt_str_lengths=1000):
                 logging.warning(
                     f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\nQuery to get the duplicates:\n{sql_doubles}\n\n{df}"
                 )
@@ -630,7 +630,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         if not (events or omop_table == "vocabulary"):
             return
 
-        columns = self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
+        columns = self._df_omop_fields.filter(col("cdmTableName").str.to_lowercase() == omop_table).rows(named=True)
 
         template = self._template_env.get_template("etl/{omop_work}_ddl.sql.jinja")
         sql = template.render(
@@ -662,7 +662,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         rows = self._db.run_query(sql)
         if rows:
-            df = pl.from_dicts(rows)
+            df = from_dicts(rows)
             logging.warn(
                 f"Non-standard concepts found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly standard concepts are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
             )
@@ -683,13 +683,15 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             )
             rows = self._db.run_query(sql)
             if rows:
-                df = pl.from_dicts(rows)
+                df = from_dicts(rows)
                 raise Exception(
                     f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
                 )
 
     def _upload_riab_version_in_metadata_table(self) -> None:
         """Upload the riab version in the metadata table."""
+        from importlib import metadata
+
         template = self._template_env.get_template("etl/cdm_metadata_riab_version.sql.jinja")
         sql = template.render(
             cdm_version=self._omop_cdm_version,

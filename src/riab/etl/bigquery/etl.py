@@ -2,14 +2,16 @@
 # SPDX-License-Identifier: gpl3+
 
 import logging
+import sys
 from datetime import date
 from importlib import metadata
 from pathlib import Path
 from typing import Any, Optional, cast
 
-import google.cloud.bigquery as bq
-import polars as pl
+from google.cloud.bigquery import ScalarQueryParameter
 from google.cloud.exceptions import NotFound
+from polars import Config as pl_Config
+from polars import DataFrame, col, from_arrow
 
 from ..etl import Etl
 from .etl_base import BigQueryEtlBase
@@ -67,7 +69,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         )
         self._gcp.run_query_job(
             sql,
-            query_parameters=[bq.ScalarQueryParameter("etl_start", "DATE", etl_start)],
+            query_parameters=[ScalarQueryParameter("etl_start", "DATE", etl_start)],
         )
 
     def _source_id_to_omop_id_map_update_invalid_reason(self, etl_start: date) -> None:
@@ -83,7 +85,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         )
         self._gcp.run_query_job(
             sql,
-            query_parameters=[bq.ScalarQueryParameter("etl_start", "DATE", etl_start)],
+            query_parameters=[ScalarQueryParameter("etl_start", "DATE", etl_start)],
         )
 
     def _clear_custom_concept_upload_table(self, omop_table: str, concept_id_column: str) -> None:
@@ -153,8 +155,8 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            df = cast(pl.DataFrame, pl.from_arrow(ar_table))
-            with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
+            df = cast(DataFrame, from_arrow(ar_table))
+            with pl_Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
                 raise Exception(
                     f"Invalid domain_id, vocabulary_id or concept_class_id supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
                 )
@@ -168,8 +170,8 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            df = cast(pl.DataFrame, pl.from_arrow(ar_table))
-            with pl.Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
+            df = cast(DataFrame, from_arrow(ar_table))
+            with pl_Config(fmt_str_lengths=1000, tbl_cols=len(df.columns)):
                 raise Exception(
                     f"Duplicate custom concepts supplied in the custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}\n\n{sql}"
                 )
@@ -288,8 +290,8 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql_doubles)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            df = pl.from_arrow(ar_table)
-            with pl.Config(fmt_str_lengths=1000):
+            df = from_arrow(ar_table)
+            with pl_Config(fmt_str_lengths=1000):
                 raise Exception(
                     f"Duplicate rows supplied (combination of source_code column and target_concept_id columns must be unique)!\nCheck for duplicate mappings in the Usagi CSV's and custom concept CSV's for column '{concept_id_column}' of table '{omop_table}'\n{df}"
                 )
@@ -443,8 +445,8 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql_doubles)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            df = pl.from_arrow(ar_table)
-            with pl.Config(fmt_str_lengths=1000):
+            df = from_arrow(ar_table)
+            with pl_Config(fmt_str_lengths=1000):
                 logging.warning(
                     f"Duplicate rows supplied (combination of id column and concept columns must be unique)! Check ETL queries for table '{omop_table}' and run the 'clean' command!\nQuery to get the duplicates:\n{sql_doubles}\n\n{df}"
                 )
@@ -561,8 +563,8 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             return
 
         columns = (
-            self._df_omop_fields.filter(pl.col("cdmTableName").str.to_lowercase() == omop_table)
-            .with_columns([pl.col("cdmDatatype").map_elements(lambda s: self._get_column_type(s)).alias("cdmDatatype")])
+            self._df_omop_fields.filter(col("cdmTableName").str.to_lowercase() == omop_table)
+            .with_columns([col("cdmDatatype").map_elements(lambda s: self._get_column_type(s)).alias("cdmDatatype")])
             .rows(named=True)
         )
 
@@ -597,7 +599,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
         rows = self._gcp.run_query_job(sql)
         ar_table = rows.to_arrow()
         if len(ar_table):
-            df = pl.from_arrow(ar_table)
+            df = from_arrow(ar_table)
             logging.warn(
                 f"Non-standard concepts found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly standard concepts are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
             )
@@ -617,7 +619,7 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
             rows = self._gcp.run_query_job(sql)
             ar_table = rows.to_arrow()
             if len(ar_table):
-                df = pl.from_arrow(ar_table)
+                df = from_arrow(ar_table)
                 raise Exception(
                     f"Invalid concept domains found in the Usagi CSV's for concept column '{concept_id_column}' of OMOP table '{omop_table}'!\nOnly concept domains ({', '.join(domains)}) are allowed!\nQuery to get the invalid domains:\n{sql}\nInvalid domains:\n{df}"
                 )
@@ -625,18 +627,15 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
     def _upload_riab_version_in_metadata_table(self) -> None:
         """Upload the riab version in the metadata table."""
         try:
-            riab_version = metadata.version("Rabbit-in-a-Blender")
+            if "debugpy" in sys.modules:
+                import tomllib
+
+                with open("pyproject.toml", "rb") as f:
+                    pyproject_data = tomllib.load(f)
+                    riab_version = pyproject_data["project"]["version"]
         except Exception:
             pass
-
-        try:
-            import tomllib
-
-            with open("pyproject.toml", "rb") as f:
-                pyproject_data = tomllib.load(f)
-                riab_version = pyproject_data["project"]["version"]
-        except Exception:
-            riab_version = "?"
+        riab_version = metadata.version("Rabbit-in-a-Blender")
 
         template = self._template_env.get_template("etl/cdm_metadata_riab_version.sql.jinja")
         sql = template.render(cdm_version=self._omop_cdm_version, riab_version=riab_version)

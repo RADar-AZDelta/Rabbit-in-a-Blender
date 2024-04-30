@@ -12,9 +12,8 @@ from abc import ABC
 from pathlib import Path
 from typing import Dict, Optional, cast
 
-import google.auth
-import google.cloud.bigquery as bq
-import polars as pl
+from google.cloud.bigquery import WriteDisposition
+from polars import DataFrame
 
 from ..etl_base import EtlBase
 from .gcp import Gcp
@@ -44,6 +43,8 @@ class BigQueryEtlBase(EtlBase, ABC):
             bucket (str): The Cloud Storage bucket uri, that will hold the uploaded Usagi and custom concept files. (the uri has format 'gs://{bucket_name}/{bucket_path}')
         """
         super().__init__(**kwargs)
+
+        import google.auth
 
         if credentials_file:
             credentials, project_id = google.auth.load_credentials_from_file(credentials_file)
@@ -85,7 +86,7 @@ class BigQueryEtlBase(EtlBase, ABC):
                 self.__clustering_fields = json.load(file)
         return self.__clustering_fields
 
-    def _append_dataframe_to_bigquery_table(self, df: pl.DataFrame, dataset: str, table_name: str):
+    def _append_dataframe_to_bigquery_table(self, df: DataFrame, dataset: str, table_name: str):
         with tempfile.TemporaryDirectory(prefix="riab_") as temp_dir_path:
             if platform.system() == "Windows":
                 import win32api
@@ -103,7 +104,7 @@ class BigQueryEtlBase(EtlBase, ABC):
                 uri,
                 dataset,
                 table_name,
-                write_disposition=bq.WriteDisposition.WRITE_APPEND,
+                write_disposition=WriteDisposition.WRITE_APPEND,
             )
 
     def _get_column_type(self, cdmDatatype: str) -> str:

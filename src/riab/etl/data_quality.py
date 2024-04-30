@@ -146,7 +146,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
             "id": str(uuid.uuid4()),
             "startTimestamp": check_summary["startTimestamp"],
             "endTimestamp": check_summary["endTimestamp"],
-            "executionTime": check_summary["executionTime"]
+            "executionTime": check_summary["executionTime"],
         }
         dqd_run.update(check_summary["Overview"])
         self._store_dqd_run(dqd_run)
@@ -154,8 +154,8 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
         dqd_results = check_results.clone()
         dqd_results = dqd_results.with_columns(
             pl.lit(dqd_run["id"]).alias("run_id"),
-            #pl.int_range(pl.len(), dtype=pl.UInt32).alias("index")
-         )
+            # pl.int_range(pl.len(), dtype=pl.UInt32).alias("index")
+        )
         dqd_results = dqd_results.drop("_row")
         self._store_dqd_result(dqd_results)
 
