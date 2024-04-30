@@ -71,7 +71,7 @@ class Cli:
                             "server": config.safe_get(db_engine, "server"),
                             "user": config.safe_get(db_engine, "user"),
                             "password": config.safe_get(db_engine, "password"),
-                            "port": config.safe_get(db_engine, "port"),
+                            "port": cast(int, config.safe_get(db_engine, "port", "1433")),
                             "raw_database_catalog": config.safe_get(db_engine, "raw_database_catalog", "raw"),
                             "raw_database_schema": config.safe_get(db_engine, "raw_database_schema", "dbo"),
                             "omop_database_catalog": config.safe_get(db_engine, "omop_database_catalog", "omop"),
