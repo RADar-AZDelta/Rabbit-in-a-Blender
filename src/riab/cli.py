@@ -358,14 +358,19 @@ class Cli:
         return config
 
     def _get_version(self) -> str:
-        if __debug__:
+        try:
+            return metadata.version("Rabbit-in-a-Blender")
+        except Exception:
+            pass
+
+        try:
             import tomllib
 
             with open("pyproject.toml", "rb") as f:
                 pyproject_data = tomllib.load(f)
                 return pyproject_data["project"]["version"]
-        else:
-            return metadata.version("Rabbit-in-a-Blender")
+        except Exception:
+            return "?"
 
     def _create_default_options_argument_parser(self) -> ArgumentParser:
         """Argument parser for the required named arguments"""

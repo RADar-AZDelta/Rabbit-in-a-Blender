@@ -7,21 +7,18 @@ Why the name 'Rabbit in a Blender'? It stays in the rabbit theme of the [OHDSI](
 
 No rabbits were harmed during the development of this tool!
 
-Introduction
-============
+# Introduction
 
 Extract-Transform-Load (ETL) processes are very complex and are mainly crafted by highly skilled data engineers. The process of transforming the electronic medical record (EMR) data into the observational medical outcomes partnership (OMOP) common data model (CDM) is no exception. The mapping process of the source values to standard concepts is mostly done by subject matter experts, who lack the knowledge of programming the ETL process. Wouldn’t it be nice if we could drastically simplify the ETL process, so that you don’t need seasoned data engineers to start the OMOP CDM journey. Imagine that you just save your queries, Usagi comma separated value (CSV) text files and custom concept CSV’s on disk, and run a command line interface (CLI) tool that does all the ETL magic automatically. 
 
 
-Concept
-=======
+# Concept
 
 The main strength of the CDM is its simplified scheme. This scheme is a relational data model, where each table has a primary key and can have foreign keys to other tables. Because of the relational data model, we can extract the dependencies of the tables from the scheme. For example, the provider table is dependent on the care_site table, which is in its turn dependent on the location table. If we flatten that dependency graph, we have a sequence of ETL steps that we need to follow to have consistent data in our OMOP CDM. These ETL steps can be automated, so a hospital can focus its resources on the queries and the mapping of the concepts. The automated ETL consists of multiple tasks. It needs to execute queries, add custom concepts, apply the Usagi source to concept mapping, and do a lot of housekeeping. An example of that housekeeping is the autonumbering of the OMOP CDM primary keys, for which the ETL process needs to maintain a swap table that holds the key of the source table and the generated sequential number of the CDM table’s primary key. Another example of the housekeeping is the upload and processing of the Usagi CSV’s and also the upload and parsing of the custom concept CSV’s. In an ETL process data is divided in zones (cfr. the [zones in a data lake](https://www.oreilly.com/library/view/the-enterprise-big/9781491931547/ch01.html#zones_of_a_typical_data_lake)). The raw zone holds the source data (for example the data from the EMR), the work zone holds all the house keeping tables of the ETL process and the gold zone holds our final OMOP CDM.
 After designing the architecture, the implementation needs to be developed. We have two options to choose from: configuration and convention as design paradigm. We choose convention over configuration, because it decreases the number of decisions the user has to make and eliminates the complexity. As convention a specific folder structure is adopted (see [our mappings as example](https://github.com/RADar-AZDelta/AZDelta-OMOP-CDM)). A folder is created for each OMOP CDM table, where the SQL queries are stored to fill up the specific CDM table. In the table folders we also have for each concept column a sub folder. Those concept column sub folders hold our Usagi CSV’s (files ending with _usagi.csv). We also have a custom folder in the concept column sub folder, that holds the custom concept CSV’s (files ending with _concept.csv). With this convention in place, our ETL CLI tool has everything it needs to do its magic.
 One final requirement we want to build in the ETL CLI tool, is that each ETL step is an atomic operation, it either fails or succeeds, so that there is no possibility to corrupt the final OMOP CDM data.
 
-Notes on Use
-============
+# Notes on Use
 
 You will need to run the cleanup command when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
 
@@ -55,10 +52,7 @@ Examples:
     - Add custom concept for cemiplimab with concept_code = *C12*, it gets a assigned a concept_id automatically, no usagi-entry required
     - Add only one usagi-entry, mapping sourceCode *C12* to targetConceptId = *1792776* (standard code for atezolizumab), the second mapping of *C12* to custom concept with concept_code = *C12* is done automatically.
 
-For the moment we only implemented a BigQuery and SQL Server backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
-
-ETL flow
-========
+# ETL flow
 
 Most CDM tables have foreign keys (FKs) to other tables. Some tables can be processed in parallel by the ETL engine, because they have no FKs dependencies between them, others have to be processed in a specific order.
 
@@ -97,27 +91,16 @@ The ETL flow for v5.4 is as follows:
 
 Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.
 
-Install Python
-========
+# Installation
 
-usage of [pyenv](https://github.com/pyenv/pyenv) to install the required version of python (version 3.12)
+see [installation](docs/installation.md)
 
-```
-pyenv install 3.12
-pyenv local 3.12 # use version 3.12 of python for the current user
-```
+# Database engines
 
-Install Java
-========
+For the moment we only implemented a **BigQuery** and **SQL Server** backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
 
-The [Data Quality Dashboard (DQD)](https://github.com/OHDSI/DataQualityDashboard) and the [Automated Characterization of Health Information at Large-scale Longitudinal Evidence Systems (ACHILLES)](https://github.com/OHDSI/Achilles) require [Java](https://www.java.com/download) (minimal version 8)
+see [database engines](docs/database_engines.md)
 
-Installation
-========
-
-```bash
-pip install --upgrade Rabbit-in-a-Blender
-```
 
 Config
 ========
@@ -327,13 +310,6 @@ Data quality dashboard (default port = 8050):
 riab --data-quality-dashboard
   --port 8888
 ```
-
-System Requirements
-===================
-
-The amount of CPU/RAM of the system running RiaB is dependent of the **max_parallel_tables** variable in the **riab.ini** file.
-Running the --import-vocabularies with a high max_parallel_tables value, will result in a large CPU and RAM load of the system running RiaB.
-The other commands require less resources of the system running RiaB.
 
 
 BigQuery

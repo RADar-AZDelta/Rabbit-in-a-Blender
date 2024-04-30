@@ -1,6 +1,6 @@
 buildah build \
   --format oci \
-  -t "radar/riab:0.0.54" \
+  -t "radar/riab:0.0.56" \
   -f ./Dockerfile
 
 podman run \
@@ -9,7 +9,7 @@ podman run \
   -v ./riab.ini:/riab.ini \
   -v .:/cdm_folder \
   -e RIAB_CONFIG=/riab.ini \
-  localhost/radar/riab:0.0.54 -r /cdm_folder -t cdm_source
+  localhost/radar/riab:0.0.56 -r /cdm_folder -t cdm_source
 
 podman run \
   --rm \
@@ -18,4 +18,4 @@ podman run \
   -v .:/cdm_folder \
   -e RIAB_CONFIG=/riab.ini \
   --entrypoint sh \
-  localhost/radar/riab:0.0.54
+  localhost/radar/riab:0.0.56

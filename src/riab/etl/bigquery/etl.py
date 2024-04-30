@@ -624,14 +624,19 @@ class BigQueryEtl(Etl, BigQueryEtlBase):
 
     def _upload_riab_version_in_metadata_table(self) -> None:
         """Upload the riab version in the metadata table."""
-        if __debug__:
+        try:
+            riab_version = metadata.version("Rabbit-in-a-Blender")
+        except Exception:
+            pass
+
+        try:
             import tomllib
 
             with open("pyproject.toml", "rb") as f:
                 pyproject_data = tomllib.load(f)
                 riab_version = pyproject_data["project"]["version"]
-        else:
-            riab_version = metadata.version("Rabbit-in-a-Blender")
+        except Exception:
+            riab_version = "?"
 
         template = self._template_env.get_template("etl/cdm_metadata_riab_version.sql.jinja")
         sql = template.render(cdm_version=self._omop_cdm_version, riab_version=riab_version)
