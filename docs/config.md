@@ -1,11 +1,12 @@
 # riab.ini config
 
+With the addition of additional database engines, we switched to a [ini](https://en.wikipedia.org/wiki/INI_file) config file for database specific configurations.
+This makes the CLI arguments less cumbersome.
+
 RiaB searches for the ini config file by using the following cascade:
 1. CLI --config argument
 2. RIAB_CONFIG environment variable (the RIAB_CONFIG environment variable can also be placed in a .env file in the current folder)
 3. riab.ini in the current folder
-
-
 
 * **riab** section:
 
