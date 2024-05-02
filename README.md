@@ -113,83 +113,9 @@ see [riab.ini](docs/config.md) config
 
 see [CLI commands](docs/cli.md)
 
-# CLI Examples
+# Getting started
 
-Create the OMOP CDM database:
-```bash
-riab --create-db
-```
-
-Import your downloaded vocabularies (from [Athena](https://athena.ohdsi.org/vocabulary/list)) zip file:
-```bash
-riab --import-vocabularies ./vocabulary_20240329.zip
-```
-
-Create the ETL folder structure:
-```bash
-riab --create-folders ./OMOP_CDM
-```     
-
-Run full ETL:
-```bash
-riab --run-etl ./OMOP-CDM
-```
-
-Run ETL on one table:
-```bash
-riab --run-etl ./OMOP-CDM \
-  --table provider
-```
-
-Run ETL without re-upload of Usagi CSV's and custom concept CSV's:
-```bash
-riab --run-etl ./OMOP-CDM \
-  --skip-usagi-and-custom-concept-upload
-```
-
-Run ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql)
-```bash
-riab --run-etl ./OMOP-CDM \
-  --skip-usagi-and-custom-concept-upload \
-  --skip-event-fks-step \
-  --only-query measurement/lab_measurements.sql
-```
-
-Run ETL with SEMI-APPROVED concepts during ETL testing in dev branch
-```bash
-riab --run-etl ./OMOP-CDM \
-  --process-semi-approved-mappings
-```
-
-Cleanup all tables:
-```bash
-riab --cleanup
-```
-
-Cleanup one table (example provider table):
-```bash
-riab --cleanup provider
-```
-
-Data quality check:
-```bash
-riab --data-quality
-```
-
-Data quality check (export result to JSON):
-```bash
-riab --data-quality
-  --json dqd_result.json
-```
-
-Data quality dashboard (default port = 8050):
-```bash
-riab --data-quality-dashboard
-  --port 8888
-```
-
-
-
+see [getting started](docs/getting_started.md)
 
 # Authors
 
