@@ -12,7 +12,7 @@
 8. [Craft the ETL queries](#8-craft-the-etl-queries)
 9. [Map the concepts](#9-map-the-concepts)
 10. [Run the ETL](#10-run-the-etl)
-
+11. [Check the Data Quality](#11-check-the-data-quality)
 
 > **Tip**: adding the --verbose flag argument to the command line, will enable verbose logging output. 
 
@@ -23,8 +23,6 @@ see the [installation](installation.md)
 ## 2. Configure the database
 
 see the [database engines](database-engines.md)
-
-see the [config](config.md)
 
 ## 3. Create the riab.ini file
 
@@ -72,3 +70,5 @@ riab --create-folders ./OMOP_CDM
 ## 9. Map the concepts
 
 ## 10. Run the ETL
+
+## 11. Check the Data Quality
