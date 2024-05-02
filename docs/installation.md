@@ -144,7 +144,7 @@ Download [Java](https://www.java.com/download) and install.
 pip install --upgrade Rabbit-in-a-Blender
 ```
 
-#### Optional: install gcloud CLI
+### Optional: install gcloud CLI
 
 When using BigQuery as a database engine, and want to authenticate with [Application Default Credentials (ADC)](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login), you should install the [gcloud CLI](https://cloud.google.com/sdk/docs/install-sdk#windows)
 
