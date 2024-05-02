@@ -2,8 +2,8 @@
 
 Following database engines are supported:
 
-- [BigQuery](#BigQuery)
-- [Sql Server (on-premise and Azure)](#Sql-Server)
+- [BigQuery](#bigquery)
+- [Sql Server (on-premise and Azure)](#sql-server-on-premise-and-azure)
 
 ## BigQuery
 
