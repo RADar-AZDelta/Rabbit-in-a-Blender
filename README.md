@@ -11,7 +11,7 @@ No rabbits were harmed during the development of this tool!
 
 Extract-Transform-Load (ETL) processes are very complex and are mainly crafted by highly skilled data engineers. The process of transforming the electronic medical record (EMR) data into the observational medical outcomes partnership (OMOP) common data model (CDM) is no exception. The mapping process of the source values to standard concepts is mostly done by subject matter experts, who lack the knowledge of programming the ETL process. Wouldn’t it be nice if we could drastically simplify the ETL process, so that you don’t need seasoned data engineers to start the OMOP CDM journey. Imagine that you just save your queries, Usagi comma separated value (CSV) text files and custom concept CSV’s on disk, and run a command line interface (CLI) tool that does all the ETL magic automatically. 
 
-For the moment we only implemented a **BigQuery** and **SQL Server** (on-premise and in Azure) backend for the ETL process, because this is what our hospital uses. Other database technologies as ETL backend can be implemented.
+Currently, our ETL process is supported by **BigQuery** and **SQL Server** (both on-premise and in Azure). We're open to exploring additional database technologies to serve as backends for our ETL process.
 
 # Concept
 
