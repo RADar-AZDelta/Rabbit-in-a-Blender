@@ -21,12 +21,18 @@ One final requirement we want to build in the ETL CLI tool, is that each ETL ste
 
 # ETL flow
 
+The ETL flow is like a **two-stage rocket**. You have a first stage and a second stage in the ETL process. 
+
+**First stage:**
+
+<img align="right" style="max-width=20%" src="resources/img/two_stage_rocket.png">
+
 Most CDM tables have foreign keys (FKs) to other tables. Some tables can be processed in parallel by the ETL engine, because they have no FKs dependencies between them, others have to be processed in a specific order.
 
 The ETL flow for v5.4 is as follows:
 
 ```
-└──vocabulary                                 # custom concepts must have a vocabulary
+└──vocabulary # custom concepts must have a vocabulary
   └──cdm_source
   ├──metadata
   ├──cost
@@ -56,7 +62,9 @@ The ETL flow for v5.4 is as follows:
                 └──note_nlp
 ```
 
-Because the event FKs (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.), can point to almost any table, the event FK's are processed in a second, seperate ETL step.
+**Second stage:** will process all the event foreign key columns (e.g. observation_event_id, cost_event_id, measurement_event_id, etc.). Because those columns can point to almost any table, and the auto generated _id's of those table, are only available after the first stage.
+
+> **RiaB also performs like a rocket** especially in combination with BigQuery. A full ETL resulting in 8 billion CDM records takes about 20 min.
 
 # Getting started
 
