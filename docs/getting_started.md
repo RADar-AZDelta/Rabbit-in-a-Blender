@@ -16,15 +16,15 @@
 
 ## 1. Installing RiaB
 
-see the [installation](installation.md)
+see the [installation](docs/installation.md)
 
 ## 2. Configure the database
 
-see the [database engines](database-engines.md)
+see the [database engines](docs/database_engines.md) 
 
 ## 3. Create the riab.ini file
 
-see the [config](config.md)
+see the [config](docs/config.md)
 
 ## 4. Test database connection
 
