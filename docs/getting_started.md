@@ -56,6 +56,8 @@ Select and download the vocabulary zip file from the [Athena](https://athena.ohd
             "relationship" and
             "vocabulary".
 
+When vocabularies are downloaded from Athena, concepts of the CPT4 vocabulary are not present in the CONCEPT.csv, while present in the other vocabulary csv's. Check [steps](post-process-CPT4-concepts.md) to overcome.
+
 Importing vocabularies from [Athena](https://athena.ohdsi.org/vocabulary/list) ensures that the data transformed into the OMOP CDM adheres to standardized vocabularies. These vocabularies represent hierarchical relationships, define concept classes or categories, describe relationships, and more. This process ensures data consistency and interoperability.
 
 Import the downloaded vocabulary zip file with the command below:
