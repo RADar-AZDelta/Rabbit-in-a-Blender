@@ -42,7 +42,7 @@ Create the OMOP CDM tables by running the --create-db command:
 riab --create-db
 ```
 
-Running this --create-db command will imply that you need to import the vocabularies again. 
+Running this --create-db command will imply that you need to import the vocabularies again, it also implies that it removes the OMOP dataset. 
 
 ## 6. Download and import the vocabularies
 
