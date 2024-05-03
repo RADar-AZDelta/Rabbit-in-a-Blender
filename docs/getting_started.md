@@ -42,7 +42,7 @@ Create the OMOP CDM tables by running the --create-db command:
 riab --create-db
 ```
 
-Running this --create-db command will imply that you need to import the vocabularies again, it also implies that it removes the OMOP dataset. 
+Running this --create-db command will imply that you need to import the vocabularies again, it also implies that it removes everything in the OMOP dataset. 
 
 ## 6. Download and import the vocabularies
 
@@ -76,14 +76,28 @@ RiaB uses a strict folder structure, when running the ETL. With the --create-fol
 ```bash
 riab --create-folders ./OMOP_CDM
 ```    
+It is important to have the necessary subfolders 
 
 ## 8. Craft the ETL queries
 
+Ensure adherence to ETL conventions, such as maintaining appropriate data type lengths for fields in the Common Data Model.
 
 ## 9. Map the concepts
+### 9.1 Mappings
+
+### 9.2 Custom mappings
+Make sure your custom mappings are in a custom subfolder and have an empty first concept_id column since RiaB will create an appropriate integer for the concept_id column
 
 ## 10. Run the ETL
 
+Run the RiaB ETL via the [ETL Commands](cli.md). If you run RiaB for the first time, you can run the ETL on one or several tables. Use the ETL flow structure for v5.4. so you don't have foreign keys dependencies errors.
+
+Make sure you add a verbose flag "-v" to get more detailed output during execution of the ETL runs.
+
 The restriction on vocabularies and classes within each mapping domain serves the purpose of ensuring a more standardized mapping of concepts across different persons. This approach aims to mitigate the proliferation of varied concepts, promoting consistency and facilitating a cohesive representation of data.
 
+If mappings [9] or ETL queries [10] have changed, you first need to do a cleanup of the appropriate OMOP tables. A cleanup command will cleanup all work tables and remove the custom concepts. Please make sure you follow the correct table order to not have foreign key issues when doing a RiaB re-run.
+
 ## 11. Check the Data Quality
+
+
