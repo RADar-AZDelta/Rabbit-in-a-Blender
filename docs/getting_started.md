@@ -78,6 +78,10 @@ riab --create-folders ./OMOP_CDM
 ```    
 It is important to have the necessary subfolders in your folder structure. 
 
+An example of such a folder structure for the OMOP table visit_occurrence: 
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/1d3e86c6-96cf-4e24-ba00-cb04512c21e6)
+
+
 ## 8. Craft the ETL queries
 
 In order to extract data from your source databases or clinical applications, ETL queries need to be constructed. RiaB will transfer source data towards the raw zone.
@@ -104,7 +108,7 @@ Tips:
 
 ## 9. Map the concepts
 
-'Usagi source CSV' queries are used to generate input CSV files for a mapping tool. Base the ‘Usagi source CSV’ query on the ETL query. Select sourceCode, sourceName and sourceFrequency as input csv file. Use [Keun](https://radar-azdelta.github.io/Keun/) or [Usagi](https://ohdsi.github.io/Usagi/) for the mapping and store the output after the mapping as _usagi.csv in your correct subfolder in the folder structure. Store custom concepts as _concept.csv in the correct custom subfolders.
+'Usagi source CSV' queries are used to generate input CSV files for a mapping tool. Base the ‘Usagi source CSV’ query on the ETL query. Select sourceCode, sourceName and sourceFrequency as input csv file. Use [Keun](https://radar-azdelta.github.io/Keun/) or [Usagi](https://ohdsi.github.io/Usagi/) for the mapping and store the output after the mapping as _usagi.csv in your correct subfolder in the folder structure. Store custom concepts as _concept.csv in the correct custom subfolders. Your mappings should contain the column headers as a first row so that RiaB knows where e.g. the conceptId is situated.
 
 ### 9.1 Mappings
 
@@ -116,10 +120,16 @@ The mapping tool can run a term similarity approach or a small translation model
 
 Leverage the mapping interface to check suggested mappings or create maps. Preferably an individual who has experience with the coding system and medical terminology should be assigned as reviewer.
 
-Export the final mapping, share with a reviewer to reach an 'APPROVED' mapping status and place in correct subfolder.
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/38a93303-6dba-4ef3-9cc5-780b33477014)
+
+
+Export the final mapping, share with a reviewer to reach an 'APPROVED' mapping status and place in correct subfolder. 
+
+Example of an output doctor_usagi.csv:
+
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/c7951073-37ed-4b74-8b8e-300bd17f47b6)
 
 For some tables like conditon_occurrence, automatic mapping, called automapping is integrated in the 'Usagi source CSV' queries as input for the mapping tool as verification.
-
 
 ### 9.2 Custom mappings
 
@@ -132,6 +142,10 @@ Make sure your custom mappings are in a custom subfolder and have an empty first
 Run the RiaB ETL via the [ETL Commands](cli.md). If you run RiaB for the first time, you can run the ETL on one or several tables. Use the ETL flow structure for v5.4. so you don't have foreign keys dependencies errors. With the --print-etl-flow command you can see the sequence in which the ETL tables will be processed.
 
 Make sure you add a verbose flag "-v" to get more detailed output during execution of the ETL runs.
+
+Each RiaB run will create a log file.
+
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/8ff60b40-e02f-4f19-a003-e74042f8bd43)
 
 The restriction on vocabularies and classes within each mapping domain serves the purpose of ensuring a more standardized mapping of concepts across different persons. This approach aims to mitigate the proliferation of varied concepts, promoting consistency and facilitating a cohesive representation of data.
 
