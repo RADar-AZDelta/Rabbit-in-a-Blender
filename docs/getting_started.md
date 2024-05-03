@@ -80,10 +80,30 @@ It is important to have the necessary subfolders
 
 ## 8. Craft the ETL queries
 
+In order to extract data from your source databases or application, ETL queries need to be constructed. The raw zone will hold these source data.
+
+The fields in the select query, are the column names from the CDM table
+
+Assign primary keys to tables in the CDM to uniquely identify each record. Primary keys should be unique for efficient querying and indexing.
+Establish foreign key relationships between tables in the CDM to maintain data integrity and enable relational querying. 
+Apply necessary data transformations, such as standardizing date formats, handling missing or null values, and aggregating or disaggregating data as needed to fit the CDM structure.
+Ensure consistency in data types between source data and the OMOP CDM. This involves mapping source data types to corresponding CDM data types and ensuring appropriate data type lengths to accommodate data values.
 Ensure adherence to ETL conventions, such as maintaining appropriate data type lengths for fields in the Common Data Model.
 
+Tips:
+-Use the strict folder structure
+-Keep your ETL queries as simple as possible 
+-Use prequels on id and concept_id columns
+
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/0724d2e9-9913-4574-a87b-00c0818db201)
+
+
 ## 9. Map the concepts
+
+Queries are used to generate input CSV files for a mapping tool. Use Keun or Usagi for the mapping and store the output after the mapping as _usagi.csv in your correct subfolder. Store custom concepts as _concept.csv in the correct custom subfolders
+
 ### 9.1 Mappings
+Base the ‘Usagi source CSV’ query on the ETL query
 
 ### 9.2 Custom mappings
 Make sure your custom mappings are in a custom subfolder and have an empty first concept_id column since RiaB will create an appropriate integer for the concept_id column
@@ -96,7 +116,7 @@ Make sure you add a verbose flag "-v" to get more detailed output during executi
 
 The restriction on vocabularies and classes within each mapping domain serves the purpose of ensuring a more standardized mapping of concepts across different persons. This approach aims to mitigate the proliferation of varied concepts, promoting consistency and facilitating a cohesive representation of data.
 
-If mappings [9] or ETL queries [10] have changed, you first need to do a cleanup of the appropriate OMOP tables. A cleanup command will cleanup all work tables and remove the custom concepts. Please make sure you follow the correct table order to not have foreign key issues when doing a RiaB re-run.
+If mappings [9] or ETL queries [10] have changed in your existing usagi_csv files, you first need to do a cleanup of the appropriate OMOP tables. A cleanup command will cleanup all work tables and remove the custom concepts. Make sure you follow the correct table order to avoid foreign key issues when doing a RiaB re-run.
 
 ## 11. Check the Data Quality
 
