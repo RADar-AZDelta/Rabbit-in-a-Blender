@@ -23,9 +23,9 @@ One final requirement we want to build in the ETL CLI tool, is that each ETL ste
 
 The ETL flow is like a **two-stage rocket**. You have a first stage and a second stage in the ETL process. 
 
-**First stage:**
-
 <img align="right" style="max-width=20%" src="resources/img/two_stage_rocket.png">
+
+**First stage:**
 
 Most CDM tables have foreign keys (FKs) to other tables. Some tables can be processed in parallel by the ETL engine, because they have no FKs dependencies between them, others have to be processed in a specific order.
 
