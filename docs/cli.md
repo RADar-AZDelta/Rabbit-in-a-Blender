@@ -18,7 +18,7 @@
     | -r [PATH], --run-etl [PATH] | Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.
     | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
     | -dq, --data-quality | Check the data quality and store the results.
-    | -dqd, --data-quality-dashnoard | View the results of the data quality checks.
+    | -dqd, --data-quality-dashboard | View the results of the data quality checks.
     | --print-etl-flow | Print the sequence in which the ETL tables that will be processed
 
 * **Run ETL specific command options (-r [PATH], --run-etl [PATH]):**
