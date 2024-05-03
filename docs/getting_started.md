@@ -1,7 +1,5 @@
 # Getting started with RiaB
 
-**Under constructon !!!!**
-
 1. [Installing RiaB](#1-installing-riab)
 2. [Configure the database](#2-configure-the-database)
 3. [Create the riab.ini file](#3-create-the-riabini-file)
@@ -44,9 +42,22 @@ Create the OMOP CDM tables by running the --create-db command:
 riab --create-db
 ```
 
+Running this --create-db command will imply that you need to import the vocabularies again. 
+
 ## 6. Download and import the vocabularies
 
-Select and download the vocabulary zip file from the [Athena](https://athena.ohdsi.org/vocabulary/list) website.
+Select and download the vocabulary zip file from the [Athena](https://athena.ohdsi.org/vocabulary/list) website. Select internationally recognized vocabularies, ensuring a global perspective. This import will populate the following tables:  "concept",
+            "concept_ancestor",
+            "concept_class",
+            "concept_relationship",
+            "concept_synonym",
+            "domain",
+            "drug_strength",
+            "relationship" and
+            "vocabulary".
+
+Importing vocabularies from [Athena](https://athena.ohdsi.org/vocabulary/list) ensures that the data transformed into the OMOP CDM adheres to standardized vocabularies. These vocabularies represent hierarchical relationships, define concept classes or categories, describe relationships, and more. This process ensures data consistency and interoperability.
+
 Import the downloaded vocabulary zip file with the command below:
 
 ```bash
@@ -70,5 +81,7 @@ riab --create-folders ./OMOP_CDM
 ## 9. Map the concepts
 
 ## 10. Run the ETL
+
+The restriction on vocabularies and classes within each mapping domain serves the purpose of ensuring a more standardized mapping of concepts across different persons. This approach aims to mitigate the proliferation of varied concepts, promoting consistency and facilitating a cohesive representation of data.
 
 ## 11. Check the Data Quality
