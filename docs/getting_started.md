@@ -79,6 +79,7 @@ riab --create-folders ./OMOP_CDM
 It is important to have the necessary subfolders in your folder structure. 
 
 An example of such a folder structure for the OMOP table visit_occurrence: 
+
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/1d3e86c6-96cf-4e24-ba00-cb04512c21e6)
 
 
@@ -157,4 +158,8 @@ It is possible to do an ETL for a specified sql file, skip parsing or uploading 
 
 ## 11. Check the Data Quality
 
-Checking data quality of your ETL and mapping is done via the command --data-quality. Using this framework, the Data Quality Dashboard takes a systematic-based approach to running data quality checks. View the results in a dashboard via --data-quality-dashboard, select a correct default port and click on the weblink. An export of the data quality results can be achieved in [JSON file](https://ohdsi.github.io/DataQualityDashboard/articles/DataQualityDashboard.html#viewing-results) format for use in the [OHDSI Data Quality Dashboard](https://ohdsi.github.io/DataQualityDashboard/).
+Checking data quality of your ETL and mapping is done via the command --data-quality. Using this framework, the Data Quality Dashboard takes a systematic-based approach to running data quality checks. View the results in a dashboard via --data-quality-dashboard, select a correct default port and click on the weblink. 
+
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/e7dea81e-00d3-41b7-afb4-5ab354c49bd7)
+
+An export of the data quality results can be achieved in [JSON file](https://ohdsi.github.io/DataQualityDashboard/articles/DataQualityDashboard.html#viewing-results) format for use in the [OHDSI Data Quality Dashboard](https://ohdsi.github.io/DataQualityDashboard/).
