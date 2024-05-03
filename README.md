@@ -32,7 +32,7 @@ Most CDM tables have foreign keys (FKs) to other tables. Some tables can be proc
 The ETL flow for v5.4 is as follows:
 
 ```
-└──vocabulary # custom concepts must have a vocabulary
+└──vocabulary
   └──cdm_source
   ├──metadata
   ├──cost
