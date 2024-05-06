@@ -31,8 +31,7 @@ class Cli:
             try:
                 logging.info("Running Rabbit-in-a-Blender version %s", self._get_version())
                 logging.warning("Logs are written to %s", logger_file_handle.name)
-                if __debug__:
-                    print(args)
+                logging.info("RiaB started with argumensts: riab %s", " ".join(sys.argv[1::]))
                 if args.verbose:
                     logging.getLogger().setLevel(logging.DEBUG)
 
