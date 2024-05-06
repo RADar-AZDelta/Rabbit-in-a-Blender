@@ -115,34 +115,23 @@ Tips:
 
 ## 9. Map the concepts
 
-'Usagi source CSV' queries are used to generate input CSV files for a mapping tool. Base the ‘Usagi source CSV’ query on the ETL query. Select sourceCode, sourceName and sourceFrequency as input csv file. Use [Keun](https://radar-azdelta.github.io/Keun/) or [Usagi](https://ohdsi.github.io/Usagi/) for the mapping and store the output after the mapping as _usagi.csv in your correct subfolder in the folder structure. Store custom concepts as _concept.csv in the correct custom subfolders. Your mappings should contain the column headers as a first row so that RiaB knows where e.g. the conceptId is situated.
+'Usagi source CSV' queries are used to generate input CSV files for a mapping tool. Base the ‘Usagi source CSV’ query on the ETL query. Select sourceCode, sourceName and sourceFrequency as input csv file. Use [Keun](https://radar-azdelta.github.io/Keun/) or [Usagi](https://ohdsi.github.io/Usagi/) for the mapping and store the output after finalizing the mapping as _usagi.csv in your correct subfolder in the folder structure. Store custom concepts with sequel _concept.csv in the correct custom subfolders. Your mappings should contain the column headers as a first row so that RiaB knows where e.g. the conceptId is situated.
 
-### 9.1 Mappings
+```table_name_folder
+  |
+  |_ relationship_concept_id --folder containing input files for mapping, mapping files, custom concept filees 
+    |
+    |_ custom
+       |_ xxx_concept.csv  -- custom concept file     
+    |_ xxx.csv             -- input csv for mapping
+    |_ xxx_usagi.csv       -- csv file containing the mappings
+    |_ xxx.sql             -- query to create your input csv for mapping
+    
+  |_ xxx.sql               -- etl query
+```
 
-Load codes from your sources system (“source codes”) that you would like to map to OMOP Vocabulary concepts. You need sourceCode, sourceName and sourceFrequency and add any additional info to map correctly.
+For more information, see [mappings](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/edit/main/docs/mappings.md)
 
-RADar has created mapping guidelines to select the correct filters and relevant domains and classes.
-
-The mapping tool can run a term similarity approach or a small translation model to map source codes to OMOP Vocabulary concepts (autosuggestion).
-
-Leverage the mapping interface to check suggested mappings or create maps. Preferably an individual who has experience with the coding system and medical terminology should be assigned as reviewer.
-
-![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/38a93303-6dba-4ef3-9cc5-780b33477014)
-
-
-Export the final mapping, share with a reviewer to reach an 'APPROVED' mapping status and place in correct subfolder. 
-
-Example of an output doctor_usagi.csv:
-
-![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/c7951073-37ed-4b74-8b8e-300bd17f47b6)
-
-For some tables like conditon_occurrence, automatic mapping, called automapping is integrated in the 'Usagi source CSV' queries as input for the mapping tool as verification.
-
-### 9.2 Custom mappings
-
-If there is no existing standard concept that matches your source concepts, you have the option to create a custom concept.
-
-Make sure your custom mappings are in a custom subfolder and have an empty first concept_id column since RiaB will create an appropriate integer for the concept_id column.
 
 ## 10. Run the ETL
 
