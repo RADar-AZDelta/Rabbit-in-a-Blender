@@ -27,7 +27,7 @@ Example of an output doctor_usagi.csv:
 
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/c7951073-37ed-4b74-8b8e-300bd17f47b6)
 
-For some tables like condition_occurrence, automatic mappinp (automapping), is integrated in the 'Usagi source CSV' queries as input for the mapping tool as verification.
+For some tables like condition_occurrence, automatic mapping (automapping), is integrated in the 'Usagi source CSV' queries as input for the mapping tool as verification.
 
 **TO DO: LINK TO MAPPING FLOW CHART!!**
 
