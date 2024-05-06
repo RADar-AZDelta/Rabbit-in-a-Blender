@@ -82,7 +82,7 @@ The entire folder structure should look like this:
 
 <img width="295" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/9041e75b-4756-400c-b114-2a6eaf33c9be">
 
-Make sure that your riab.ini file is on the same level as your table folders!
+> **Tip**: Place your riab.ini file on the same level as your table folders!
 
 An example of such a folder structure for the OMOP table visit_occurrence: 
 
