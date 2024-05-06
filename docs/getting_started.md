@@ -139,6 +139,8 @@ Run the RiaB ETL via the [ETL Commands](cli.md). If you run RiaB for the first t
 
 Make sure you add a verbose flag "-v" to get more detailed output during execution of the ETL runs.
 
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/81d49b0b-1259-42c8-95a1-86ffd813011b)
+
 Each RiaB run will create a log file.
 
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/8ff60b40-e02f-4f19-a003-e74042f8bd43)
