@@ -66,24 +66,24 @@ riab --create-folders ./OMOP_CDM
 
 Run full ETL:
 ```bash
-riab --run-etl ./OMOP-CDM
+riab --run-etl ./OMOP_CDM
 ```
 
 Run ETL on one table:
 ```bash
-riab --run-etl ./OMOP-CDM \
+riab --run-etl ./OMOP_CDM \
   --table provider
 ```
 
 Run ETL without re-upload of Usagi CSV's and custom concept CSV's:
 ```bash
-riab --run-etl ./OMOP-CDM \
+riab --run-etl ./OMOP_CDM \
   --skip-usagi-and-custom-concept-upload
 ```
 
 Run ETL for a specified sql file in the CDM folder structure. (ex: measurement/lab_measurements.sql)
 ```bash
-riab --run-etl ./OMOP-CDM \
+riab --run-etl ./OMOP_CDM \
   --skip-usagi-and-custom-concept-upload \
   --skip-event-fks-step \
   --only-query measurement/lab_measurements.sql
@@ -91,7 +91,7 @@ riab --run-etl ./OMOP-CDM \
 
 Run ETL with SEMI-APPROVED concepts during ETL testing in dev branch
 ```bash
-riab --run-etl ./OMOP-CDM \
+riab --run-etl ./OMOP_CDM \
   --process-semi-approved-mappings
 ```
 
@@ -112,12 +112,11 @@ riab --data-quality
 
 Data quality check (export result to JSON):
 ```bash
-riab --data-quality
-  --json dqd_result.json
+riab --data-quality --json dqd_result.json
 ```
 
 Data quality dashboard (default port = 8050):
 ```bash
-riab --data-quality-dashboard
-  --port 8888
+riab --data-quality-dashboard --port 8888
 ```
+Linux requires a port exceeding 1024
