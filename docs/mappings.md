@@ -1,33 +1,45 @@
 # Notes on Usagi mappings
 
+The majority of your source concepts can be mapped to **standard concepts** of existing vocabularies accepted by OMOP (e.g. SNOMED, LOINC, RXNorm, ...), but if no suiting standard concept exisits for your source concept, a **custom concept** needs to be created.
+
+## Mapping input file
+
+Before you start mapping your source codes and concepts, you need a csv file containing 3 columns: sourceCode, sourceName and sourceFrequency.
+
+<img width="422" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/a400ae3a-d1a3-4875-a2fb-0cd59e68bc8f">
+
+
+This file is your input for Usagi or [Keun](https://github.com/RADar-AZDelta/Keun), go to the documentation of [Keun](https://github.com/RADar-AZDelta/Keun) for more information on how to map your concepts. 
+
+## Follow the mapping flow to choose an appropriate concept
+
+**TO DO: LINK TO MAPPING FLOW CHART!!**
+
+## Custom concepts
+
+
+#### Create custom concept in Keun
+
+The custom concepts are mapped from the usagi.csv. The mapping tool [Keun](https://radar-azdelta.github.io/Keun/) provides the option to create a custom concept, an option which is not yet implemented in Usagi.
+
+<img width="1023" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/839bcfb1-0b7b-4d6a-81a1-2a09906ab676">
+
+
+#### source_to_concept_map 
+
+The **custom concepts** get added to the **source_to_concept_map** table, cfr. the standard mapped concepts. The concept_code is used as the source_code, the newly assigned (>2.000.000.000) concept_id is used as the target_concept_id.
+
+<img width="867" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/03945ee1-05af-4cb2-a17e-461939214ac9">
+
+
+#### usagi table 
+
+The custom concepts are also added to the **usagi table**, using the concept_code as sourceCode and the newly assigned concept_id as the conceptId.
+
+<img width="707" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/4a3ef579-eeb1-4c8c-80f9-2202e3b3389c">
+
+
+## Updating existing mapping files
+
 You will need to run the cleanup command when concept mappings change in your existing Usagi CSV's. The cleanup is not necessary when you add new queries or add additional Usagi mappings.
-
-The measurement table has the **measurement_event_id** field, the observation table has the **observation_event_id** field, the cost table has the **cost_event_id** field, the episode_event table has the **event_id** field and the fact_relationship table has the **fact_id_1** and **fact_id_2** fields. All those fields are foreign keys to almost all OMOP CMD tables. Put the source id in the event_id field and the reffered table in the field_concept_id field. An example of how to implement this in the sql-file:
-- Linking two people with a personal relationship in the fact_relationship table:
-```sql
-select distinct
-  'person' as domain_concept_id_1  -- foreign table name as string
-  ,pr.person_nr_1 as fact_id_1	-- same key as used as when adding the person to the person table
-  ,'person' as domain_concept_id_2  -- foreign table name as string	
-  ,pr.person_nr_1 as fact_id_2	-- same key as used as when adding the person to the person table
-  ,pr.relationship as relationship_concept_id  -- column with sourceCodes specifying the relationship and mapped in a _usagi.csv file in the relationship_concept_id folder
-from person_relationships pr
-```
-
-The **custom concepts** get added to the **source_to_concept_map** table. The concept_code is used as the source_code, the newly assigned (>2.000.000.000) concept_id is used as the target_concept_id. The custom concepts are also added to the **usagi table**, using the concept_code as sourceCode and the newly assigned concept_id as the conceptId. The custom concepts can be used **as mapping targets** in two ways:
-- No explicit mapping in usagi table: the source code (as assigned in your ETL sql file) is mapped to the custom concept where it equals the concept_code
-- Explicit mapping in usagi: map a sourceCode in the usagi table to a custom concept by setting its targetConceptId equal to the concept_code of the custom concept.
-
-Examples:
-
-* mapping "Cemiplimab", with source_code *M1*:
-    - Add custom concept for cemiplimab with concept_code = *M1*, it gets a assigned a concept_id automatically, no usagi-entry required
-    - Optionally add an usagi-entry for clarity, mapping sourceCode = *M1* to targetConceptId = *M1*, the concept_id gets filled in automatically
-* mapping "Atezolizumab + Cemiplimab", with source_code *C12*:
-    - Add custom concept for cemiplimab with concept_code = *M1*, it gets a assigned a concept_id automatically
-    - Add two usagi-entries: mapping sourceCode *C12* to targetConceptId = *1792776* (standard code for atezolizumab) and to targetConceptId = *M1*
-    
-    ALTERNATIVELY:
-
-    - Add custom concept for cemiplimab with concept_code = *C12*, it gets a assigned a concept_id automatically, no usagi-entry required
-    - Add only one usagi-entry, mapping sourceCode *C12* to targetConceptId = *1792776* (standard code for atezolizumab), the second mapping of *C12* to custom concept with concept_code = *C12* is done automatically.
+If your custom concepts changed (prequel, domain, class_id, deleted concepts, ...), you also need to add the flag **--clear-auto-generated-custom-concept-ids**.
