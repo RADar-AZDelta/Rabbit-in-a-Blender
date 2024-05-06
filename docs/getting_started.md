@@ -78,6 +78,12 @@ riab --create-folders ./OMOP_CDM
 ```    
 It is important to have the necessary subfolders in your folder structure. 
 
+The entire folder structure should look like this:
+
+<img width="295" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/9041e75b-4756-400c-b114-2a6eaf33c9be">
+
+Make sure that your riab.ini file is on the same level as your table folders!
+
 An example of such a folder structure for the OMOP table visit_occurrence: 
 
 ![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/1d3e86c6-96cf-4e24-ba00-cb04512c21e6)
