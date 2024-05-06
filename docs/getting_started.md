@@ -117,17 +117,15 @@ Tips:
 
 'Usagi source CSV' queries are used to generate input CSV files for a mapping tool. Base the ‘Usagi source CSV’ query on the ETL query. Select sourceCode, sourceName and sourceFrequency as input csv file. Use [Keun](https://radar-azdelta.github.io/Keun/) or [Usagi](https://ohdsi.github.io/Usagi/) for the mapping and store the output after finalizing the mapping as _usagi.csv in your correct subfolder in the folder structure. Store custom concepts with sequel _concept.csv in the correct custom subfolders. Your mappings should contain the column headers as a first row so that RiaB knows where e.g. the conceptId is situated.
 
-```table_name_folder
-  |
-  |_ relationship_concept_id --folder containing input files for mapping, mapping files, custom concept filees 
-    |
-    |_ custom
-       |_ xxx_concept.csv  -- custom concept file     
-    |_ xxx.csv             -- input csv for mapping
-    |_ xxx_usagi.csv       -- csv file containing the mappings
-    |_ xxx.sql             -- query to create your input csv for mapping
-    
-  |_ xxx.sql               -- etl query
+```
+└──table_name_folder
+  └──relationship_concept_id --folder containing input files for mapping, mapping files, custom concept filees
+  |  ├──custom
+  |  |  └──xxx_concept.csv  -- custom concept file     
+  |  ├──xxx.csv             -- input csv for mapping
+  |  ├──xxx_usagi.csv       -- csv file containing the mappings
+  |  └──xxx.sql             -- query to create your input csv for mapping
+  └──xxx.sql               -- etl query
 ```
 
 For more information, see [mappings](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/edit/main/docs/mappings.md)
