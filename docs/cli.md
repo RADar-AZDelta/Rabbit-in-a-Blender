@@ -30,6 +30,12 @@
     | -sa, --process-semi-approved-mappings | In addition to 'APPROVED' as mapping status, 'SEMI-APPROVED' will be processed as valid Usagi concept mappings.
     | -se, --skip-event-fks-step | Skip the event foreign keys ETL step.
 
+* **Cleanup specific command options (-c [TABLE], --cleanup [TABLE]):**
+
+    | command | help  
+    |---|---  
+    | --clear-auto-generated-custom-concept-ids | Cleanup the auto generated custom concept ID's (above 2 million). Without this argument, the cleanup command will not clear the mapping table (that maps the custom concept with the auto generated id above 2 million), so that you can use those above 2 million concept id's in your cohort builder, without the fear that those id's will change.
+
 * **Data quality specific command options (-dq, --data-quality):**
     | command | help  
     |---|---  
