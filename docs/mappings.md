@@ -13,7 +13,24 @@ This file is your input for Usagi or [Keun](https://github.com/RADar-AZDelta/Keu
 
 ## Follow the mapping flow to choose an appropriate concept
 
+RADar has created mapping guidelines to select the correct filters and relevant domains and classes.
+The mapping tool can run a term similarity approach or a small translation model to map source codes to OMOP Vocabulary concepts (autosuggestion).
+
+Leverage the mapping interface to check suggested mappings or create maps. Preferably an individual who has experience with the coding system and medical terminology should be assigned as reviewer.
+
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/38a93303-6dba-4ef3-9cc5-780b33477014)
+
+
+Export the final mapping, share with a reviewer to reach an 'APPROVED' mapping status and place in correct subfolder. 
+
+Example of an output doctor_usagi.csv:
+
+![image](https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98580512/c7951073-37ed-4b74-8b8e-300bd17f47b6)
+
+For some tables like condition_occurrence, automatic mappinp (automapping), is integrated in the 'Usagi source CSV' queries as input for the mapping tool as verification.
+
 **TO DO: LINK TO MAPPING FLOW CHART!!**
+
 
 ## Custom concepts
 
@@ -38,6 +55,14 @@ The custom concepts are also added to the **usagi table**, using the concept_cod
 
 <img width="707" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/4a3ef579-eeb1-4c8c-80f9-2202e3b3389c">
 
+
+## Finalizing the mapping
+
+Once you are done mapping your input file, an _usagi.csv and _concept.csv (if custom concepts were created) is exported. The _usagi.csv should be copied directly under the _concept_id folder where your mapping input file and query to create your mapping input file is stored. The _concept.csv holds your custom concepts, which should be placed in the 'custom' folder under the _concept_id folder that your concepts will be transformed to in OMOP. Make sure your custom mappings  have an empty first concept_id column since RiaB will create an appropriate integer for the concept_id column. Finally, your folder structure should look like this:
+
+<img width="215" alt="image" src="https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/assets/98480071/f4adbc83-bc97-450e-ba43-b21c12bb8217">
+
+The sequels of your files and the location where you store these files are very important since RiaB only takes correctly placed and named files during the ETL!
 
 ## Updating existing mapping files
 
