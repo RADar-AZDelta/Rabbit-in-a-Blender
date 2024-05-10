@@ -145,7 +145,7 @@ Each RiaB run will create a log file.
 
 The restriction on vocabularies and classes within each mapping domain serves the purpose of ensuring a more standardized mapping of concepts across different persons. This approach aims to mitigate the proliferation of varied concepts, promoting consistency and facilitating a cohesive representation of data.
 
-If mappings [9] or ETL queries [10] have changed in your existing usagi_csv files, you first need to do a cleanup of the appropriate OMOP tables. A cleanup command will cleanup all work tables and remove the custom concepts. Make sure you follow the correct table order to avoid foreign key issues when doing a RiaB re-run.
+If mappings [9] or ETL queries [8] have changed in your existing usagi_csv files, you first need to do a cleanup of the appropriate OMOP tables. A cleanup command will cleanup all work tables and remove the custom concepts. Make sure you follow the correct table order to avoid foreign key issues when doing a RiaB re-run.
 
 RiaB will only handle an 'APPROVED' mapping status, you can add the --process-semi-approved-mappings command to process any 'SEMI-APPROVED' mappings.
 
