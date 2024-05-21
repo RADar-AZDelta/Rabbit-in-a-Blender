@@ -43,7 +43,7 @@ The ETL flow for v5.4 is as follows:
 
 ```
 └──vocabulary
-  └──cdm_source
+  ├──cdm_source
   ├──metadata
   ├──cost
   ├──fact_relationship
