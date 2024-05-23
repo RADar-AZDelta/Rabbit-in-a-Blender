@@ -151,7 +151,7 @@ RiaB will only handle an 'APPROVED' mapping status, you can add the --process-se
 
 It is possible to do an ETL for a specified sql file, skip parsing or uploading of the USAGI or custom concept csv's or skip event foreign keys.
 
-> **Warning:** If you make changes to queries or Usagi and custom mapping CSV's, you xill need to run the --cleanup command!
+> **Warning:** If you make changes to queries or Usagi and custom mapping CSV's, you will need to run the *--cleanup* command! If only source data is added, then there is no need to run the *--cleanup* command!
 
 ## 11. Check the Data Quality
 
