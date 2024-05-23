@@ -151,6 +151,8 @@ RiaB will only handle an 'APPROVED' mapping status, you can add the --process-se
 
 It is possible to do an ETL for a specified sql file, skip parsing or uploading of the USAGI or custom concept csv's or skip event foreign keys.
 
+> **Warning:** If you make changes to queries or Usagi and custom mapping CSV's, you xill need to run the --cleanup command!
+
 ## 11. Check the Data Quality
 
 Checking data quality of your ETL and mapping is done via the command --data-quality. Using this framework, the Data Quality Dashboard takes a systematic-based approach to running data quality checks. View the results in a dashboard via --data-quality-dashboard, select a correct default port and click on the weblink. 
