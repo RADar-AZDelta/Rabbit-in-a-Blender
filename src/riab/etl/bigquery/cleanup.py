@@ -124,18 +124,18 @@ class BigQueryCleanup(Cleanup, BigQueryEtlBase):
                 concept_id_column,
             )
 
-    def _remove_omop_ids_from_map_table(self, omop_table: str) -> None:
-        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP table.
+    def _remove_omop_ids_from_map_table(self, omop_tables: list[str]) -> None:
+        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP tables.
 
         Args:
-            omop_table (str): The omop table
-        """  # noqa: E501 # pylint: disable=line-too-long
+            omop_tables (list[str]): The omop tables
+        """
         template = self._template_env.get_template(
             "cleanup/SOURCE_ID_TO_OMOP_ID_MAP_remove_ids_by_omop_table.sql.jinja"
         )
         sql = template.render(
             dataset_omop=self._dataset_omop,
-            omop_table=omop_table,
+            omop_tables=omop_tables,
         )
         self._gcp.run_query_job(sql)
 

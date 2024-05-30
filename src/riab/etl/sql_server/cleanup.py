@@ -28,7 +28,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         if self._disable_fk_constraints:
             return
 
-        #if cleanup_table == "all":
+        # if cleanup_table == "all":
         self._remove_all_constraints()
         # else:
         #     self._remove_constraints(cleanup_table)
@@ -42,7 +42,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         if self._disable_fk_constraints:
             return
 
-        #if cleanup_table == "all":
+        # if cleanup_table == "all":
         self._add_all_constraints()
         # else:
         #     self._add_constraints(cleanup_table) #we will only readd the constraints after the ETL because for example if you have peron data, and you delete the provider data, this will throw a fk constraint error!
@@ -140,19 +140,19 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
                 concept_id_column,
             )
 
-    def _remove_omop_ids_from_map_table(self, omop_table: str) -> None:
-        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP table.
+    def _remove_omop_ids_from_map_table(self, omop_tables: list[str]) -> None:
+        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP tables.
 
         Args:
-            omop_table (str): The omop table
-        """  # noqa: E501 # pylint: disable=line-too-long
+            omop_tables (list[str]): The omop tables
+        """
         template = self._template_env.get_template(
             "cleanup/SOURCE_ID_TO_OMOP_ID_MAP_remove_ids_by_omop_table.sql.jinja"
         )
         sql = template.render(
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
-            omop_table=omop_table,
+            omop_tables=omop_tables,
         )
         self._db.run_query(sql)
 
