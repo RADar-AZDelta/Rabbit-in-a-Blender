@@ -530,7 +530,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             concept_id_columns (list[str]): List of concept columns.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        if not (events or omop_table == "vocabulary"):
+        if not events:
             self._remove_constraints(omop_table)
 
         template = self._template_env.get_template("etl/{omop_table}_merge.sql.jinja")
@@ -553,7 +553,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
         )
         self._db.run_query(sql)
 
-        if not (events or omop_table == "vocabulary"):
+        if not events:
             self._add_constraints(omop_table)
 
     def _merge_event_columns(
@@ -572,7 +572,7 @@ class SqlServerEtl(Etl, SqlServerEtlBase):
             primary_key_column (str): The name of the primary key column.
             events (Any): Object that holds the events of the the OMOP table.
         """  # noqa: E501 # pylint: disable=line-too-long
-        if not (events or omop_table == "vocabulary"):
+        if not events:
             return
 
         logging.info(
