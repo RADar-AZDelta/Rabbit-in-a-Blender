@@ -110,6 +110,8 @@ class Cleanup(EtlBase, ABC):
 
             # truncate omop tables
             omop_tables_to_truncate = [table_name for table_name in self._omop_cdm_tables if table_name in tables]
+            if "vocabulary" in tables:
+                omop_tables_to_truncate.append("vocabulary")
 
             futures = [
                 executor.submit(
@@ -136,20 +138,6 @@ class Cleanup(EtlBase, ABC):
         )
         self._remove_custom_concepts_from_concept_table()
 
-        logging.info(
-            "Removing custom concepts from 'concept_relationship' table",
-        )
-        self._remove_custom_concepts_from_concept_relationship_table()
-
-        logging.info(
-            "Removing custom concepts from 'concept_ancestor' table",
-        )
-        self._remove_custom_concepts_from_concept_ancestor_table()
-
-        logging.info(
-            "Removing custom concepts (local vocabularies) from 'vocabulary' table",
-        )
-        self._remove_custom_concepts_from_vocabulary_table()
         self._custom_db_engine_cleanup("all")
 
         # delete work tables
@@ -170,6 +158,7 @@ class Cleanup(EtlBase, ABC):
 
             # truncate omop tables
             omop_tables_to_truncate = [table_name for table_name in self._omop_cdm_tables]
+            omop_tables_to_truncate.append("vocabulary")
 
             futures = [
                 executor.submit(
@@ -220,30 +209,6 @@ class Cleanup(EtlBase, ABC):
                 f"{omop_table}__{concept_id_column}_concept",
             )
             self._remove_custom_concepts_from_concept_table_using_usagi_table(omop_table, concept_id_column)
-
-            logging.info(
-                "Removing custom concepts from '%s' based on values from '%s' CSV",
-                "concept_relationship",
-                f"{omop_table}__{concept_id_column}_usagi",
-            )
-            self._remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
-                omop_table, concept_id_column
-            )
-
-            logging.info(
-                "Removing custom concepts from '%s' based on values from '%s' CSV",
-                "concept_ancestor",
-                f"{omop_table}__{concept_id_column}_usagi",
-            )
-            self._remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(omop_table, concept_id_column)
-
-            if omop_table == "vocabulary":
-                logging.info(
-                    "Removing custom concepts from '%s' based on values from '%s' CSV",
-                    "vocabulary",
-                    f"{omop_table}__{concept_id_column}_usagi",
-                )
-                self._remove_custom_concepts_from_vocabulary_table_using_usagi_table(omop_table, concept_id_column)
         except Exception as e:
             logging.warn(e)
 
@@ -280,21 +245,6 @@ class Cleanup(EtlBase, ABC):
         pass
 
     @abstractmethod
-    def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
-        """Remove the custom concepts from the OMOP concept_relationship table"""
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
-        """Remove the custom concepts from the OMOP concept_ancestor table"""
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_vocabulary_table(self) -> None:
-        """Remove the custom concepts from the OMOP vocabulary table"""
-        pass
-
-    @abstractmethod
     def _remove_custom_concepts_from_concept_table_using_usagi_table(
         self, omop_table: str, concept_id_column: str
     ) -> None:
@@ -312,42 +262,6 @@ class Cleanup(EtlBase, ABC):
 
         Args:
             omop_tables (list[str]): The omop tables
-        """
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """
-        pass
-
-    @abstractmethod
-    def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
         """
         pass
 

@@ -1,3 +1,8 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
+{%- if table_name != 'vocabulary' %}
 truncate table `{{dataset_omop}}.{{table_name}}`
+{%- else %}                
+delete from `{{dataset_omop}}.vocabulary` 
+where vocabulary_concept_id >= {{min_custom_concept_id}}
+{%- endif %}
