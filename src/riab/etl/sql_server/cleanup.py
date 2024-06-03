@@ -28,7 +28,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         if self._disable_fk_constraints:
             return
 
-        #if cleanup_table == "all":
+        # if cleanup_table == "all":
         self._remove_all_constraints()
         # else:
         #     self._remove_constraints(cleanup_table)
@@ -42,7 +42,7 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
         if self._disable_fk_constraints:
             return
 
-        #if cleanup_table == "all":
+        # if cleanup_table == "all":
         self._add_all_constraints()
         # else:
         #     self._add_constraints(cleanup_table) #we will only readd the constraints after the ETL because for example if you have peron data, and you delete the provider data, this will throw a fk constraint error!
@@ -67,42 +67,13 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
             table_name=table_name,
+            min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
         )
         self._db.run_query(sql)
 
     def _remove_custom_concepts_from_concept_table(self) -> None:
         """Remove the custom concepts from the OMOP concept table"""
         template = self._template_env.get_template("cleanup/CONCEPT_remove_custom_concepts.sql.jinja")
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-            min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
-        )
-        self._db.run_query(sql)
-
-    def _remove_custom_concepts_from_concept_relationship_table(self) -> None:
-        """Remove the custom concepts from the OMOP concept_relationship table"""
-        template = self._template_env.get_template("cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts.sql.jinja")
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-            min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
-        )
-        self._db.run_query(sql)
-
-    def _remove_custom_concepts_from_concept_ancestor_table(self) -> None:
-        """Remove the custom concepts from the OMOP concept_ancestor table"""
-        template = self._template_env.get_template("cleanup/CONCEPT_ANCESTOR_remove_custom_concepts.sql.jinja")
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-            min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
-        )
-        self._db.run_query(sql)
-
-    def _remove_custom_concepts_from_vocabulary_table(self) -> None:
-        """Remove the custom concepts from the OMOP vocabulary table"""
-        template = self._template_env.get_template("cleanup/VOCABULARY_remove_custom_concepts.sql.jinja")
         sql = template.render(
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
@@ -140,111 +111,21 @@ class SqlServerCleanup(Cleanup, SqlServerEtlBase):
                 concept_id_column,
             )
 
-    def _remove_omop_ids_from_map_table(self, omop_table: str) -> None:
-        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP table.
+    def _remove_omop_ids_from_map_table(self, omop_tables: list[str]) -> None:
+        """Remove the mapping of source to omop id's from the SOURCE_ID_TO_OMOP_ID_MAP for a specific OMOP tables.
 
         Args:
-            omop_table (str): The omop table
-        """  # noqa: E501 # pylint: disable=line-too-long
+            omop_tables (list[str]): The omop tables
+        """
         template = self._template_env.get_template(
             "cleanup/SOURCE_ID_TO_OMOP_ID_MAP_remove_ids_by_omop_table.sql.jinja"
         )
         sql = template.render(
             omop_database_catalog=self._omop_database_catalog,
             omop_database_schema=self._omop_database_schema,
-            omop_table=omop_table,
+            omop_tables=omop_tables,
         )
         self._db.run_query(sql)
-
-    def _remove_custom_concepts_from_concept_relationship_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_relationship table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template(
-            "cleanup/CONCEPT_RELATIONSHIP_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"  # noqa: E501 # pylint: disable=line-too-long
-        )
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-            work_database_catalog=self._work_database_catalog,
-            work_database_schema=self._work_database_schema,
-            min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
-            omop_table=omop_table,
-            concept_id_column=concept_id_column,
-        )
-        try:
-            self._db.run_query(sql)
-        except Exception:
-            logging.debug(
-                "Table %s__%s_usagi_table not found in work dataset",
-                omop_table,
-                concept_id_column,
-            )
-
-    def _remove_custom_concepts_from_concept_ancestor_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP concept_ancestor table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template(
-            "cleanup/CONCEPT_ANCESTOR_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"  # noqa: E501 # pylint: disable=line-too-long
-        )
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-            work_database_catalog=self._work_database_catalog,
-            work_database_schema=self._work_database_schema,
-            min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
-            omop_table=omop_table,
-            concept_id_column=concept_id_column,
-        )
-        try:
-            self._db.run_query(sql)
-        except Exception:
-            logging.debug(
-                "Table %s__%s_usagi_table not found in work dataset",
-                omop_table,
-                concept_id_column,
-            )
-
-    def _remove_custom_concepts_from_vocabulary_table_using_usagi_table(
-        self, omop_table: str, concept_id_column: str
-    ) -> None:
-        """Remove the custom concepts of a specific concept column of a specific OMOP table from the OMOP vocabulary table
-
-        Args:
-            omop_table (str): The omop table
-            concept_id_column (str): The conept id column
-        """  # noqa: E501 # pylint: disable=line-too-long
-        template = self._template_env.get_template(
-            "cleanup/VOCABULARY_remove_custom_concepts_by_{omop_table}__{concept_id_column}_usagi_table.sql.jinja"
-        )
-        sql = template.render(
-            omop_database_catalog=self._omop_database_catalog,
-            omop_database_schema=self._omop_database_schema,
-            work_database_catalog=self._work_database_catalog,
-            work_database_schema=self._work_database_schema,
-            min_custom_concept_id=EtlBase._CUSTOM_CONCEPT_IDS_START,
-            omop_table=omop_table,
-            concept_id_column=concept_id_column,
-        )
-        try:
-            self._db.run_query(sql)
-        except Exception:
-            logging.debug(
-                "Table %s__%s_usagi_table not found in work dataset",
-                omop_table,
-                concept_id_column,
-            )
 
     def _remove_source_to_concept_map_using_usagi_table(self, omop_table: str, concept_id_column: str) -> None:
         """Remove the concepts of a specific concept column of a specific OMOP table from the OMOP source_to_concept_map table
