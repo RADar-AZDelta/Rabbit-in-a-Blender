@@ -1,4 +1,9 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
 DELETE FROM `{{dataset_omop}}.source_id_to_omop_id_map` 
-WHERE omop_table = '{{omop_table}}'
+WHERE omop_table IN (
+    {%- for omop_table in omop_tables %}
+        '{{omop_table}}'
+        {%- if not loop.last %}, {% endif %}
+    {%- endfor %}
+)
