@@ -20,14 +20,14 @@ USING (
                 {%- set ns = namespace(ci_counter=0) -%}
                 {%- for column in concept_id_columns %}
                     {%- if not column in events.values() %}
-                swap_ci{{ns.ci_counter}}.conceptId as {{column}},
+                swap_ci{{ns.ci_counter}}.conceptId as `{{column}}`,
                         {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                     {%- else %}
-                t.{{column}},
+                t.`{{column}}`,
                     {%- endif -%}
                 {%- endfor -%} 
                 {%- for column in events %}
-                    t.{{column}},
+                    t.`{{column}}`,
                 {%- endfor %}
                 '{{sql_file}}' as source
             FROM `{{dataset_work}}.{{omop_table}}__upload__{{upload_table}}` t      
@@ -36,7 +36,7 @@ USING (
                 {%- set ns = namespace(ci_counter=0) %}  
                 {%- for column in concept_id_columns %}
                     {%- if not column in events and not column in events.values() %}
-            LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}} 
+            LEFT OUTER JOIN `{{dataset_work}}.{{omop_table}}__{{column.lower()}}_usagi` swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.`{{column}}` 
                         {% if not process_semi_approved_mappings -%}
                 and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
                         {%- else -%}
@@ -52,20 +52,20 @@ USING (
     SELECT
         s.x,
         {%- for column in concept_id_columns %}
-        s.{{column}},
+        s.`{{column}}`,
         {%- endfor %} 
         {%- for column in events -%}
-        s.{{column}},
+        s.`{{column}}`,
         {%- endfor %}
         s.source,
         ROW_NUMBER() OVER(
             ORDER BY
                 s.x,
                 {%- for column in concept_id_columns %}
-                s.{{column}},
+                s.`{{column}}`,
                 {%- endfor %} 
                 {%- for column in events -%}
-                s.{{column}},
+                s.`{{column}}`,
                 {%- endfor %}
                 s.source
         ) + cte_max.y as y
@@ -75,9 +75,9 @@ USING (
 ON S.x = T.x
 {%- for column in concept_id_columns %}
     {% if not column in events.values() -%}
-    and S.{{column}} = T.{{column}}
+    and S.`{{column}}` = T.`{{column}}`
     {%- else -%}
-    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    and coalesce(S.`{{column}}`, '') = coalesce(T.`{{column}}`, '')
     {%- endif -%} 
 {%- endfor %} 
 WHEN NOT MATCHED THEN

@@ -7,7 +7,7 @@ CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_ta
       {% if not loop.first %}
   {{ ',' }}
       {%- endif -%}
-      {{ column["cdmFieldName"] }}
+      [{{ column["cdmFieldName"] }}]
       {%- if column["isPrimaryKey"] == 'Yes' %} varchar(255) 
       {%- elif column["isForeignKey"] == 'Yes' %} varchar(255) 
       {%- elif column["cdmFieldName"] in events.keys() %} varchar(255) 
@@ -29,12 +29,12 @@ CREATE INDEX idx_{{upload_table}}_1 ON [{{work_database_catalog}}].[{{work_datab
 {%- endif -%}
 {# {%- for column in concept_id_columns -%}
     {%- if not column in events.values() %}
-    , {{column}}
+    , [{{column}}]
     {%- endif -%} 
 {%- endfor -%}
 {%- for column in events -%}
     {%- if omop_table != 'fact_relationship' %}
-    , {{column}}
+    , [{{column}}]
     {%- endif -%}
 {%- endfor %} #}
 );

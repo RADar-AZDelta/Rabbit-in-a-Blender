@@ -6,7 +6,7 @@ BEGIN
     CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{primary_key_column}}_swap]  
     (x varchar(255),
     {%- for column in concept_id_columns -%}
-        {{column}} 
+        [{{column}}] 
         {% if not column in events.values() -%}
             integer,
         {# {{column}}_source_value STRING, #}
@@ -15,7 +15,7 @@ BEGIN
         {%- endif -%}
     {%- endfor -%}
     {%- for column in events %}
-        {{column}} varchar(255),
+        [{{column}}] varchar(255),
     {%- endfor -%}
         source varchar(255),
         y integer

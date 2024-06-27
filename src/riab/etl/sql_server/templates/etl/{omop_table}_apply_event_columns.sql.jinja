@@ -17,13 +17,13 @@ WITH cte_swapped_events AS (
                     {%- set ns.fk_counter = ns.fk_counter + 1 %}
                 {%- endfor %}
             ELSE 0
-        END AS {{column}}
+        END AS [{{column}}]
                 {%- else %}
-        null AS {{column}}
+        null AS [{{column}}]
                 {%- endif %}
             {%- elif column in events.values() -%} {# event concept_id #}
                 {%- if event_tables.keys()|length > 0  %} 
-        CASE t.{{column}}
+        CASE t.[{{column}}]
                     {%- if 'care_site' in event_tables %}
             WHEN 'care_site' THEN 1147195
                     {%- endif -%}
@@ -115,19 +115,19 @@ WITH cte_swapped_events AS (
             WHEN 'vocabulary' THEN 1146955
                     {%- endif %}
             ELSE NULL
-        END AS {{column}}
+        END AS [{{column}}]
                 {%- else %}
-        NULL AS {{column}}
+        NULL AS [{{column}}]
                 {%- endif %}
             {%- else %}
-        t.{{column}}
+        t.[{{column}}]
             {%- endif %}
         {%- endfor %}            
     FROM [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}] t
     {%- set ns = namespace(fk_counter=0) -%}
     {%- for column in events %}
         {%- for (table, key) in event_tables.items() %}
-    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{key}}_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{key}}_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]
             {%- set ns.fk_counter = ns.fk_counter + 1 -%}
         {%- endfor %}
     {%- endfor %}
@@ -143,7 +143,7 @@ WITH cte_swapped_events AS (
                 {%- if not loop.first -%}
                     {{','}}
                 {%- endif %}
-                {{column}}
+                [{{column}}]
             {%- endfor %}
         ) AS rn
     FROM cte_swapped_events
@@ -164,7 +164,7 @@ WITH cte_swapped_events AS (
             {%- if not loop.first -%}
             {{','}}
             {%- endif %}
-            {{column}}
+            [{{column}}]
         {%- endfor %}    
         from cte_duplicates
         where rn > 1
@@ -189,7 +189,7 @@ FROM (
         {%- if not loop.first -%}
         {{','}}
         {%- endif %}
-        {{column}}
+        [{{column}}]
     {%- endfor %}     
     FROM cte_duplicates
     WHERE rn = 1
@@ -199,7 +199,7 @@ FROM (
     SELECT (m.max_id + mr.rn) AS {{primary_key_column}}
     {%- for column in columns -%}
         {%- if not column == primary_key_column -%}
-        ,mr.{{column}}
+        ,mr.[{{column}}]
         {%- endif %}
     {%- endfor %}     
     FROM cte_events_mapped_to_multiple_rows mr

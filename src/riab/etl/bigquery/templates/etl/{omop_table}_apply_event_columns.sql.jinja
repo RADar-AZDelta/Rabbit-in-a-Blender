@@ -13,7 +13,7 @@ AS (
                         {%- if not loop.first -%}
                             {{','}}
                         {%- endif -%}
-                        {{column}}
+                        `{{column}}`
                     {%- endfor %}
             ) AS rn
         FROM (
@@ -32,13 +32,13 @@ AS (
                             {%- set ns.fk_counter = ns.fk_counter + 1 %}
                         {%- endfor %}
                     ELSE 0
-                END AS {{column}}
+                END AS `{{column}}`
                         {%- else %}
-                null AS {{column}}
+                null AS `{{column}}`
                         {%- endif %}
                     {%- elif column in events.values() -%} {# event concept_id #}
                         {%- if event_tables.keys()|length > 0  %} 
-                CASE t.{{column}}
+                CASE t.`{{column}}`
                             {%- if "care_site" in event_tables %}
                     WHEN "care_site" THEN 1147195
                             {%- endif -%}
@@ -130,19 +130,19 @@ AS (
                     WHEN "vocabulary" THEN 1146955
                             {%- endif %}
                     ELSE NULL
-                END AS {{column}}
+                END AS `{{column}}`
                         {%- else %}
-                NULL AS {{column}}
+                NULL AS `{{column}}`
                         {%- endif %}
                     {%- else %}
-                t.{{column}}
+                t.`{{column}}`
                     {%- endif %}
                 {%- endfor %}            
             FROM `{{dataset_work}}.{{omop_table}}` t
             {%- set ns = namespace(fk_counter=0) -%}
             {%- for column in events %}
                 {%- for (table, key) in event_tables.items() %}
-            LEFT OUTER JOIN `{{dataset_work}}.{{key}}_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+            LEFT OUTER JOIN `{{dataset_work}}.{{key}}_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.`{{column}}`
                     {%- set ns.fk_counter = ns.fk_counter + 1 -%}
                 {%- endfor %}
             {%- endfor %}

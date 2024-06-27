@@ -6,7 +6,7 @@ FROM (
     {%- if not loop.first %}
     UNION ALL
     {%- endif %}
-    SELECT DISTINCT {{column}} as event_table
+    SELECT DISTINCT `{{column}}` as event_table
     FROM `{{dataset_work}}.{{omop_table}}` 
 {%- endfor %} 
 )
