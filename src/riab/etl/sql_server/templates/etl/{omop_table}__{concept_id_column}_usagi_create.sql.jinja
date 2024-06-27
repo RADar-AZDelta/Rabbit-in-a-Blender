@@ -4,7 +4,7 @@ USE  [{{work_database_catalog}}];
 IF NOT EXISTS (SELECT 1 FROM sys.tables t INNER JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE t.name = '{{omop_table}}__{{concept_id_column}}_usagi' AND s.name = '{{work_database_schema}}')
 BEGIN
     CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] 
-    (sourceCode varchar(50), sourceName varchar(255), mappingStatus varchar(50), conceptId integer, conceptName varchar(255), domainId varchar(20));
+    (sourceCode varchar(255), sourceName varchar(255), mappingStatus varchar(50), conceptId integer, conceptName varchar(255), domainId varchar(20));
     CREATE INDEX idx_{{omop_table}}__{{concept_id_column}}_usagi_1 ON [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] (sourceCode, mappingStatus) INCLUDE (conceptId);
     CREATE INDEX idx_{{omop_table}}__{{concept_id_column}}_usagi_2 ON [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{concept_id_column}}_usagi] (mappingStatus) INCLUDE (sourceCode, sourceName, conceptId);
 END

@@ -4,20 +4,20 @@ USE  [{{work_database_catalog}}];
 IF NOT EXISTS (SELECT 1 FROM sys.tables t INNER JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE t.name = '{{primary_key_column}}_swap' AND s.name = '{{work_database_schema}}')
 BEGIN  
     CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{primary_key_column}}_swap]  
-    (x varchar(50),
+    (x varchar(255),
     {%- for column in concept_id_columns -%}
         {{column}} 
         {% if not column in events.values() -%}
             integer,
         {# {{column}}_source_value STRING, #}
         {%- else -%}
-            varchar(50),
+            varchar(255),
         {%- endif -%}
     {%- endfor -%}
     {%- for column in events %}
-        {{column}} varchar(50),
+        {{column}} varchar(255),
     {%- endfor -%}
-        source varchar(50),
+        source varchar(255),
         y integer
     );
     CREATE INDEX idx_{{primary_key_column}}_swap_1 ON [{{work_database_catalog}}].[{{work_database_schema}}].[{{primary_key_column}}_swap] (x);
