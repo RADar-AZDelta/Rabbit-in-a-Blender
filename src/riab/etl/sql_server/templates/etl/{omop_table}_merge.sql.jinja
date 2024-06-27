@@ -42,7 +42,7 @@ WITH cte_uploaded_tables AS (
             t.[{{column}}] as [{{column}}]
             {%- endif -%} 
         {%- elif column.endswith("_source_value") and pk_auto_numbering -%}
-            STRING_AGG(t.[{{column}}], ', ') as [{{column}}] 
+            LEFT(STRING_AGG(t.[{{column}}], ', '), 255) as [{{column}}] 
         {%- else -%}
             t.[{{column}}]
         {%- endif %}
