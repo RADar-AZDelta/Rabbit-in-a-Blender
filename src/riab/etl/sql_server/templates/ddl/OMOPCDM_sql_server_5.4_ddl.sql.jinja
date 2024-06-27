@@ -24,12 +24,12 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].PERSON (
 			location_id integer NULL,
 			provider_id integer NULL,
 			care_site_id integer NULL,
-			person_source_value varchar(50) NULL,
-			gender_source_value varchar(50) NULL,
+			person_source_value varchar(255) NULL,
+			gender_source_value varchar(255) NULL,
 			gender_source_concept_id integer NULL,
-			race_source_value varchar(50) NULL,
+			race_source_value varchar(255) NULL,
 			race_source_concept_id integer NULL,
-			ethnicity_source_value varchar(50) NULL,
+			ethnicity_source_value varchar(255) NULL,
 			ethnicity_source_concept_id integer NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].OBSERVATION_PERIOD', N'U') IS NOT NULL
@@ -54,12 +54,12 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].VISIT_OCCURR
 			visit_type_concept_id Integer NOT NULL,
 			provider_id integer NULL,
 			care_site_id integer NULL,
-			visit_source_value varchar(50) NULL,
+			visit_source_value varchar(255) NULL,
 			visit_source_concept_id integer NULL,
 			admitted_from_concept_id integer NULL,
-			admitted_from_source_value varchar(50) NULL,
+			admitted_from_source_value varchar(255) NULL,
 			discharged_to_concept_id integer NULL,
-			discharged_to_source_value varchar(50) NULL,
+			discharged_to_source_value varchar(255) NULL,
 			preceding_visit_occurrence_id integer NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].VISIT_DETAIL', N'U') IS NOT NULL
@@ -75,11 +75,11 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].VISIT_DETAIL
 			visit_detail_type_concept_id integer NOT NULL,
 			provider_id integer NULL,
 			care_site_id integer NULL,
-			visit_detail_source_value varchar(50) NULL,
+			visit_detail_source_value varchar(255) NULL,
 			visit_detail_source_concept_id Integer NULL,
 			admitted_from_concept_id Integer NULL,
-			admitted_from_source_value varchar(50) NULL,
-			discharged_to_source_value varchar(50) NULL,
+			admitted_from_source_value varchar(255) NULL,
+			discharged_to_source_value varchar(255) NULL,
 			discharged_to_concept_id integer NULL,
 			preceding_visit_detail_id integer NULL,
 			parent_visit_detail_id integer NULL,
@@ -101,9 +101,9 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].CONDITION_OC
 			provider_id integer NULL,
 			visit_occurrence_id integer NULL,
 			visit_detail_id integer NULL,
-			condition_source_value varchar(50) NULL,
+			condition_source_value varchar(255) NULL,
 			condition_source_concept_id integer NULL,
-			condition_status_source_value varchar(50) NULL );
+			condition_status_source_value varchar(255) NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].DRUG_EXPOSURE', N'U') IS NOT NULL
 	DROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].DRUG_EXPOSURE; 
@@ -127,10 +127,10 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].DRUG_EXPOSUR
 			provider_id integer NULL,
 			visit_occurrence_id integer NULL,
 			visit_detail_id integer NULL,
-			drug_source_value varchar(50) NULL,
+			drug_source_value varchar(255) NULL,
 			drug_source_concept_id integer NULL,
-			route_source_value varchar(50) NULL,
-			dose_unit_source_value varchar(50) NULL );
+			route_source_value varchar(255) NULL,
+			dose_unit_source_value varchar(255) NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].PROCEDURE_OCCURRENCE', N'U') IS NOT NULL
 	DROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].PROCEDURE_OCCURRENCE; 
@@ -148,9 +148,9 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].PROCEDURE_OC
 			provider_id integer NULL,
 			visit_occurrence_id integer NULL,
 			visit_detail_id integer NULL,
-			procedure_source_value varchar(50) NULL,
+			procedure_source_value varchar(255) NULL,
 			procedure_source_concept_id integer NULL,
-			modifier_source_value varchar(50) NULL );
+			modifier_source_value varchar(255) NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].DEVICE_EXPOSURE', N'U') IS NOT NULL
 	DROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].DEVICE_EXPOSURE; 
@@ -169,10 +169,10 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].DEVICE_EXPOS
 			provider_id integer NULL,
 			visit_occurrence_id integer NULL,
 			visit_detail_id integer NULL,
-			device_source_value varchar(50) NULL,
+			device_source_value varchar(255) NULL,
 			device_source_concept_id integer NULL,
 			unit_concept_id integer NULL,
-			unit_source_value varchar(50) NULL,
+			unit_source_value varchar(255) NULL,
 			unit_source_concept_id integer NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].MEASUREMENT', N'U') IS NOT NULL
@@ -194,11 +194,11 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].MEASUREMENT 
 			provider_id integer NULL,
 			visit_occurrence_id integer NULL,
 			visit_detail_id integer NULL,
-			measurement_source_value varchar(50) NULL,
+			measurement_source_value varchar(255) NULL,
 			measurement_source_concept_id integer NULL,
-			unit_source_value varchar(50) NULL,
+			unit_source_value varchar(255) NULL,
 			unit_source_concept_id integer NULL,
-			value_source_value varchar(50) NULL,
+			value_source_value varchar(255) NULL,
 			measurement_event_id integer NULL,
 			meas_event_field_concept_id integer NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
@@ -219,11 +219,11 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].OBSERVATION 
 			provider_id integer NULL,
 			visit_occurrence_id integer NULL,
 			visit_detail_id integer NULL,
-			observation_source_value varchar(50) NULL,
+			observation_source_value varchar(255) NULL,
 			observation_source_concept_id integer NULL,
-			unit_source_value varchar(50) NULL,
-			qualifier_source_value varchar(50) NULL,
-			value_source_value varchar(50) NULL,
+			unit_source_value varchar(255) NULL,
+			qualifier_source_value varchar(255) NULL,
+			value_source_value varchar(255) NULL,
 			observation_event_id integer NULL,
 			obs_event_field_concept_id integer NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
@@ -235,7 +235,7 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].DEATH (
 			death_datetime datetime NULL,
 			death_type_concept_id integer NULL,
 			cause_concept_id integer NULL,
-			cause_source_value varchar(50) NULL,
+			cause_source_value varchar(255) NULL,
 			cause_source_concept_id integer NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].NOTE', N'U') IS NOT NULL
@@ -254,7 +254,7 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].NOTE (
 			provider_id integer NULL,
 			visit_occurrence_id integer NULL,
 			visit_detail_id integer NULL,
-			note_source_value varchar(50) NULL,
+			note_source_value varchar(255) NULL,
 			note_event_id integer NULL,
 			note_event_field_concept_id integer NULL );
 --HINT DISTRIBUTE ON RANDOM
@@ -290,10 +290,10 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].SPECIMEN (
 			anatomic_site_concept_id integer NULL,
 			disease_status_concept_id integer NULL,
 			specimen_source_id varchar(50) NULL,
-			specimen_source_value varchar(50) NULL,
-			unit_source_value varchar(50) NULL,
-			anatomic_site_source_value varchar(50) NULL,
-			disease_status_source_value varchar(50) NULL );
+			specimen_source_value varchar(255) NULL,
+			unit_source_value varchar(255) NULL,
+			anatomic_site_source_value varchar(255) NULL,
+			disease_status_source_value varchar(255) NULL );
 --HINT DISTRIBUTE ON RANDOM
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].FACT_RELATIONSHIP', N'U') IS NOT NULL
 	DROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].FACT_RELATIONSHIP; 
@@ -314,7 +314,7 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].LOCATION (
 			state varchar(2) NULL,
 			zip varchar(9) NULL,
 			county varchar(20) NULL,
-			location_source_value varchar(50) NULL,
+			location_source_value varchar(255) NULL,
 			country_concept_id integer NULL,
 			country_source_value varchar(80) NULL,
 			latitude float NULL,
@@ -327,8 +327,8 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].CARE_SITE (
 			care_site_name varchar(255) NULL,
 			place_of_service_concept_id integer NULL,
 			location_id integer NULL,
-			care_site_source_value varchar(50) NULL,
-			place_of_service_source_value varchar(50) NULL );
+			care_site_source_value varchar(255) NULL,
+			place_of_service_source_value varchar(255) NULL );
 --HINT DISTRIBUTE ON RANDOM
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].PROVIDER', N'U') IS NOT NULL
 	DROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].PROVIDER; 
@@ -341,10 +341,10 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].PROVIDER (
 			care_site_id integer NULL,
 			year_of_birth integer NULL,
 			gender_concept_id integer NULL,
-			provider_source_value varchar(50) NULL,
-			specialty_source_value varchar(50) NULL,
+			provider_source_value varchar(255) NULL,
+			specialty_source_value varchar(255) NULL,
 			specialty_source_concept_id integer NULL,
-			gender_source_value varchar(50) NULL,
+			gender_source_value varchar(255) NULL,
 			gender_source_concept_id integer NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].PAYER_PLAN_PERIOD', N'U') IS NOT NULL
@@ -355,17 +355,17 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].PAYER_PLAN_P
 			payer_plan_period_start_date date NOT NULL,
 			payer_plan_period_end_date date NOT NULL,
 			payer_concept_id integer NULL,
-			payer_source_value varchar(50) NULL,
+			payer_source_value varchar(255) NULL,
 			payer_source_concept_id integer NULL,
 			plan_concept_id integer NULL,
-			plan_source_value varchar(50) NULL,
+			plan_source_value varchar(255) NULL,
 			plan_source_concept_id integer NULL,
 			sponsor_concept_id integer NULL,
-			sponsor_source_value varchar(50) NULL,
+			sponsor_source_value varchar(255) NULL,
 			sponsor_source_concept_id integer NULL,
-			family_source_value varchar(50) NULL,
+			family_source_value varchar(255) NULL,
 			stop_reason_concept_id integer NULL,
-			stop_reason_source_value varchar(50) NULL,
+			stop_reason_source_value varchar(255) NULL,
 			stop_reason_source_concept_id integer NULL );
 --HINT DISTRIBUTE ON RANDOM
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].COST', N'U') IS NOT NULL
@@ -390,7 +390,7 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].COST (
 			payer_plan_period_id integer NULL,
 			amount_allowed float NULL,
 			revenue_code_concept_id integer NULL,
-			revenue_code_source_value varchar(50) NULL,
+			revenue_code_source_value varchar(255) NULL,
 			drg_concept_id integer NULL,
 			drg_source_value varchar(3) NULL );
 --HINT DISTRIBUTE ON KEY (person_id)
@@ -440,7 +440,7 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].EPISODE (
 			episode_number integer NULL,
 			episode_object_concept_id integer NOT NULL,
 			episode_type_concept_id integer NOT NULL,
-			episode_source_value varchar(50) NULL,
+			episode_source_value varchar(255) NULL,
 			episode_source_concept_id integer NULL );
 --HINT DISTRIBUTE ON RANDOM
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].EPISODE_EVENT', N'U') IS NOT NULL

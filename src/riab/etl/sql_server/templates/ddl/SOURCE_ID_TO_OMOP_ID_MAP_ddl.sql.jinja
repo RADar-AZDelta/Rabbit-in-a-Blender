@@ -6,7 +6,7 @@ create table [{{omop_database_catalog}}].[{{omop_database_schema}}].source_id_to
     omop_table varchar(50) not null,
     omop_id integer not null,
     source varchar(50),
-    source_id varchar(50) not null,
+    source_id varchar(255)) not null,
     valid_start_date DATE not null,
     valid_end_date DATE not null,
     invalid_reason varchar(50)

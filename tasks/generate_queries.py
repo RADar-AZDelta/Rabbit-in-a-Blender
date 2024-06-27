@@ -93,6 +93,9 @@ def modify_sqlserver_cdm_ddl(sql: str, ddl_part: str) -> str:
     sql = sql.replace("concept_name varchar(255) NOT NULL,", "concept_name varchar(510) NOT NULL,")
     sql = sql.replace("concept_synonym_name varchar(1000) NOT NULL,", "concept_synonym_name varchar(1100) NOT NULL,")
     sql = sql.replace("vocabulary_name varchar(255) NOT NULL,", "vocabulary_name varchar(510) NOT NULL,")
+    
+    # deviation from OMOP CDM 5.4 change the length of source_value columns from 50 chars to 255 (see https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/issues/71)
+    sql = sql.replace("_source_value varchar(50)", "_source_value varchar(255)")
 
     if ddl_part == "ddl":
         sql = (

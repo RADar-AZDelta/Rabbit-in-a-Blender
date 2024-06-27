@@ -1,5 +1,5 @@
 SELECT
-    CONCAT('CONCEPT_PREQUAL_', CAST(raw.{{ concept_column.cdmFieldName }}_column as VARCHAR(50))) AS sourceCode
+    CONCAT('CONCEPT_PREQUAL_', CAST(raw.{{ concept_column.cdmFieldName }}_column as VARCHAR(255))) AS sourceCode
     ,raw.{{ concept_column.cdmFieldName }}_column_with_description AS sourceName
     ,COUNT(*) AS sourceFrequency
 FROM dbo.raw_{{ omop_table }} raw

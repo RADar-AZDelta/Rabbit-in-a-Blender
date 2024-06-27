@@ -8,9 +8,9 @@ CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{upload_ta
   {{ ',' }}
       {%- endif -%}
       {{ column["cdmFieldName"] }}
-      {%- if column["isPrimaryKey"] == 'Yes' %} varchar(50) 
-      {%- elif column["isForeignKey"] == 'Yes' %} varchar(50) 
-      {%- elif column["cdmFieldName"] in events.keys() %} varchar(50) 
+      {%- if column["isPrimaryKey"] == 'Yes' %} varchar(255) 
+      {%- elif column["isForeignKey"] == 'Yes' %} varchar(255) 
+      {%- elif column["cdmFieldName"] in events.keys() %} varchar(255) 
       {%- else %} {{ column["cdmDatatype"] }}
       {%- endif -%}
   {%- endfor %}
