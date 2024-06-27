@@ -28,13 +28,13 @@ SELECT
     {{ '' }}
     {%- endif -%}
     {%- if column.isPrimaryKey == 'Yes' -%}
-    CONCAT('PK_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as STRING))
+    CONCAT('PK_PREQUAL_', CAST(raw.`{{ column.cdmFieldName }}_column` as STRING))
     {%- elif column.isForeignKey == 'Yes' and column.fkTableName != "CONCEPT" -%}
-    CONCAT('FK_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as STRING))
+    CONCAT('FK_PREQUAL_', CAST(raw.`{{ column.cdmFieldName }}_column` as STRING))
     {%- elif column.isForeignKey == 'Yes' and column.fkTableName == "CONCEPT" -%}
-    CONCAT('CONCEPT_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as STRING))
+    CONCAT('CONCEPT_PREQUAL_', CAST(raw.`{{ column.cdmFieldName }}_column` as STRING))
     {%- else -%}
-    CAST(raw.{{ column.cdmFieldName }}_column as {{ cdmToBigQuertyDataTypes[column.cdmDatatype] }})
+    CAST(raw.`{{ column.cdmFieldName }}_column` as {{ cdmToBigQuertyDataTypes[column.cdmDatatype] }})
     {%- endif -%}
     {{" "}}AS {{ column.cdmFieldName }}
 {%- endfor %}

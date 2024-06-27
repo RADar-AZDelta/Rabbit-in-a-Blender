@@ -23,35 +23,35 @@ WITH cte_uploaded_tables AS (
             {%- endif %}
         {% if column == primary_key_column -%}
             {%- if pk_auto_numbering -%}
-                swap_pk.y as {{column}}
+                swap_pk.y as [{{column}}]
             {%- else -%}
-                t.{{column}} as {{column}}
+                t.[{{column}}] as [{{column}}]
             {%- endif -%}
         {%- elif column in foreign_key_columns -%}
             {%- if column in required_columns -%}
-            COALESCE(swap_fk{{ns.fk_counter}}.y, 0) as {{column}}
+            COALESCE(swap_fk{{ns.fk_counter}}.y, 0) as [{{column}}]
             {%- else -%}
-            swap_fk{{ns.fk_counter}}.y as {{column}}
+            swap_fk{{ns.fk_counter}}.y as [{{column}}]
             {%- endif -%}
             {%- set ns.fk_counter = ns.fk_counter + 1 -%}
         {%- elif column in concept_id_columns -%}
             {%- if not column in events.values() -%}
-            COALESCE(swap_ci{{ns.ci_counter}}.conceptId, 0) as {{column}}
+            COALESCE(swap_ci{{ns.ci_counter}}.conceptId, 0) as [{{column}}]
             {%- set ns.ci_counter = ns.ci_counter + 1 -%}
             {%- else -%}
-            t.{{column}} as {{column}}
+            t.[{{column}}] as [{{column}}]
             {%- endif -%} 
         {%- elif column.endswith("_source_value") and pk_auto_numbering -%}
-            STRING_AGG(t.{{column}}, ', ') as {{column}} 
+            STRING_AGG(t.[{{column}}], ', ') as [{{column}}] 
         {%- else -%}
-            t.{{column}}
+            t.[{{column}}]
         {%- endif %}
         {%- endfor %}
     FROM cte_uploaded_tables t
     {%- set ns = namespace(ci_counter=0) -%}
     {%- for column in concept_id_columns %}
         {%- if not column in events.values() %}
-    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{column.lower()}}_usagi] swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.{{column}}
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_table}}__{{column.lower()}}_usagi] swap_ci{{ns.ci_counter}} on swap_ci{{ns.ci_counter}}.sourceCode = t.[{{column}}]
             {% if not process_semi_approved_mappings -%}
         and swap_ci{{ns.ci_counter}}.mappingStatus = 'APPROVED'
             {%- else -%}
@@ -65,26 +65,26 @@ WITH cte_uploaded_tables AS (
         {%- set ns = namespace(ci_counter=0) -%}
         {%- for column in concept_id_columns %}
             {%- if not column in events.values() %}
-        and COALESCE(swap_pk.{{column}}, 0) = COALESCE(swap_ci{{ns.ci_counter}}.conceptId, 0)
+        and COALESCE(swap_pk.[{{column}}], 0) = COALESCE(swap_ci{{ns.ci_counter}}.conceptId, 0)
             {%- else %}
-        and COALESCE(swap_pk.{{column}}, '') = COALESCE(t.{{column}}, '')
+        and COALESCE(swap_pk.[{{column}}], '') = COALESCE(t.[{{column}}], '')
             {%- endif -%}
             {%- set ns.ci_counter = ns.ci_counter + 1 -%}
         {%- endfor %} 
         {%- for column in events %}
-        and COALESCE(swap_pk.{{column}}, '') = COALESCE(t.{{column}}, '')
+        and COALESCE(swap_pk.[{{column}}], '') = COALESCE(t.[{{column}}], '')
         {%- endfor %}
     {%- endif -%}
     {%- set ns = namespace(fk_counter=0) -%}
     {%- for column in foreign_key_columns %}
         {%- if column == 'preceding_visit_occurrence_id' %}
-    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[visit_occurrence_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[visit_occurrence_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]
         {%- elif column == 'preceding_visit_detail_id' %}
-    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[visit_detail_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}                
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[visit_detail_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]                
         {%- elif column == 'parent_visit_detail_id' %}
-    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[visit_detail_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}            
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[visit_detail_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]            
         {%- else %}
-    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{column}}_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.{{column}}
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{column}}_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]
         {%- endif -%}
         {%- set ns.fk_counter = ns.fk_counter + 1 -%}
     {%- endfor %} 
@@ -99,7 +99,7 @@ WITH cte_uploaded_tables AS (
             {%- if pk_auto_numbering -%}
                 swap_pk.y
             {%- else -%}
-                t.{{column}}
+                t.[{{column}}]
             {%- endif -%}
         {%- elif column in foreign_key_columns -%}
             {%- if column in required_columns -%}
@@ -113,10 +113,10 @@ WITH cte_uploaded_tables AS (
             COALESCE(swap_ci{{ns.ci_counter}}.conceptId, 0)
             {%- set ns.ci_counter = ns.ci_counter + 1 -%}
             {%- else -%}
-            t.{{column}}
+            t.[{{column}}]
             {%- endif -%} 
         {%- else -%}
-            t.{{column}}
+            t.[{{column}}]
         {%- endif %}
         {%- endif %}
         {%- endfor %}
@@ -136,12 +136,12 @@ WITH cte_uploaded_tables AS (
             {%- endif -%}
             {%- for column in concept_id_columns -%}
                 {% if not column in events.values() %}
-                , {{column}}
+                , [{{column}}]
                 {%- endif -%} 
             {%- endfor -%}
             {%- for column in events %}
                 {%- if omop_table != 'fact_relationship' %}
-                , {{column}}
+                , [{{column}}]
                 {%- endif -%}
             {%- endfor %}
             ORDER BY 
@@ -149,7 +149,7 @@ WITH cte_uploaded_tables AS (
                 {%- if not loop.first -%}
                     {{','}}
                 {%- endif %}
-                {{column}}
+                [{{column}}]
             {%- endfor %}
             ) AS rn
     FROM cte_keys_swapped
@@ -167,7 +167,7 @@ FROM (
         {%- if not loop.first -%}
             {{','}}
         {%- endif %}
-        {{column}}
+        [{{column}}]
     {%- endfor %}
     FROM cte_duplicates 
     WHERE rn = 1
@@ -199,14 +199,14 @@ FROM [{{work_database_catalog}}].[{{work_database_schema}}].[vocabulary];
 {%- endif %}
 {%- for column in concept_id_columns %}
     {% if not column in events.values() -%}
-    and S.{{column}} = T.{{column}}
+    and S.[{{column}}] = T.[{{column}}]
     {%- else -%}
-    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    and coalesce(S.[{{column}}], '') = coalesce(T.[{{column}}], '')
     {%- endif -%} 
 {%- endfor %}
 {%- for column in events %}
     {% if omop_table != 'fact_relationship' -%}
-    and coalesce(S.{{column}}, '') = coalesce(T.{{column}}, '')
+    and coalesce(S.[{{column}}], '') = coalesce(T.[{{column}}], '')
     {%- endif %}
 {%- endfor %}
 WHEN MATCHED THEN
@@ -215,7 +215,7 @@ WHEN MATCHED THEN
             {% if not loop.first -%}
                 {{','}}
             {%- endif %}
-        {{column}} = S.{{column}}
+        [{{column}}] = S.[{{column}}]
         {%- endfor %}
 WHEN NOT MATCHED THEN
     INSERT ROW -#}

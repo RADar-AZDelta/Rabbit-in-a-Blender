@@ -23,12 +23,12 @@ SELECT
 {%- endif %}
 {%- for column in concept_id_columns -%}
     {%- if not column in events.values() %}
-    , {{column}}
+    , `{{column}}`
     {%- endif -%} 
 {%- endfor -%}
 {%- for column in events -%}
     {%- if omop_table != 'fact_relationship' %}
-    , {{column}}
+    , `{{column}}`
     {%- endif -%}
 {%- endfor %}
     , count(*)
@@ -46,14 +46,14 @@ GROUP BY
 {%- endif -%}
 {%- for column in concept_id_columns -%}
     {%- if not column in events.values() %}
-    , {{column}}
+    , `{{column}}`
     {%- else %}
-    , {{column}}
+    , `{{column}}`
     {%- endif -%} 
 {%- endfor -%}
 {%- for column in events -%}
     {%- if omop_table != 'fact_relationship' %}
-    , {{column}}
+    , `{{column}}`
     {%- endif -%}
 {%- endfor %}
 HAVING COUNT(*) > 1
