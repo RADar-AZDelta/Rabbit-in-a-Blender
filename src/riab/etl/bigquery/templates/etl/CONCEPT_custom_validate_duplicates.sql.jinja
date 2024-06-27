@@ -4,7 +4,7 @@ select T.concept_code, count(*) as amount
 from (
     SELECT DISTINCT swap.y as concept_id, t.* EXCEPT(concept_id)
     FROM `{{dataset_work}}.{{omop_table}}__{{concept_id_column}}_concept` t
-    INNER JOIN `work.concept_id_swap` swap 
+    INNER JOIN `{{dataset_work}}.concept_id_swap` swap 
         on swap.x = concat('{{concept_id_column}}__', t.concept_code)
 ) T
 group by T.concept_code
