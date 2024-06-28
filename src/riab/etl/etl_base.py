@@ -9,7 +9,7 @@ import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from polars import DataFrame, DataType, Datetime, Float64, Int64, Utf8, col, element, read_csv
+from polars import DataFrame, DataType, Datetime, Float64, Int64, Utf8, col, element, lit, read_csv, when
 
 
 class EtlBase(ABC):
@@ -90,6 +90,15 @@ class EtlBase(ABC):
                 / f"OMOP_CDMv{omop_cdm_version}_Field_Level.csv"
             )
         ).with_row_count(name="row_nr")
+        match db_engine:
+            case "sql_server":
+                # change the datatype for all _source_value columns from varchar(50) to varchar(255)
+                self._df_omop_fields = self._df_omop_fields.with_columns(
+                    when(col("cdmFieldName").str.ends_with("_source_value") & (col("cdmDatatype") == "varchar(50)"))
+                    .then(lit("varchar(255)"))
+                    .otherwise(col("cdmDatatype"))
+                    .alias("cdmDatatype")
+                )
 
         # the NOTE_NLP has a FK to NOTES see issue https://github.com/OHDSI/CommonDataModel/issues/539
         row_nr = self._df_omop_fields.filter(
