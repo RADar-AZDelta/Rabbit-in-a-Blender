@@ -18,7 +18,7 @@
         
         //"--print-etl-flow"
 
-        "--test-db-connection"
+        //"--test-db-connection"
 
         //"--create-db"
         
@@ -26,7 +26,7 @@
         
         //"--create-folders", "~/tmp/radar_omop-cdm/"
         
-        //"--run-etl", "~/git/radar_omop-cdm/"
+        "--run-etl", "~/git/radar_omop-cdm/"
         //,"--table", "observation"
         //,"--table", "condition_occurrence"
         // ,"--table", "metadata"

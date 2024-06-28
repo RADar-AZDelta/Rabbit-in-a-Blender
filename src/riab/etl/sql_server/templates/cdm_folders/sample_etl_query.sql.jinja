@@ -6,13 +6,13 @@ SELECT
     {{ '' }}
     {%- endif -%}
     {%- if column.isPrimaryKey == 'Yes' -%}
-    CONCAT('PK_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as VARCHAR(50)))
+    CONCAT('PK_PREQUAL_', CAST(raw.[{{ column.cdmFieldName }}_column] as VARCHAR(255)))
     {%- elif column.isForeignKey == 'Yes' and column.fkTableName != "CONCEPT" -%}
-    CONCAT('FK_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as VARCHAR(50)))
+    CONCAT('FK_PREQUAL_', CAST(raw.[{{ column.cdmFieldName }}_column] as VARCHAR(255)))
     {%- elif column.isForeignKey == 'Yes' and column.fkTableName == "CONCEPT" -%}
-    CONCAT('CONCEPT_PREQUAL_', CAST(raw.{{ column.cdmFieldName }}_column as VARCHAR(50)))
+    CONCAT('CONCEPT_PREQUAL_', CAST(raw.[{{ column.cdmFieldName }}_column] as VARCHAR(255)))
     {%- else -%}
-    CAST(raw.{{ column.cdmFieldName }}_column as {{ column.cdmDatatype }})
+    CAST(raw.[{{ column.cdmFieldName }}_column] as {{ column.cdmDatatype }})
     {%- endif -%}
     {{" "}}AS {{ column.cdmFieldName }}
 {%- endfor %}

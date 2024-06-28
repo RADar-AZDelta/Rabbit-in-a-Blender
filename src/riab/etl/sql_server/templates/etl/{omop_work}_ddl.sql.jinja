@@ -8,7 +8,7 @@ CREATE TABLE [{{work_database_catalog}}].[{{work_database_schema}}].[{{omop_tabl
           {{ ',' }}
       {%- endif %}
       {{ column["cdmFieldName"] }} 
-      {%- if column["cdmFieldName"] in events or column["cdmFieldName"] in events.values() %} varchar(50)
+      {%- if column["cdmFieldName"] in events or column["cdmFieldName"] in events.values() %} varchar(255)
       {%- else %} {{ column["cdmDatatype"] }}
       {%- endif -%}
       {%- if column['isRequired'] == "Yes" %} not null

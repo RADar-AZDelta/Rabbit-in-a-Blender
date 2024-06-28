@@ -16,7 +16,7 @@
     | -cf, --create-folders [PATH] | Create the ETL folder structure that will hold your queries, Usagi CSV's an custom concept CSV's.
     | -i, --import-vocabularies [VOCABULARIES_ZIP_FILE] | Extracts the vocabulary zip file (downloaded from the Athena website) and imports it into the OMOP CDM database.
     | -r [PATH], --run-etl [PATH] | Runs the ETL, pass the path to ETL folder structure that holds your queries, Usagi CSV's an custom concept CSV's.
-    | -c, --cleanup [TABLE] | Cleanup all the OMOP tables, or just one. Be aware that the cleanup of a single table can screw up foreign keys! For instance cleaning up only the 'Person' table, will result in clicical results being mapped to the wrong persons!!!!
+    | -c, --cleanup [TABLE] | Cleanup of the all Work tables, and all the OMOP clinical tables. If you pass a table name as argument, then that table and all the work and clinical tables in the ETL flow (in the levels comming after that table) will be cleaned up.
     | -dq, --data-quality | Check the data quality and store the results.
     | -dqd, --data-quality-dashboard | View the results of the data quality checks.
     | --print-etl-flow | Print the sequence in which the ETL tables that will be processed
