@@ -2,8 +2,10 @@ name: Docker Image Publish
 
 on:
   workflow_run:
-    workflows: ['Publish Python 🐍 distribution 📦 to PyPI']
-    types: [completed]
+    workflows: 
+      - 'Publish Python 🐍 distribution 📦 to PyPI'
+    types: 
+      - completed
     # tags:
     #   - '*'
 
