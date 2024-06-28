@@ -4,8 +4,9 @@ on:
   workflow_run:
     workflows: ['Publish Python 🐍 distribution 📦 to PyPI']
     types: [completed]
-    tags:
-      - '*'
+    # tags:
+    #   - '*'
+
 env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
