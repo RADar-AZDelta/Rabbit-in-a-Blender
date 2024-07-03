@@ -1,6 +1,6 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.61"
+version = "0.0.62"
 authors = [
   { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
   { name="De Jaeger Peter", email="peter.dejaeger@azdelta.be" }
