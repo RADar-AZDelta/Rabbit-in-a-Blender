@@ -1,6 +1,6 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.62"
+version = "0.0.63"
 authors = [
   { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
   { name="De Jaeger Peter", email="peter.dejaeger@azdelta.be" }
@@ -17,12 +17,12 @@ classifiers = [
 ]
 dependencies = [
     'backoff >= 2.2.1',
-    'polars >= 0.20.31',
+    'polars >= 1.0.0',
     'jinja2 >= 3.1.4',
     'pyarrow >= 16.1.0',
     'google-cloud-bigquery >= 3.25.0',
     'google-cloud-storage >= 2.17.0',
-    'google-auth >= 2.30.0',
+    'google-auth >= 2.31.0',
     'humanfriendly >= 10.0',
     'jpype1 >= 1.5.0',
     'dash >= 2.17.1',

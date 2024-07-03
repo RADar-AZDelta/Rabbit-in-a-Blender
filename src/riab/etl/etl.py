@@ -751,7 +751,7 @@ class Etl(EtlBase):
                 str(concept_csv_file),
                 try_parse_dates=True,
                 missing_utf8_is_empty_string=True,
-                dtypes=self._custom_concepts_polars_schema,
+                schema_overrides=self._custom_concepts_polars_schema,
             ).select(
                 "concept_id",
                 "concept_name",
@@ -778,7 +778,7 @@ class Etl(EtlBase):
             pa.Table: Arrow table.
         """
         logging.debug("Converting Usagi csv '%s' to polars DataFrame", str(usagi_csv_file))
-        df = pl.read_csv(str(usagi_csv_file), dtypes=self._usagi_polars_schema).select(
+        df = pl.read_csv(str(usagi_csv_file), schema_overrides=self._usagi_polars_schema).select(
             "sourceCode",
             "sourceName",
             "mappingStatus",

@@ -70,7 +70,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         if self._analysis_ids:
             # If specific analysis_ids are given, run only those
             df_analysis_details = df_analysis_details.filter(
-                pl.col("ANALYSIS_ID").apply(lambda s: s in (self._analysis_ids or []))
+                pl.col("ANALYSIS_ID").map_elements(lambda s: s in (self._analysis_ids or []))
             )
         elif self._default_analyses_only:
             # If specific analyses are not given, determine whether or not to run only default analyses
@@ -79,7 +79,7 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         # Remove unwanted analyses that have not already been excluded, if any are specified
         if self._exclude_analysis_ids:
             df_analysis_details = df_analysis_details.filter(
-                pl.col("ANALYSIS_ID").apply(lambda s: s not in (self._exclude_analysis_ids or []))
+                pl.col("ANALYSIS_ID").map_elements(lambda s: s not in (self._exclude_analysis_ids or []))
             )
 
         results_tables = [
@@ -369,14 +369,16 @@ class Achilles(SqlRenderBase, EtlBase, ABC):
         if self._default_analyses_only:
             df_results_tables = df_analysis_details.filter(
                 (pl.col("DISTRIBUTION") <= 0) & (pl.col("IS_DEFAULT") == 1)
-            ).with_columns(pl.col("ANALYSIS_ID").apply(lambda id: f"{self._temp_achilles_prefix}_{id}").alias("TABLE"))
+            ).with_columns(
+                pl.col("ANALYSIS_ID").map_elements(lambda id: f"{self._temp_achilles_prefix}_{id}").alias("TABLE")
+            )
         else:
             df_results_tables = df_analysis_details.filter((pl.col("DISTRIBUTION") <= 0)).with_columns(
-                pl.col("ANALYSIS_ID").apply(lambda id: f"{self._temp_achilles_prefix}_{id}").alias("TABLE")
+                pl.col("ANALYSIS_ID").map_elements(lambda id: f"{self._temp_achilles_prefix}_{id}").alias("TABLE")
             )
 
         df_results_dist_tables = df_analysis_details.filter((pl.col("DISTRIBUTION") == 1)).with_columns(
-            pl.col("ANALYSIS_ID").apply(lambda id: f"{self._temp_achilles_prefix}_dist_{id}").alias("TABLE")
+            pl.col("ANALYSIS_ID").map_elements(lambda id: f"{self._temp_achilles_prefix}_dist_{id}").alias("TABLE")
         )
 
         tables = list(df_results_tables["TABLE"]) + list(df_results_dist_tables["TABLE"])

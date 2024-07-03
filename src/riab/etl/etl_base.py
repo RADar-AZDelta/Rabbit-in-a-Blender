@@ -307,7 +307,11 @@ class EtlBase(ABC):
                 (col("cdmTableName").str.to_lowercase() == omop_table_name) & (col("fkDomain").is_not_null())
             )
             .with_columns(
-                col("fkDomain").str.to_lowercase().str.split(",").list.eval(element().str.strip()).alias("fkDomain")
+                col("fkDomain")
+                .str.to_lowercase()
+                .str.split(",")
+                .list.eval(element().str.strip_chars())
+                .alias("fkDomain")
             )
             .select("cdmFieldName", "fkDomain")
             .iter_rows()

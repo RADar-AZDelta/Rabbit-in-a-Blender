@@ -95,7 +95,7 @@ class DataQuality(SqlRenderBase, EtlBase, ABC):
                 / "csv"
                 / f"OMOP_CDMv{self._omop_cdm_version}_Concept_Level.csv"
             ),
-            dtypes={
+            schema_overrides={
                 "conceptId": pl.Utf8,  # type: ignore
             },
         )
