@@ -90,6 +90,10 @@ class EtlBase(ABC):
                 / f"OMOP_CDMv{omop_cdm_version}_Field_Level.csv"
             )
         ).with_row_count(name="row_nr")
+        # remove start and end double quote from the cdmFieldName column
+        self._df_omop_fields = self._df_omop_fields.with_columns(
+            cdmFieldName=col("cdmFieldName").str.strip_chars_start('"').str.strip_chars_end('"')
+        )
         match db_engine:
             case "sql_server":
                 # change the datatype for all _source_value columns from varchar(50) to varchar(255)
