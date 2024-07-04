@@ -12,5 +12,5 @@ pip uninstall -y Rabbit-in-a-Blender
 wait a moment
 sleep 10
 pip install -i https://test.pypi.org/simple/Rabbit-in-a-Blender # install from test repo
-pip install --no-cache-dir Rabbit-in-a-Blender==0.0.63
+pip install --no-cache-dir Rabbit-in-a-Blender==0.0.64
 
