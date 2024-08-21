@@ -113,6 +113,15 @@ class EtlBase(ABC):
         self._df_omop_fields[row_nr, "fkTableName"] = "NOTE"
         self._df_omop_fields[row_nr, "fkFieldName"] = "NOTE_ID"
 
+        #in the EPISODE table episode_parent_id has a FK to episode_id see issue https://github.com/OHDSI/CommonDataModel/issues/707
+        row_nr = self._df_omop_fields.filter(
+            (col("cdmTableName").str.to_uppercase() == "EPISODE")
+            & (col("cdmFieldName").str.to_uppercase() == "EPISODE_PARENT_ID")
+        ).select("row_nr")["row_nr"][0]
+        self._df_omop_fields[row_nr, "isForeignKey"] = "Yes"
+        self._df_omop_fields[row_nr, "fkTableName"] = "EPISODE"
+        self._df_omop_fields[row_nr, "fkFieldName"] = "EPISODE_ID"
+
         self._resolve_cdm_tables_fks_dependencies()
 
         logging.debug(f"Processing cdm_{omop_cdm_version}_events.json")
