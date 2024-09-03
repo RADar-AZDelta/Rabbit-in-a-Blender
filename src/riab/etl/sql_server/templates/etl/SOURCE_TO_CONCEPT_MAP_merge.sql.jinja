@@ -19,7 +19,6 @@ USING (
 {%- else %}
     where t.mappingStatus in ('APPROVED', 'SEMI-APPROVED')
 {%- endif -%}
-        and c.standard_concept = 'S'
 ) AS S
 ON S.source_code = T.source_code and S.target_concept_id = T.target_concept_id
 WHEN MATCHED THEN
