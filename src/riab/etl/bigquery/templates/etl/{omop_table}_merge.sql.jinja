@@ -113,13 +113,13 @@ AS (
                 person_id
             {%- elif omop_table == 'cdm_source' %}
                 cdm_source_name
+            {%- elif omop_table == 'episode_event' %}
+                episode_id
             {%- elif primary_key_column %}
                 {{primary_key_column}}
             {%- endif -%}
-            {%- for column in concept_id_columns -%}
-                {% if not column in events.values() %}
+            {%- for column in concept_id_columns %}
                 , `{{column}}`
-                {%- endif -%} 
             {%- endfor -%}
             {%- for column in events %}
                 {%- if omop_table != 'fact_relationship' %}

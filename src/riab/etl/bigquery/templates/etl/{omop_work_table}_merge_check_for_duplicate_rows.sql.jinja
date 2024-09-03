@@ -18,6 +18,8 @@ SELECT
     , person_id
 {%- elif omop_table == 'cdm_source' -%}
     , cdm_source_name
+{%- elif omop_table == 'episode_event' %}
+    , episode_id    
 {%- elif primary_key_column -%}
     , {{primary_key_column}}
 {%- endif %}
@@ -41,6 +43,8 @@ GROUP BY
     person_id
 {%- elif omop_table == 'cdm_source' %}
     cdm_source_name
+{%- elif omop_table == 'episode_event' %}
+    episode_id
 {%- elif primary_key_column %}
     {{primary_key_column}}
 {%- endif -%}
