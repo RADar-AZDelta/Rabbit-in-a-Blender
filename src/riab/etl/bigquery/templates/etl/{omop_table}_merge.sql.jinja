@@ -94,7 +94,9 @@ AS (
             {%- elif column == 'preceding_visit_detail_id' %}
         LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.`{{column}}`                
             {%- elif column == 'parent_visit_detail_id' %}
-        LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.`{{column}}`            
+        LEFT OUTER JOIN `{{dataset_work}}.visit_detail_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.`{{column}}`  
+            {%- elif column == 'episode_parent_id' %}
+        LEFT OUTER JOIN `{{dataset_work}}.episode_id_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.`{{column}}`                  
             {%- else %}
         LEFT OUTER JOIN `{{dataset_work}}.{{column}}_swap` swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.`{{column}}`
             {%- endif -%}
