@@ -188,7 +188,6 @@ class Etl(EtlBase):
                 "No SQL files found in ETL folder '%s'",
                 omop_table_path,
             )
-            return
 
         logging.info("Processing ETL folder: %s", omop_table_path)
 
@@ -289,6 +288,9 @@ class Etl(EtlBase):
                 omop_table=omop_table,
                 primary_key_column=cast(str, primary_key_column),
             )
+
+        if not len(sql_files):
+            return
 
         # merge everything in the destination OMOP work table
         logging.info(
@@ -674,6 +676,9 @@ class Etl(EtlBase):
         )
         # create the swap table for the primary key
         self._create_pk_auto_numbering_swap_table(primary_key_column, concept_id_columns, events)
+
+        if not len(sql_files):
+            return
 
         # execute the swap query
         self._execute_pk_auto_numbering_swap_query(

@@ -28,7 +28,9 @@ WITH cte_uploaded_tables AS (
                 t.[{{column}}] as [{{column}}]
             {%- endif -%}
         {%- elif column in foreign_key_columns -%}
-            {%- if column in required_columns -%}
+            {%- if column == 'cost_domain_id' -%}
+            COALESCE(swap_fk{{ns.fk_counter}}.domain_id, "?") as [{{column}}]
+            {%- elif column in required_columns -%}
             COALESCE(swap_fk{{ns.fk_counter}}.y, 0) as [{{column}}]
             {%- else -%}
             swap_fk{{ns.fk_counter}}.y as [{{column}}]
@@ -66,10 +68,10 @@ WITH cte_uploaded_tables AS (
         {%- for column in concept_id_columns %}
             {%- if not column in events.values() %}
         and COALESCE(swap_pk.[{{column}}], 0) = COALESCE(swap_ci{{ns.ci_counter}}.conceptId, 0)
+                {%- set ns.ci_counter = ns.ci_counter + 1 -%}
             {%- else %}
         and COALESCE(swap_pk.[{{column}}], '') = COALESCE(t.[{{column}}], '')
             {%- endif -%}
-            {%- set ns.ci_counter = ns.ci_counter + 1 -%}
         {%- endfor %} 
         {%- for column in events %}
         and COALESCE(swap_pk.[{{column}}], '') = COALESCE(t.[{{column}}], '')
@@ -85,6 +87,8 @@ WITH cte_uploaded_tables AS (
     LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[visit_detail_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]            
         {%- elif column == 'episode_parent_id' %}
     LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[episode_id_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]  
+        {%- elif column == 'cost_domain_id' %}
+    LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[domain] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.domain_id = t.[{{column}}] 
         {%- else %}
     LEFT OUTER JOIN [{{work_database_catalog}}].[{{work_database_schema}}].[{{column}}_swap] swap_fk{{ns.fk_counter}} on swap_fk{{ns.fk_counter}}.x = t.[{{column}}]
         {%- endif -%}
