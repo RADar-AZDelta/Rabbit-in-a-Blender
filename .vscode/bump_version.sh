@@ -1,4 +1,4 @@
-VERSION=0.0.64
+VERSION=0.0.65
 
 #change version in the pyproject.toml
 deactivate 
@@ -12,7 +12,7 @@ toml.dump(d, open(f, 'w'))
 EOF
 
 # push the bumped version to git
-git add bump_version.sh
+git add .vscode/bump_version.sh
 git add pyproject.toml
 git commit -m "Bumped version to ${VERSION}"
 git push origin

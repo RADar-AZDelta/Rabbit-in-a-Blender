@@ -1,65 +1,48 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.64"
-authors = [
-  { name="Lammertyn Pieter-Jan", email="pieter-jan.lammertyn@azdelta.be" },
-  { name="De Jaeger Peter", email="peter.dejaeger@azdelta.be" }
-]
+version = "0.0.65"
 description = "An ETL pipeline to transform your EMP data to OMOP."
 readme = "README.md"
-license = { file="LICENSE" }
-keywords= ["OMOP", "CDM", "common data model", "OHDSI"]
+keywords = [ "OMOP", "CDM", "common data model", "OHDSI",]
 requires-python = ">=3.10"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
-    "Operating System :: OS Independent",
-]
-dependencies = [
-    'backoff >= 2.2.1',
-    'polars >= 1.0.0',
-    'jinja2 >= 3.1.4',
-    'pyarrow >= 16.1.0',
-    'google-cloud-bigquery >= 3.25.0',
-    'google-cloud-storage >= 2.17.0',
-    'google-auth >= 2.31.0',
-    'humanfriendly >= 10.0',
-    'jpype1 >= 1.5.0',
-    'dash >= 2.17.1',
-    'dash-table >= 5.0.0',
-    'dash-bootstrap-components >= 1.6.0',
-    'pymssql >= 2.3.0',
-    'python-dotenv >= 1.0.1',
-    'sqlalchemy >= 2.0.31',
-    'pywin32 >= 306; platform_system == "Windows"',
-    'sqlparse >= 0.5.0',
-]
+classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)", "Operating System :: OS Independent",]
+dependencies = [ "backoff >= 2.2.1", "polars >= 1.0.0", "jinja2 >= 3.1.4", "pyarrow >= 16.1.0", "google-cloud-bigquery >= 3.25.0", "google-cloud-storage >= 2.17.0", "google-auth >= 2.31.0", "humanfriendly >= 10.0", "jpype1 >= 1.5.0", "dash >= 2.17.1", "dash-table >= 5.0.0", "dash-bootstrap-components >= 1.6.0", "pymssql >= 2.3.0", "python-dotenv >= 1.0.1", "sqlalchemy >= 2.0.31", "pywin32 >= 306; platform_system == \"Windows\"", "sqlparse >= 0.5.0",]
+[[project.authors]]
+name = "Lammertyn Pieter-Jan"
+email = "pieter-jan.lammertyn@azdelta.be"
+
+[[project.authors]]
+name = "De Jaeger Peter"
+email = "peter.dejaeger@azdelta.be"
+
+[build-system]
+requires = [ "setuptools>=61.0",]
+build-backend = "setuptools.build_meta"
+
+[project.license]
+file = "LICENSE"
 
 [project.urls]
-"Homepage" = "https://radar-azdelta.github.io/Rabbit-in-a-Blender/"
+Homepage = "https://radar-azdelta.github.io/Rabbit-in-a-Blender/"
 "Source Code" = "https://github.com/RADar-AZDelta/Rabbit-in-a-Blender"
 "Bug Tracker" = "https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/issues"
 
 [project.scripts]
 riab = "riab:cli"
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-"riab.etl" = ["**/*.json", "**/*.sql", "**/*.jinja"]
-"riab.libs.CommonDataModel.inst.csv" = ["*.csv"]
-"riab.libs.SqlRender.inst.csv" = ["*.csv"]
-"riab.libs.SqlRender.inst.java" = ["*.jar"]
-"riab.libs.DataQualityDashboard.inst.csv" = ["*.csv"]
-"riab.libs.DataQualityDashboard.inst.sql.sql_server" = ["*.sql"]
-"riab.libs.Achilles.inst.csv" = ["**/*.csv"]
-"riab.libs.Achilles.inst.sql.sql_server" = ["**/*.sql"]
-"riab.assets" = ["*.css"]
-
 [tool.ruff]
 line-length = 120
+
+[tool.setuptools.package-data]
+"riab.etl" = [ "**/*.json", "**/*.sql", "**/*.jinja",]
+"riab.libs.CommonDataModel.inst.csv" = [ "*.csv",]
+"riab.libs.SqlRender.inst.csv" = [ "*.csv",]
+"riab.libs.SqlRender.inst.java" = [ "*.jar",]
+"riab.libs.DataQualityDashboard.inst.csv" = [ "*.csv",]
+"riab.libs.DataQualityDashboard.inst.sql.sql_server" = [ "*.sql",]
+"riab.libs.Achilles.inst.csv" = [ "**/*.csv",]
+"riab.libs.Achilles.inst.sql.sql_server" = [ "**/*.sql",]
+"riab.assets" = [ "*.css",]
+
+[tool.setuptools.packages.find]
+where = [ "src",]
