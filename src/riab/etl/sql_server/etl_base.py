@@ -63,14 +63,25 @@ class SqlServerEtlBase(EtlBase, ABC):
         self._disable_fk_constraints = disable_fk_constraints
         self._bcp_code_page = bcp_code_page
 
-        url = engine.URL.create(
-            drivername="mssql+pymssql",
-            username=self._user,
-            password=self._password,
-            host=self._server,
-            port=self._port,
-            database=self._work_database_catalog,  # required for Azure SQL
-        )
+        if (
+            "\\" in server
+        ):  # named instance, we do not set the port (see https://github.com/sqlalchemy/sqlalchemy/issues/4726)
+            url = engine.URL.create(
+                drivername="mssql+pymssql",
+                username=self._user,
+                password=self._password,
+                host=self._server,
+                database=self._work_database_catalog,  # required for Azure SQL
+            )
+        else:
+            url = engine.URL.create(
+                drivername="mssql+pymssql",
+                username=self._user,
+                password=self._password,
+                host=self._server,
+                port=self._port,
+                database=self._work_database_catalog,  # required for Azure SQL
+            )
 
         self._db = Db(url)
 
@@ -118,7 +129,7 @@ class SqlServerEtlBase(EtlBase, ABC):
                 "-b",
                 "10000",
                 "-e",
-                bcp_error_file
+                bcp_error_file,
             ]
             logging.info(f"Bulk copy command: {re.sub(
                 r"-P.*-c",
@@ -237,7 +248,10 @@ class SqlServerEtlBase(EtlBase, ABC):
 
         logging.debug("Adding the table contraints to the omop tables")
         with ThreadPoolExecutor(max_workers=self._max_worker_threads_per_table) as executor:
-            futures = [executor.submit(self._db.run_query, f"use [{self._omop_database_catalog}];\n" + ddl) for ddl in constraint_ddls]
+            futures = [
+                executor.submit(self._db.run_query, f"use [{self._omop_database_catalog}];\n" + ddl)
+                for ddl in constraint_ddls
+            ]
             # wait(futures, return_when=ALL_COMPLETED)
             for result in as_completed(futures):
                 result.result()
