@@ -14,5 +14,8 @@
     },
     "episode_event": {
         "event_id": "episode_event_field_concept_id"
+    },
+    "cost": {
+        "cost_event_id": "cost_type_concept_id"
     }
 }

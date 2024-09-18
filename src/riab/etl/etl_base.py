@@ -122,6 +122,15 @@ class EtlBase(ABC):
         self._df_omop_fields[row_nr, "fkTableName"] = "EPISODE"
         self._df_omop_fields[row_nr, "fkFieldName"] = "EPISODE_ID"
 
+        # in the COST table payer_plan_period_id has a FK to the payer_plan_period table see https://github.com/OHDSI/CommonDataModel/issues/714
+        row_nr = self._df_omop_fields.filter(
+            (col("cdmTableName").str.to_uppercase() == "COST")
+            & (col("cdmFieldName").str.to_uppercase() == "PAYER_PLAN_PERIOD_ID")
+        ).select("row_nr")["row_nr"][0]
+        self._df_omop_fields[row_nr, "isForeignKey"] = "Yes"
+        self._df_omop_fields[row_nr, "fkTableName"] = "PAYER_PLAN_PERIOD"
+        self._df_omop_fields[row_nr, "fkFieldName"] = "PAYER_PLAN_PERIOD_ID"
+
         self._resolve_cdm_tables_fks_dependencies()
 
         logging.debug(f"Processing cdm_{omop_cdm_version}_events.json")
