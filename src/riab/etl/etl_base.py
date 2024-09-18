@@ -113,7 +113,7 @@ class EtlBase(ABC):
         self._df_omop_fields[row_nr, "fkTableName"] = "NOTE"
         self._df_omop_fields[row_nr, "fkFieldName"] = "NOTE_ID"
 
-        #in the EPISODE table episode_parent_id has a FK to episode_id see issue https://github.com/OHDSI/CommonDataModel/issues/707
+        # in the EPISODE table episode_parent_id has a FK to episode_id see issue https://github.com/OHDSI/CommonDataModel/issues/707
         row_nr = self._df_omop_fields.filter(
             (col("cdmTableName").str.to_uppercase() == "EPISODE")
             & (col("cdmFieldName").str.to_uppercase() == "EPISODE_PARENT_ID")
@@ -179,6 +179,11 @@ class EtlBase(ABC):
         tables_with_fks = dict(
             ((k.lower(), set(v.lower() for v in v) - set([k.lower()])) for k, v in tables_with_fks.items())
         )
+
+        # add the FK's to the ERA tables
+        tables_with_fks["condition_era"].add("condition_occurrence")
+        tables_with_fks["drug_era"].add("drug_exposure")
+        tables_with_fks["dose_era"].add("drug_exposure")
 
         tables_with_no_fks = set(k for k, v in tables_with_fks.items() if not v)
 
