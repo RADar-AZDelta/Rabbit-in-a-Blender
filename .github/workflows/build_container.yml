@@ -8,6 +8,7 @@ on:
       - completed
     # tags:
     #   - '*'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
