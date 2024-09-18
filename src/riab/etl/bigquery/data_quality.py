@@ -78,7 +78,7 @@ class BigQueryDataQuality(DataQuality, BigQueryEtlBase):
         Returns:
             RowIterator | _EmptyRowIterator: The result rows
         """
-        template = self._template_env.from_string("select * from {{dataset_omop}}.cdm_source;")
+        template = self._template_env.from_string("select * from `{{dataset_omop}}.cdm_source`;")
         sql = template.render(
             dataset_omop=self._dataset_omop,
         )
