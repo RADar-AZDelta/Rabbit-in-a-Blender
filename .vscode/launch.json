@@ -37,7 +37,7 @@
         //,"--table", "provider"
         //,"--table", "visit_occurrence"
         //,"--table", "fact_relationship"
-        //,"--only-query", "measurement/labo.sql.jinja"
+        //,"--only-query", "measurement/davinci.sql.jinja"
         //,"--skip-usagi-and-custom-concept-upload"
         //,"--process-semi-approved-mappings"
         //,"--skip-event-fks-step"
@@ -56,9 +56,10 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "python": "${workspaceFolder}/.venv/bin/python",
+      "envFile": "${workspaceFolder}/.env",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src"
-      }    
+      }
     },
     {
       "name": "Python: Current File",
