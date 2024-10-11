@@ -42,7 +42,11 @@ AS (
                 {%- set ns.fk_counter = ns.fk_counter + 1 -%}
             {%- elif column in concept_id_columns -%}
                 {%- if not column in events.values() -%}
+                    {%- if column.endswith("_source_concept_id") or (omop_table == "measurement" and (column in ["value_as_concept_id", "unit_concept_id", "operator_concept_id"])) or (omop_table == "observation" and (column in ["value_as_concept_id", "unit_concept_id", "modifier_concept_id"])) -%}
+                swap_ci{{ns.ci_counter}}.conceptId as `{{column}}`
+                    {%- else -%}
                 IFNULL(swap_ci{{ns.ci_counter}}.conceptId, 0) as `{{column}}`
+                    {%- endif -%}
                 {%- set ns.ci_counter = ns.ci_counter + 1 -%}
                 {%- else -%}
                 t.`{{column}}` as `{{column}}`
