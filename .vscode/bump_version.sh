@@ -1,4 +1,4 @@
-VERSION=0.0.68
+VERSION=0.0.69
 
 #change version in the pyproject.toml
 deactivate 

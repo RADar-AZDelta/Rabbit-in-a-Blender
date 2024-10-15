@@ -1,6 +1,6 @@
 [project]
 name = "Rabbit-in-a-Blender"
-version = "0.0.68"
+version = "0.0.69"
 description = "An ETL pipeline to transform your EMP data to OMOP."
 readme = "README.md"
 keywords = [ "OMOP", "CDM", "common data model", "OHDSI",]
