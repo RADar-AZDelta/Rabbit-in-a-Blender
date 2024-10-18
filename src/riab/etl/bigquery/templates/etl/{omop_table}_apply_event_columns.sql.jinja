@@ -3,7 +3,7 @@
 CREATE OR REPLACE TABLE `{{dataset_omop}}.{{omop_table}}`
 LIKE `{{dataset_omop}}.{{omop_table}}`
 AS (
-    {%- if omop_table != 'fact_relationship' %}
+    {%- if omop_table not in ['fact_relationship', 'episode_event'] %}
     WITH cte_work AS (
         SELECT *, 
             ROW_NUMBER() OVER(
@@ -146,17 +146,11 @@ AS (
                     {%- set ns.fk_counter = ns.fk_counter + 1 -%}
                 {%- endfor %}
             {%- endfor %}
-    {%- if omop_table != 'fact_relationship' %}
+    {%- if omop_table not in ['fact_relationship', 'episode_event'] %}
         )
     ), cte_events_mapped_to_multiple_rows as (
-        SELECT *, ROW_NUMBER() OVER (ORDER BY 
-        {%- if omop_table == 'fact_relationship' %}
-                fact_id_1
-                , fact_id_2
-                , relationship_concept_id
-        {%- else %}                
+        SELECT *, ROW_NUMBER() OVER (ORDER BY                
                 {{primary_key_column}} 
-        {%- endif %}
         ) AS rn
         FROM (
             SELECT * EXCEPT(rn)

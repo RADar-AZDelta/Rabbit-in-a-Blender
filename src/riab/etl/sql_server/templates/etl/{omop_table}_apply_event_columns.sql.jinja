@@ -1,7 +1,7 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
 TRUNCATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}];
-{%- if omop_table != 'vocabulary' %}
+{%- if omop_table not in ['fact_relationship', 'episode_event'] %}
 WITH cte_swapped_events AS (
     SELECT DISTINCT 
         {%- set ns = namespace(fk_counter=0) -%}
@@ -133,7 +133,7 @@ WITH cte_swapped_events AS (
     {%- endfor %}
 )
  {%- endif -%}
-{%- if omop_table != 'fact_relationship' and  omop_table != 'vocabulary' %}
+{%- if omop_table not in ['fact_relationship', 'episode_event', 'vocabulary'] %}
 , cte_duplicates AS (
     SELECT *, 
         ROW_NUMBER() OVER(
@@ -149,14 +149,8 @@ WITH cte_swapped_events AS (
     FROM cte_swapped_events
 ), cte_events_mapped_to_multiple_rows AS (
     SELECT *
-        , ROW_NUMBER() OVER (ORDER BY 
-    {%- if omop_table == 'fact_relationship' %}
-            fact_id_1
-            , fact_id_2
-            , relationship_concept_id
-    {%- else %}                
+        , ROW_NUMBER() OVER (ORDER BY               
             {{primary_key_column}} 
-    {%- endif %}
     ) AS rn
     FROM (
         SELECT 
@@ -177,7 +171,7 @@ WITH cte_swapped_events AS (
 INSERT INTO [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}]
 SELECT *
 FROM (
-{%- if omop_table == 'fact_relationship' %}
+{%- if omop_table in ['fact_relationship', 'episode_event'] %}
     SELECT *
     FROM cte_swapped_events
 {%- elif omop_table == 'vocabulary' %}
