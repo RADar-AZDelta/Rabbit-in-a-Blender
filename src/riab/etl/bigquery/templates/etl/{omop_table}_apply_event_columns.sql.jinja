@@ -18,6 +18,11 @@ AS (
             ) AS rn
         FROM (
     {%- endif %}
+    
+        {%- if omop_table in ['fact_relationship'] %}
+            SELECT *
+            FROM (
+        {%- endif %}
             SELECT DISTINCT 
                 {%- set ns = namespace(fk_counter=0) -%}
                 {%- for column in columns -%}
@@ -146,6 +151,17 @@ AS (
                     {%- set ns.fk_counter = ns.fk_counter + 1 -%}
                 {%- endfor %}
             {%- endfor %}
+
+        {%- if omop_table in ['fact_relationship'] %}
+            ) T           
+            WHERE -- in fact_relationship the event columns are required
+            {%- for column in events %}
+                {% if not loop.first -%}
+                    {{'AND '}}
+                {%- endif -%}
+                T.`{{column}}` IS NOT NULL
+            {%- endfor %}
+        {%- endif %}              
     {%- if omop_table not in ['fact_relationship', 'episode_event'] %}
         )
     ), cte_events_mapped_to_multiple_rows as (

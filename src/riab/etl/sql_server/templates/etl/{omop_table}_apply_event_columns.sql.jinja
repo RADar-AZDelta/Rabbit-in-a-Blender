@@ -1,8 +1,12 @@
 {#- Copyright 2024 RADar-AZDelta -#}
 {#- SPDX-License-Identifier: gpl3+ -#}
 TRUNCATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].[{{omop_table}}];
-{%- if omop_table not in ['fact_relationship', 'episode_event'] %}
 WITH cte_swapped_events AS (
+    {%- if omop_table in ['fact_relationship'] %}
+    SELECT *
+    FROM ( 
+    {%- endif %}    
+
     SELECT DISTINCT 
         {%- set ns = namespace(fk_counter=0) -%}
         {%- for column in columns -%}
@@ -131,8 +135,18 @@ WITH cte_swapped_events AS (
             {%- set ns.fk_counter = ns.fk_counter + 1 -%}
         {%- endfor %}
     {%- endfor %}
+
+    {%- if omop_table in ['fact_relationship'] %}
+    ) T           
+    WHERE 
+    {%- for column in events %}
+        {% if not loop.first -%}
+        {{'AND '}}
+        {%- endif -%}
+        T.`{{column}}` IS NOT NULL
+    {%- endfor %} 
+    {%- endif %}    
 )
- {%- endif -%}
 {%- if omop_table not in ['fact_relationship', 'episode_event', 'vocabulary'] %}
 , cte_duplicates AS (
     SELECT *, 
