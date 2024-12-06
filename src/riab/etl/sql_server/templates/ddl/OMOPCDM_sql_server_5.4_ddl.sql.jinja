@@ -553,7 +553,7 @@ CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].CONCEPT_ANCE
 IF OBJECT_ID(N'[{{omop_database_catalog}}].[{{omop_database_schema}}].SOURCE_TO_CONCEPT_MAP', N'U') IS NOT NULL
 	DROP TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].SOURCE_TO_CONCEPT_MAP; 
 CREATE TABLE [{{omop_database_catalog}}].[{{omop_database_schema}}].SOURCE_TO_CONCEPT_MAP (
-			source_code varchar(50) NOT NULL,
+			source_code varchar(255) NOT NULL,
 			source_concept_id integer NOT NULL,
 			source_vocabulary_id varchar(20) NOT NULL,
 			source_code_description varchar(255) NULL,
