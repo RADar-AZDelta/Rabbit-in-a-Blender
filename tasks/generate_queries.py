@@ -97,6 +97,9 @@ def modify_sqlserver_cdm_ddl(sql: str, ddl_part: str) -> str:
     # deviation from OMOP CDM 5.4 change the length of source_value columns from 50 chars to 255 (see https://github.com/RADar-AZDelta/Rabbit-in-a-Blender/issues/71)
     sql = sql.replace("_source_value varchar(50)", "_source_value varchar(255)")
 
+    # also change length of the source_code
+    sql = sql.replace("source_code varchar(50) NOT NULL", "source_code varchar(255) NOT NULL")
+    
     if ddl_part == "ddl":
         sql = (
             """
