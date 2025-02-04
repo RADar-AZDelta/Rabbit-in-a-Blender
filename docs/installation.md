@@ -125,6 +125,14 @@ curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o 
 localectl set-locale LC_NUMERIC=en_IN.UTF-8
 ```
 
+It is possible that you will need to add the installation folder of the mssql-tools to your PATH environment variable. Otherwise it might not find the bcp command.
+
+```bash
+export PATH="/opt/mssql-tools/bin/:$PATH"
+echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+source ~/.bashrc
+```
+
 ## Installation on Windows
 
 > **Tip**:Use a terminal that supports colors (like [Hyper](https://hyper.is/))
