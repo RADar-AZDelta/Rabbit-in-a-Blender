@@ -143,7 +143,7 @@ WITH cte_swapped_events AS (
         {% if not loop.first -%}
         {{'AND '}}
         {%- endif -%}
-        T.`{{column}}` IS NOT NULL
+        T.[{{column}}] IS NOT NULL
     {%- endfor %} 
     {%- endif %}    
 )
