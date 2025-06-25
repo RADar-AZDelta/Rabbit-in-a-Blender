@@ -37,7 +37,7 @@ If your distro has a Python version lower than 3.12, then you need to install Py
 curl https://pyenv.run | bash
 ``` 
 
-Install the required packages to compile Python.
+Install the required packages to compile Python. (done once by the admin)
 More info on the [pyenv](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) site.
 
 ```bash
