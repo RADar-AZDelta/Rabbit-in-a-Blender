@@ -21,7 +21,7 @@ A system with 6 CPU cores and 16 GB RAM is preferred.
 
 ### Install Python
 
-RiaB requires Python version 3.12 or above.
+RiaB requires Python version 3.12 .
 
 Most Linux distro's come with Python preinstalled.
 You can check the version of Python with:
