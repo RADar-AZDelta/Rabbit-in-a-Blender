@@ -1,6 +1,6 @@
 # Installation
 
-RiaB requires Python 3.12 or higher.
+RiaB requires Python 3.12.
 If you want to run [DQD](https://github.com/OHDSI/DataQualityDashboard) and [Achilles](https://github.com/OHDSI/Achilles), then you need to install Java 8 or higher.
 Each database engine (BigQuery, Sql Server, etc.) might also require aditional components to be installed.
 
